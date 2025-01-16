@@ -3079,7 +3079,10 @@ void BufferControl::cache_writer(BufferControl* bcb)
 				{
 					BufferDesc* const bdb = get_dirty_buffer(tdbb);
 					if (bdb)
+					{
 						write_buffer(tdbb, bdb, bdb->bdb_page, true, &status_vector, true);
+						attachment->mergeStats();
+					}
 				}
 
 				// If there's more work to do voluntarily ask to be rescheduled.
