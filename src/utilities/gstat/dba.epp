@@ -1065,7 +1065,7 @@ int gstat(Firebird::UtilSvc* uSvc)
 								<< blob_level.blob_count
 								<< blob_level.blob_space
 								<< blob_level.blob_pages);
-							// msg 49: "        Level @1: @2, total length: @3, blob pages: @4
+							// msg 64: "        Level @1: @2, total length: @3, blob pages: @4
 						}
 					}
 				}
