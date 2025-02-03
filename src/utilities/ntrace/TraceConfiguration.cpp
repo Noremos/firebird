@@ -70,6 +70,15 @@ void TraceCfgReader::readTraceConfiguration(const char* text,
 
 #define ERROR_PREFIX "error while parsing trace configuration\n\t"
 
+enum class AliasType
+{
+	DETECT,
+	NAME,
+	REGEX
+};
+inline constexpr std::string_view REGEX_PREFIX = "regex ";
+inline constexpr std::string_view NAME_PREFIX = "name ";
+
 void TraceCfgReader::readConfig()
 {
 	ConfigFile cfgFile(ConfigFile::USE_TEXT, m_text, ConfigFile::HAS_SUB_CONF | ConfigFile::NATIVE_ORDER
@@ -127,18 +136,41 @@ void TraceCfgReader::readConfig()
 		}
 		else if (isDatabase && !m_databaseName.empty())
 		{
-			PathName noQuotePattern = pattern.ToPathName();
-			noQuotePattern.alltrim(" '\'");
-			PathName expandedName;
+			PathName noQuotePattern;
 
-			if (m_databaseName == noQuotePattern ||
-				(expandDatabaseName(noQuotePattern, expandedName, nullptr),
-				m_databaseName == expandedName) )
+			AliasType specifier = AliasType::DETECT;
+			const std::string_view patternView(pattern.data(), pattern.length());
+
+			// Check for "name" or "regex" specific in the path.
+			// Compare path in both ways if specifier is not specified
+			if (patternView.find_first_of(REGEX_PREFIX) == 0)
 			{
-				match = exactMatch = true;
+				noQuotePattern.assign(pattern.data() + REGEX_PREFIX.length());
+				specifier = AliasType::REGEX;
+			}
+			else if (patternView.find_first_of(NAME_PREFIX) == 0)
+			{
+				noQuotePattern.assign(pattern.data() + NAME_PREFIX.length());
+				specifier = AliasType::NAME;
 			}
 			else
 			{
+				noQuotePattern = pattern.ToPathName();
+			}
+
+			noQuotePattern.alltrim(" '\'");
+			PathName expandedName;
+
+			if (specifier != AliasType::REGEX && (m_databaseName == noQuotePattern ||
+				(expandDatabaseName(noQuotePattern, expandedName, nullptr),
+				m_databaseName == expandedName) ))
+			{
+				// Compare by name
+				match = exactMatch = true;
+			}
+			else if (specifier != AliasType::NAME)
+			{
+				// Compare by regex
 				bool regExpOk = false;
 				try
 				{
