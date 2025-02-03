@@ -90,7 +90,7 @@ void TraceCfgReader::readConfig()
 		const ConfigFile::Parameter* section = &params[n];
 
 		const ConfigFile::SectionType sectionType = section->parseSectionKey();
-		const bool isDatabase = sectionType != ConfigFile::SectionType::SERVICE;
+		const bool isDatabase = (sectionType != ConfigFile::SectionType::SERVICE);
 
 		const ConfigFile::String pattern = section->value;
 		bool match = false;
