@@ -70,15 +70,6 @@ void TraceCfgReader::readTraceConfiguration(const char* text,
 
 #define ERROR_PREFIX "error while parsing trace configuration\n\t"
 
-enum class AliasType
-{
-	DETECT,
-	NAME,
-	REGEX
-};
-inline constexpr std::string_view REGEX_PREFIX = "regex ";
-inline constexpr std::string_view NAME_PREFIX = "name ";
-
 void TraceCfgReader::readConfig()
 {
 	ConfigFile cfgFile(ConfigFile::USE_TEXT, m_text, ConfigFile::HAS_SUB_CONF | ConfigFile::NATIVE_ORDER
@@ -98,12 +89,8 @@ void TraceCfgReader::readConfig()
 	{
 		const ConfigFile::Parameter* section = &params[n];
 
-		const bool isDatabase = (section->name == "database");
-		if (!isDatabase && section->name != "services")
-			//continue;
-			fatal_exception::raiseFmt(ERROR_PREFIX
-				"line %d: wrong section header, \"database\" or \"service\" is expected",
-				section->line);
+		const ConfigFile::SectionType sectionType = section->parseSectionKey();
+		const bool isDatabase = sectionType != ConfigFile::SectionType::SERVICE;
 
 		const ConfigFile::String pattern = section->value;
 		bool match = false;
@@ -136,39 +123,18 @@ void TraceCfgReader::readConfig()
 		}
 		else if (isDatabase && !m_databaseName.empty())
 		{
-			PathName noQuotePattern;
-
-			AliasType specifier = AliasType::DETECT;
-			const std::string_view patternView(pattern.data(), pattern.length());
-
-			// Check for "name" or "regex" specific in the path.
-			// Compare path in both ways if specifier is not specified
-			if (patternView.find_first_of(REGEX_PREFIX) == 0)
-			{
-				noQuotePattern.assign(pattern.data() + REGEX_PREFIX.length());
-				specifier = AliasType::REGEX;
-			}
-			else if (patternView.find_first_of(NAME_PREFIX) == 0)
-			{
-				noQuotePattern.assign(pattern.data() + NAME_PREFIX.length());
-				specifier = AliasType::NAME;
-			}
-			else
-			{
-				noQuotePattern = pattern.ToPathName();
-			}
-
+			PathName noQuotePattern = pattern.ToPathName();
 			noQuotePattern.alltrim(" '\'");
 			PathName expandedName;
 
-			if (specifier != AliasType::REGEX && (m_databaseName == noQuotePattern ||
+			if (sectionType != ConfigFile::SectionType::DATABASE_REGEX && (m_databaseName == noQuotePattern ||
 				(expandDatabaseName(noQuotePattern, expandedName, nullptr),
 				m_databaseName == expandedName) ))
 			{
 				// Compare by name
 				match = exactMatch = true;
 			}
-			else if (specifier != AliasType::NAME)
+			else if (sectionType != ConfigFile::SectionType::DATABASE_NAME)
 			{
 				// Compare by regex
 				bool regExpOk = false;
