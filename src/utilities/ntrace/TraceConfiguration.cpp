@@ -89,8 +89,8 @@ void TraceCfgReader::readConfig()
 	{
 		const ConfigFile::Parameter* section = &params[n];
 
-		const ConfigFile::SectionType sectionType = section->parseSectionKey();
-		const bool isDatabase = (sectionType != ConfigFile::SectionType::SERVICES);
+		const SectionType sectionType = parseSectionKey(section);
+		const bool isDatabase = (sectionType != SectionType::SERVICES);
 
 		const ConfigFile::String pattern = section->value;
 		bool match = false;
@@ -127,14 +127,14 @@ void TraceCfgReader::readConfig()
 			noQuotePattern.alltrim(" '\'");
 			PathName expandedName;
 
-			if (sectionType != ConfigFile::SectionType::DATABASE_REGEX && (m_databaseName == noQuotePattern ||
+			if (sectionType != SectionType::DATABASE_REGEX && (m_databaseName == noQuotePattern ||
 				(expandDatabaseName(noQuotePattern, expandedName, nullptr),
 				m_databaseName == expandedName) ))
 			{
 				// Compare by name
 				match = exactMatch = true;
 			}
-			else if (sectionType != ConfigFile::SectionType::DATABASE_NAME)
+			else if (sectionType != SectionType::DATABASE_NAME)
 			{
 				// Compare by regex
 				bool regExpOk = false;
@@ -316,5 +316,36 @@ void TraceCfgReader::expandPattern(const ConfigFile::Parameter* el, PathName& va
 		}
 
 		pos++;
+	}
+}
+
+TraceCfgReader::SectionType TraceCfgReader::parseSectionKey(const ConfigFile::Parameter* el) const
+{
+	fb_assert(el);
+
+	if (el->name == "database")
+	{
+		return SectionType::DATABASE;
+	}
+	else if (el->name == "databaseName")
+	{
+		return SectionType::DATABASE_NAME;
+	}
+	else if (el->name == "databaseRegex")
+	{
+		return SectionType::DATABASE_REGEX;
+	}
+	else if (el->name == "services")
+	{
+		return SectionType::SERVICES;
+	}
+	else
+	{
+		fatal_exception::raiseFmt("error while parsing trace configuration\n\t"
+			"line %d: wrong section header, \"database\", \"databaseName\", \"databaseRegex\" or \"services\" is expected",
+			el->line);
+
+		// Return something to calm down the compiler
+		return SectionType::DATABASE;
 	}
 }
