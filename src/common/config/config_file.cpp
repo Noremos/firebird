@@ -979,14 +979,14 @@ ConfigFile::SectionType ConfigFile::Parameter::parseSectionKey() const
 	{
 		return SectionType::DATABASE_REGEX;
 	}
-	else if (name == "service")
+	else if (name == "services")
 	{
-		return SectionType::SERVICE;
+		return SectionType::SERVICES;
 	}
 	else
 	{
 		fatal_exception::raiseFmt("error while parsing trace configuration\n\t"
-			"line %d: wrong section header, \"database\", \"databaseName\", \"databaseRegex\" or \"service\" is expected",
+			"line %d: wrong section header, \"database\", \"databaseName\", \"databaseRegex\" or \"services\" is expected",
 			line);
 
 		// Return something to calm down the compiler

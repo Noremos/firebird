@@ -81,7 +81,7 @@ public:
 		DATABASE,
 		DATABASE_NAME,
 		DATABASE_REGEX,
-		SERVICE
+		SERVICES
 	};
 
 	struct Parameter : public AutoStorage
