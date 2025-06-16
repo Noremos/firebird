@@ -172,6 +172,7 @@ public:
 	void putBlrMarkers(ULONG marks);
 	void putDtype(const TypeClause* field, bool useSubType);
 	void putType(const TypeClause* type, bool useSubType);
+	void putType(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 	void putLocalVariableDecl(dsql_var* variable, DeclareVariableNode* hostParam, QualifiedName& collationName);
 	void putLocalVariableInit(dsql_var* variable, const DeclareVariableNode* hostParam);
 
@@ -288,6 +289,11 @@ private:
 	RseNode* pass1RseIsRecursive(RseNode* input);
 	bool pass1RelProcIsRecursive(RecordSourceNode* input);
 	BoolExprNode* pass1JoinIsRecursive(RecordSourceNode*& input);
+
+	void putDTypeBlr(const TypeClause& type, const bool useSubType);
+
+	template<bool THasName>
+	void putTypeNameBlr(const TypeClause& type, const QualifiedName& typeOfField, const bool useExplicitCollate);
 
 	dsql_dbb* dbb = nullptr;				// DSQL attachment
 	jrd_tra* transaction = nullptr;			// Transaction
