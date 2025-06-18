@@ -272,11 +272,11 @@ void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool 
 	{
 		if (type.typeOfTable.object.hasData())
 		{
-			putTypeNameBlr<true>(type, type.typeOfTable, useExplicitCollate);
+			putTypeNameBlr<true>(type, useExplicitCollate);
 		}
 		else
 		{
-			putTypeNameBlr<false>(type, type.typeOfName, useExplicitCollate);
+			putTypeNameBlr<false>(type, useExplicitCollate);
 		}
 		return;
 	}
@@ -332,8 +332,8 @@ void DsqlCompilerScratch::putDTypeBlr(const TypeClause& type, const bool useSubT
 }
 
 
-template<bool THasName>
-void DsqlCompilerScratch::putTypeNameBlr(const TypeClause& type, const QualifiedName& typeOfField, const bool useExplicitCollate)
+template<bool THasTableName>
+void DsqlCompilerScratch::putTypeNameBlr(const TypeClause& type, const bool useExplicitCollate)
 {
 	struct BlrNameSet
 	{
@@ -356,22 +356,34 @@ void DsqlCompilerScratch::putTypeNameBlr(const TypeClause& type, const Qualified
 
 	constexpr BlrNameSet blrSet = []()
 	{
-		if constexpr(THasName)
+		if constexpr(THasTableName)
 			return BLR_COLUMN_SET;
 		else
 			return BLR_DOMAIN_SET;
 	}();
 
+	bool differentSchema;
+	if constexpr (THasTableName)
+		differentSchema = type.typeOfTable.schema != ddlSchema;
+	else
+		differentSchema = type.typeOfName.schema != ddlSchema;
+
 	const UCHAR domainBlr = type.fullDomain ? blr_domain_full : blr_domain_type_of;
-	if (typeOfField.schema != ddlSchema)
+	if (differentSchema)
 	{
 		appendUChar(blrSet.name3);
 		appendUChar(domainBlr);
-		appendMetaString(typeOfField.schema.c_str());
-		appendMetaString(typeOfField.object.c_str());
+		if constexpr (THasTableName)
+		{
+			appendMetaString(type.typeOfTable.schema.c_str());
+			appendMetaString(type.typeOfTable.object.c_str());
+		}
+		else
+		{
+			appendMetaString(type.typeOfName.schema.c_str());
+		}
 
-		if constexpr (THasName)
-			appendMetaString(type.typeOfName.object.c_str());
+		appendMetaString(type.typeOfName.object.c_str());
 
 		if (useExplicitCollate)
 		{
@@ -389,10 +401,13 @@ void DsqlCompilerScratch::putTypeNameBlr(const TypeClause& type, const Qualified
 
 		appendUChar(nameBlr);
 		appendUChar(domainBlr);
-		appendMetaString(typeOfField.object.c_str());
 
-		if constexpr (THasName)
-			appendMetaString(type.typeOfName.object.c_str());
+		if constexpr (THasTableName)
+		{
+			appendMetaString(type.typeOfTable.object.c_str());
+		}
+
+		appendMetaString(type.typeOfName.object.c_str());
 
 		if (useExplicitCollate)
 		{

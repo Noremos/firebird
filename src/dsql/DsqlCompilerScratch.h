@@ -171,6 +171,12 @@ public:
 
 	void putBlrMarkers(ULONG marks);
 	void putDtype(const TypeClause* field, bool useSubType);
+
+	// * Generate TypeClause blr and put it to this Scratch
+	// Depends on: typeOfName, typeOfTable and schema:
+	// blr_column_name3/blr_domain_name3 for field with schema
+	// blr_column_name2/blr_domain_name2 for explicit collate
+	// blr_column_name/blr_domain_name for regular field
 	void putType(const TypeClause* type, bool useSubType);
 	void putType(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 	void putLocalVariableDecl(dsql_var* variable, DeclareVariableNode* hostParam, QualifiedName& collationName);
@@ -292,8 +298,8 @@ private:
 
 	void putDTypeBlr(const TypeClause& type, const bool useSubType);
 
-	template<bool THasName>
-	void putTypeNameBlr(const TypeClause& type, const QualifiedName& typeOfField, const bool useExplicitCollate);
+	template<bool THasTableName>
+	void putTypeNameBlr(const TypeClause& type, const bool useExplicitCollate);
 
 	dsql_dbb* dbb = nullptr;				// DSQL attachment
 	jrd_tra* transaction = nullptr;			// Transaction
