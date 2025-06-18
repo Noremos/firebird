@@ -285,7 +285,6 @@ void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool 
 	putDTypeBlr(type, useSubType);
 }
 
-
 void DsqlCompilerScratch::putDTypeBlr(const TypeClause& type, const bool useSubType)
 {
 	switch (type.dtype)
