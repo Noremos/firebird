@@ -3646,14 +3646,9 @@ void RseNode::planCheck(const CompilerScratch* csb) const
 		{
 			const auto stream = node->getStream();
 
-			const auto relation = csb->csb_rpt[stream].csb_relation;
-			const auto procedure = csb->csb_rpt[stream].csb_procedure;
-			fb_assert(relation || procedure);
-
 			if (!csb->csb_rpt[stream].csb_plan)
 			{
-				const auto name = relation ? relation->rel_name.toQuotedString() :
-					procedure ? procedure->getName().toQuotedString() : "";
+				const auto name = csb->csb_rpt[stream].getName(false).toQuotedString();
 
 				ERR_post(Arg::Gds(isc_no_stream_plan) << Arg::Str(name));
 			}
@@ -3715,9 +3710,7 @@ void RseNode::planSet(CompilerScratch* csb, PlanNode* plan)
 
 	if (tail->csb_map)
 	{
-		auto tailName = tail->csb_relation ? tail->csb_relation->rel_name :
-			tail->csb_procedure ? tail->csb_procedure->getName() :
-			QualifiedName();
+		auto tailName = tail->getName();
 
 		// If the user has specified an alias, skip past it to find the alias
 		// for the base table (if multiple aliases are specified)
@@ -3828,10 +3821,7 @@ void RseNode::planSet(CompilerScratch* csb, PlanNode* plan)
 						}
 						else
 						{
-							duplicateName =
-								relation ? relation->rel_name :
-								procedure ? procedure->getName() :
-								QualifiedName();
+							duplicateName = duplicateTail->getName();
 
 							map = duplicateMap;
 							tail = duplicateTail;

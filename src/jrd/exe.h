@@ -728,6 +728,7 @@ inline QualifiedName CompilerScratch::csb_repeat::getName(bool allowEmpty) const
 	else if (csb_table_value_fun)
 		return QualifiedName(csb_table_value_fun->name);
 	//// TODO: LocalTableSourceNode
+	//// TODO: JsonTableSourceNode
 	else
 	{
 		fb_assert(allowEmpty);
