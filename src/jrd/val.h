@@ -168,6 +168,13 @@ struct impure_value
 	void make_double(const double val);
 	void make_decimal128(const Firebird::Decimal128 val);
 	void make_decimal_fixed(const Firebird::Int128 val, const signed char scale);
+
+	template<class T>
+	VaryingString* getAllocateString(T requeuedLength, MemoryPool& pool) = delete; // Prevent dangerous length shrink
+	VaryingString* getAllocateString(USHORT requeuedLength, MemoryPool& pool);
+
+	void makeImpureDscAddress(MemoryPool& pool);
+	void allocateTextImpureDscAddress(MemoryPool& pool);
 };
 
 // Do not use these methods where dsc_sub_type is not explicitly set to zero.
@@ -220,6 +227,40 @@ inline void impure_value::make_decimal_fixed(const Firebird::Int128 val, const s
 	this->vlu_desc.dsc_sub_type = 0;
 	this->vlu_desc.dsc_address = reinterpret_cast<UCHAR*>(&this->vlu_misc.vlu_int128);
 }
+
+inline VaryingString* impure_value::getAllocateString(USHORT requeuedLength, MemoryPool& pool)
+{
+	if (vlu_string && vlu_string->str_length < requeuedLength)
+	{
+		delete vlu_string;
+		vlu_string = nullptr;
+	}
+
+	if (!vlu_string)
+	{
+		vlu_string = FB_NEW_RPT(pool, requeuedLength) VaryingString();
+		vlu_string->str_length = requeuedLength;
+	}
+
+	return vlu_string;
+}
+
+inline void impure_value::makeImpureDscAddress(MemoryPool& pool)
+{
+	if (vlu_desc.hasDynamicLength())
+	{
+		// If the data type is any of the string types, allocate space to hold value.
+		allocateTextImpureDscAddress(pool);
+	}
+	else
+		vlu_desc.dsc_address = (UCHAR*) &vlu_misc;
+}
+
+inline void impure_value::allocateTextImpureDscAddress(MemoryPool& pool)
+{
+	vlu_desc.dsc_address = getAllocateString(vlu_desc.dsc_length, pool)->str_data;
+}
+
 
 struct impure_value_ex : public impure_value
 {
