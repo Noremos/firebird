@@ -5545,7 +5545,7 @@ dsc* evlMaxMinValue(thread_db* tdbb, const SysFunction* function, const NestValu
 
 	DataTypeUtil(tdbb).makeFromList(&impure->vlu_desc, function->name, argTypes.getCount(), argTypes.begin());
 
-	impure->makeImpureDscAddress(*tdbb->getDefaultPool());
+	impure->makeValueAddress(*tdbb->getDefaultPool());
 	MOV_move(tdbb, result, &impure->vlu_desc);
 
 	if (impure->vlu_desc.dsc_dtype == dtype_text)

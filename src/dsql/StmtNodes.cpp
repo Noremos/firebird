@@ -2248,7 +2248,7 @@ const StmtNode* DeclareVariableNode::execute(thread_db* tdbb, Request* request, 
 		variable->vlu_desc = varDesc;
 		variable->vlu_desc.clearFlags();
 
-		variable->makeImpureDscAddress(*tdbb->getDefaultPool());
+		variable->makeValueAddress(*tdbb->getDefaultPool());
 
 		request->req_operation = Request::req_return;
 	}

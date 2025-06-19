@@ -174,8 +174,8 @@ struct impure_value
 	VaryingString* getString(MemoryPool& pool, const T length) = delete; // Prevent dangerous length shrink
 	VaryingString* getString(MemoryPool& pool, const USHORT length);
 
-	void makeImpureDscAddress(MemoryPool& pool);
-	void allocateTextImpureDscAddress(MemoryPool& pool);
+	void makeValueAddress(MemoryPool& pool);
+	void makeTextValueAddress(MemoryPool& pool);
 };
 
 // Do not use these methods where dsc_sub_type is not explicitly set to zero.
@@ -246,18 +246,18 @@ inline VaryingString* impure_value::getString(MemoryPool& pool, const USHORT len
 	return vlu_string;
 }
 
-inline void impure_value::makeImpureDscAddress(MemoryPool& pool)
+inline void impure_value::makeValueAddress(MemoryPool& pool)
 {
 	if (type_lengths[vlu_desc.dsc_dtype] == 0)
 	{
 		// If the data type is any of the string types, allocate space to hold value.
-		allocateTextImpureDscAddress(pool);
+		makeTextValueAddress(pool);
 	}
 	else
 		vlu_desc.dsc_address = (UCHAR*) &vlu_misc;
 }
 
-inline void impure_value::allocateTextImpureDscAddress(MemoryPool& pool)
+inline void impure_value::makeTextValueAddress(MemoryPool& pool)
 {
 	vlu_desc.dsc_address = getString(pool, vlu_desc.dsc_length)->str_data;
 }

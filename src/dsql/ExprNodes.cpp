@@ -3753,7 +3753,7 @@ dsc* CastNode::perform(thread_db* tdbb, impure_value* impure, dsc* value,
 		}
 
 		// Allocate a string block of sufficient size.
-		impure->allocateTextImpureDscAddress(*tdbb->getDefaultPool());
+		impure->makeTextValueAddress(*tdbb->getDefaultPool());
 	}
 
 	EVL_validate(tdbb, Item(Item::TYPE_CAST), itemInfo,
@@ -7122,7 +7122,7 @@ dsc* FieldNode::execute(thread_db* tdbb, Request* request) const
 		dsc desc = impure->vlu_desc;
 		impure->vlu_desc = format->fmt_desc[fieldId];
 
-		impure->makeImpureDscAddress(*tdbb->getDefaultPool());
+		impure->makeValueAddress(*tdbb->getDefaultPool());
 		MOV_move(tdbb, &desc, &impure->vlu_desc);
 	}
 
@@ -13648,7 +13648,7 @@ dsc* UdfCallNode::execute(thread_db* tdbb, Request* request) const
 		const Parameter* const returnParam = function->getOutputFields()[0];
 		value->vlu_desc = returnParam->prm_desc;
 
-		value->makeImpureDscAddress(*tdbb->getDefaultPool());
+		value->makeValueAddress(*tdbb->getDefaultPool());
 
 		if (!impureArea->temp)
 		{
