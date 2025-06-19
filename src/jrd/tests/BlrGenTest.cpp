@@ -30,9 +30,9 @@ const std::string_view typeOfNameSchema = "NAME SCHEMA A";
 
 const std::string_view collate = "COLLATE A";
 
-Jrd::TypeClause genDefaultFiled(MemoryPool& pool)
+Jrd::dsql_fld genDefaultFiled(MemoryPool& pool)
 {
-	Jrd::TypeClause field(pool, {});
+	Jrd::dsql_fld field(pool);
 
 	field.dtype = dtype_text;
 	field.typeOfTable.object = typeOfTableObject.data();
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE(TestFalseExplicitCollation)
 
 		DsqlCompilerScratch& scratch = *makeScratch();
 
-		Jrd::TypeClause field = genDefaultFiled(pool);
+		Jrd::dsql_fld field = genDefaultFiled(pool);
 		field.explicitCollation = false;
 		scratch.putType(&field, true);
 
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(TestFalseExplicitCollation)
 	{ // Same shame
 		DsqlCompilerScratch& scratch = *makeScratch();
 
-		Jrd::TypeClause field = genDefaultFiled(pool);
+		Jrd::dsql_fld field = genDefaultFiled(pool);
 		field.explicitCollation = false;
 		scratch.ddlSchema = field.typeOfTable.schema;
 
