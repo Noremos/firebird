@@ -170,8 +170,8 @@ struct impure_value
 	void make_decimal_fixed(const Firebird::Int128 val, const signed char scale);
 
 	template<class T>
-	VaryingString* getAllocateString(T requeuedLength, MemoryPool& pool) = delete; // Prevent dangerous length shrink
-	VaryingString* getAllocateString(USHORT requeuedLength, MemoryPool& pool);
+	VaryingString* getString(MemoryPool& pool, const T length) = delete; // Prevent dangerous length shrink
+	VaryingString* getString(MemoryPool& pool, const USHORT length);
 
 	void makeImpureDscAddress(MemoryPool& pool);
 	void allocateTextImpureDscAddress(MemoryPool& pool);
@@ -228,9 +228,9 @@ inline void impure_value::make_decimal_fixed(const Firebird::Int128 val, const s
 	this->vlu_desc.dsc_address = reinterpret_cast<UCHAR*>(&this->vlu_misc.vlu_int128);
 }
 
-inline VaryingString* impure_value::getAllocateString(USHORT requeuedLength, MemoryPool& pool)
+inline VaryingString* impure_value::getString(MemoryPool& pool, const USHORT length)
 {
-	if (vlu_string && vlu_string->str_length < requeuedLength)
+	if (vlu_string && vlu_string->str_length < length)
 	{
 		delete vlu_string;
 		vlu_string = nullptr;
@@ -238,8 +238,8 @@ inline VaryingString* impure_value::getAllocateString(USHORT requeuedLength, Mem
 
 	if (!vlu_string)
 	{
-		vlu_string = FB_NEW_RPT(pool, requeuedLength) VaryingString();
-		vlu_string->str_length = requeuedLength;
+		vlu_string = FB_NEW_RPT(pool, length) VaryingString();
+		vlu_string->str_length = length;
 	}
 
 	return vlu_string;
@@ -258,7 +258,7 @@ inline void impure_value::makeImpureDscAddress(MemoryPool& pool)
 
 inline void impure_value::allocateTextImpureDscAddress(MemoryPool& pool)
 {
-	vlu_desc.dsc_address = getAllocateString(vlu_desc.dsc_length, pool)->str_data;
+	vlu_desc.dsc_address = getString(pool, vlu_desc.dsc_length)->str_data;
 }
 
 

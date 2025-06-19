@@ -576,7 +576,7 @@ void EVL_make_value(thread_db* tdbb, const dsc* desc, impure_value* value, Memor
 	if (!pool)
 		pool = tdbb->getDefaultPool();
 
-	VaryingString* string = value->getAllocateString(from.dsc_length, *pool);
+	VaryingString* string = value->getString(*pool, length);
 
 	value->vlu_desc.dsc_length = length;
 	UCHAR* target = string->str_data;
