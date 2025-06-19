@@ -238,7 +238,7 @@ void DsqlCompilerScratch::putBlrMarkers(ULONG marks)
 
 // Write out field data type.
 // Taking special care to declare international text.
-void DsqlCompilerScratch::putDtype(const TypeClause* field, bool useSubType)
+void DsqlCompilerScratch::putType(const dsql_fld* field, bool useSubType)
 {
 	fb_assert(field);
 	putType(*field, useSubType, field->explicitCollation);

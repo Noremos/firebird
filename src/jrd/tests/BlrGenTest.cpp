@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(TestDefaultTextField)
 	Jrd::TypeClause field = genDefaultFiled(pool);
 
 	DsqlCompilerScratch& scratch = *makeScratch();
-	scratch.putDtype(&field, true);
+	scratch.putType(&field, true);
 
 	DsqlCompilerScratch& expected = *makeScratch();
 	genDomainFiled(expected, blr_domain_full);
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(TestDefaultTextFieldSameSchema)
 
 	DsqlCompilerScratch& scratch = *makeScratch();
 	scratch.ddlSchema = field.typeOfTable.schema;
-	scratch.putDtype(&field, true);
+	scratch.putType(&field, true);
 
 	DsqlCompilerScratch& expected = *makeScratch();
 	expected.appendUChar(blr_column_name2);
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(TestFalseDomain)
 		field.fullDomain = false;
 
 		DsqlCompilerScratch& scratch = *makeScratch();
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		genDomainFiled(expected, blr_domain_type_of);
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE(TestFalseDomain)
 		field.fullDomain = false;
 
 		DsqlCompilerScratch& scratch = *makeScratch();
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_column_name3);
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE(TestUseSubType)
 		DsqlCompilerScratch& scratch = *makeScratch();
 		Jrd::TypeClause field = genDefaultFiled(pool);
 		field.typeOfName.clear();
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_text2);
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(TestUseSubType)
 		DsqlCompilerScratch& scratch = *makeScratch();
 		Jrd::TypeClause field = genDefaultFiled(pool);
 		field.typeOfName.clear();
-		scratch.putDtype(&field, false);
+		scratch.putType(&field, false);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_text);
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(TestFalseExplicitCollation)
 
 		Jrd::TypeClause field = genDefaultFiled(pool);
 		field.explicitCollation = false;
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_column_name3);
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(TestFalseExplicitCollation)
 		field.explicitCollation = false;
 		scratch.ddlSchema = field.typeOfTable.schema;
 
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_column_name);
@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE(TestEmptyTypeOfTable)
 		DsqlCompilerScratch& scratch = *makeScratch();
 		Jrd::TypeClause field = genDefaultFiled(pool);
 		field.typeOfTable.clear();
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_domain_name3);
@@ -315,7 +315,7 @@ BOOST_AUTO_TEST_CASE(TestEmptyTypeOfTable)
 		field.typeOfTable.clear();
 
 		scratch.ddlSchema = field.typeOfName.schema;
-		scratch.putDtype(&field, true);
+		scratch.putType(&field, true);
 
 		DsqlCompilerScratch& expected = *makeScratch();
 		expected.appendUChar(blr_domain_name2);

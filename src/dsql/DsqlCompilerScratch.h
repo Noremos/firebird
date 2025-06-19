@@ -170,7 +170,7 @@ public:
 		std::initializer_list<ObjectType> objectTypes);
 
 	void putBlrMarkers(ULONG marks);
-	void putDtype(const TypeClause* field, bool useSubType);
+	void putType(const dsql_fld* field, bool useSubType);
 
 	// * Generate TypeClause blr and put it to this Scratch
 	// Depends on: typeOfName, typeOfTable and schema:
