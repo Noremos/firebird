@@ -341,13 +341,15 @@ void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExp
 		UCHAR name3;
 	};
 
-	static constexpr BlrNameSet BLR_COLUMN_SET{
+	static constexpr BlrNameSet BLR_COLUMN_SET
+	{
 		blr_column_name,
 		blr_column_name2,
 		blr_column_name3,
 	};
 
-	static constexpr BlrNameSet BLR_DOMAIN_SET{
+	static constexpr BlrNameSet BLR_DOMAIN_SET
+	{
 		blr_domain_name,
 		blr_domain_name2,
 		blr_domain_name3,
@@ -355,7 +357,7 @@ void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExp
 
 	constexpr BlrNameSet blrSet = []()
 	{
-		if constexpr(THasTableName)
+		if constexpr (THasTableName)
 			return BLR_COLUMN_SET;
 		else
 			return BLR_DOMAIN_SET;
@@ -378,9 +380,7 @@ void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExp
 			appendMetaString(type.typeOfTable.object.c_str());
 		}
 		else
-		{
 			appendMetaString(type.typeOfName.schema.c_str());
-		}
 
 		appendMetaString(type.typeOfName.object.c_str());
 
@@ -390,9 +390,7 @@ void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExp
 			appendUShort(type.textType);
 		}
 		else
-		{
 			appendUChar(0);
-		}
 	}
 	else
 	{
@@ -402,16 +400,12 @@ void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExp
 		appendUChar(domainBlr);
 
 		if constexpr (THasTableName)
-		{
 			appendMetaString(type.typeOfTable.object.c_str());
-		}
 
 		appendMetaString(type.typeOfName.object.c_str());
 
 		if (useExplicitCollate)
-		{
 			appendUShort(type.textType);
-		}
 	}
 }
 
