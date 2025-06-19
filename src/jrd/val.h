@@ -35,6 +35,7 @@
 #include "../jrd/MetaName.h"
 #include "../jrd/RecordNumber.h"
 #include "../common/dsc.h"
+#include "../jrd/align.h"
 
 #define FLAG_BYTES(n)	(((n + BITS_PER_LONG) & ~((ULONG)BITS_PER_LONG - 1)) >> 3)
 
@@ -247,7 +248,7 @@ inline VaryingString* impure_value::getString(MemoryPool& pool, const USHORT len
 
 inline void impure_value::makeImpureDscAddress(MemoryPool& pool)
 {
-	if (vlu_desc.hasDynamicLength())
+	if (type_lengths[vlu_desc.dsc_dtype] == 0)
 	{
 		// If the data type is any of the string types, allocate space to hold value.
 		allocateTextImpureDscAddress(pool);

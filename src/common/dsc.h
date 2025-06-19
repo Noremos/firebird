@@ -228,11 +228,6 @@ typedef struct dsc
 		return dsc_dtype == dtype_unknown;
 	}
 
-	bool hasDynamicLength() const
-	{
-		return isText(); // TODO: add isJson();
-	}
-
 	SSHORT getBlobSubType() const
 	{
 		if (isBlob())
