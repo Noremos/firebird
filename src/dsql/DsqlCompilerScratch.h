@@ -178,7 +178,6 @@ public:
 	// blr_column_name2/blr_domain_name2 for explicit collate
 	// blr_column_name/blr_domain_name for regular field
 	void putType(const TypeClause* type, bool useSubType);
-	void putType(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 	void putLocalVariableDecl(dsql_var* variable, DeclareVariableNode* hostParam, QualifiedName& collationName);
 	void putLocalVariableInit(dsql_var* variable, const DeclareVariableNode* hostParam);
 
@@ -296,10 +295,12 @@ private:
 	bool pass1RelProcIsRecursive(RecordSourceNode* input);
 	BoolExprNode* pass1JoinIsRecursive(RecordSourceNode*& input);
 
-	void putDTypeBlr(const TypeClause& type, const bool useSubType);
+	void putField(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 
 	template<bool THasTableName>
-	void putTypeNameBlr(const TypeClause& type, const bool useExplicitCollate);
+	void putFieldName(const TypeClause& type, const bool useExplicitCollate);
+
+	void putFieldType(const TypeClause& type, const bool useSubType);
 
 	dsql_dbb* dbb = nullptr;				// DSQL attachment
 	jrd_tra* transaction = nullptr;			// Transaction

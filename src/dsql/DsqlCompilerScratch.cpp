@@ -241,16 +241,16 @@ void DsqlCompilerScratch::putBlrMarkers(ULONG marks)
 void DsqlCompilerScratch::putType(const dsql_fld* field, bool useSubType)
 {
 	fb_assert(field);
-	putType(*field, useSubType, field->explicitCollation);
+	putField(*field, useSubType, field->explicitCollation);
 }
 
 void DsqlCompilerScratch::putType(const TypeClause* type, bool useSubType)
 {
 	fb_assert(type);
-	putType(*type, useSubType, type->collate.object.hasData());
+	putField(*type, useSubType, type->collate.object.hasData());
 }
 
-void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool useExplicitCollate)
+void DsqlCompilerScratch::putField(const TypeClause& type, bool useSubType, bool useExplicitCollate)
 {
 #ifdef DEV_BUILD
 	// Check if the field describes a known datatype
@@ -259,7 +259,7 @@ void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool 
 	{
 		SCHAR buffer[100];
 
-		sprintf(buffer, "Invalid dtype %d in DsqlCompilerScratch::putType", type.dtype);
+		sprintf(buffer, "Invalid dtype %d in DsqlCompilerScratch::putField", type.dtype);
 		ERRD_bugcheck(buffer);
 	}
 #endif
@@ -272,20 +272,20 @@ void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool 
 	{
 		if (type.typeOfTable.object.hasData())
 		{
-			putTypeNameBlr<true>(type, useExplicitCollate);
+			putFieldName<true>(type, useExplicitCollate);
 		}
 		else
 		{
-			putTypeNameBlr<false>(type, useExplicitCollate);
+			putFieldName<false>(type, useExplicitCollate);
 		}
 		return;
 	}
 
 	// Maybe it is possible to use GEN_descriptor here?
-	putDTypeBlr(type, useSubType);
+	putFieldType(type, useSubType);
 }
 
-void DsqlCompilerScratch::putDTypeBlr(const TypeClause& type, const bool useSubType)
+void DsqlCompilerScratch::putFieldType(const TypeClause& type, const bool useSubType)
 {
 	switch (type.dtype)
 	{
@@ -331,9 +331,8 @@ void DsqlCompilerScratch::putDTypeBlr(const TypeClause& type, const bool useSubT
 	}
 }
 
-
 template<bool THasTableName>
-void DsqlCompilerScratch::putTypeNameBlr(const TypeClause& type, const bool useExplicitCollate)
+void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExplicitCollate)
 {
 	struct BlrNameSet
 	{
@@ -426,7 +425,7 @@ void DsqlCompilerScratch::putLocalVariableDecl(dsql_var* variable, DeclareVariab
 	appendUShort(variable->number);
 	DDL_resolve_intl_type(this, field, collationName);
 
-	putDtype(field, true);
+	putType(field, true);
 
 	if (variable->field->fld_name.hasData())	// Not a function return value
 		putDebugVariable(variable->number, variable->field->fld_name);
