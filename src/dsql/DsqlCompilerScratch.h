@@ -298,9 +298,9 @@ private:
 	void putField(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 
 	template<bool THasTableName>
-	void putFieldName(const TypeClause& type, const bool useExplicitCollate);
+	void putTypeName(const TypeClause& type, const bool useExplicitCollate);
 
-	void putFieldType(const TypeClause& type, const bool useSubType);
+	void putDtype(const TypeClause& type, const bool useSubType);
 
 	dsql_dbb* dbb = nullptr;				// DSQL attachment
 	jrd_tra* transaction = nullptr;			// Transaction

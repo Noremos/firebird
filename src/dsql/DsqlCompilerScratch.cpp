@@ -272,20 +272,20 @@ void DsqlCompilerScratch::putField(const TypeClause& type, bool useSubType, bool
 	{
 		if (type.typeOfTable.object.hasData())
 		{
-			putFieldName<true>(type, useExplicitCollate);
+			putTypeName<true>(type, useExplicitCollate);
 		}
 		else
 		{
-			putFieldName<false>(type, useExplicitCollate);
+			putTypeName<false>(type, useExplicitCollate);
 		}
 		return;
 	}
 
 	// Maybe it is possible to use GEN_descriptor here?
-	putFieldType(type, useSubType);
+	putDtype(type, useSubType);
 }
 
-void DsqlCompilerScratch::putFieldType(const TypeClause& type, const bool useSubType)
+void DsqlCompilerScratch::putDtype(const TypeClause& type, const bool useSubType)
 {
 	switch (type.dtype)
 	{
@@ -332,7 +332,7 @@ void DsqlCompilerScratch::putFieldType(const TypeClause& type, const bool useSub
 }
 
 template<bool THasTableName>
-void DsqlCompilerScratch::putFieldName(const TypeClause& type, const bool useExplicitCollate)
+void DsqlCompilerScratch::putTypeName(const TypeClause& type, const bool useExplicitCollate)
 {
 	struct BlrNameSet
 	{
