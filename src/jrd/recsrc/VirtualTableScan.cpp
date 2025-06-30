@@ -131,6 +131,6 @@ void VirtualTableScan::internalGetPlan(thread_db* tdbb, PlanEntry& planEntry, un
 	planEntry.objectType = m_relation->getObjectType();
 	planEntry.objectName = m_relation->rel_name;
 
-	if (m_alias.hasData() && m_relation->rel_name.object != m_alias)
+	if (m_alias.hasData() && m_alias != string(m_relation->rel_name.object))
 		planEntry.alias = m_alias;
 }

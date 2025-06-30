@@ -256,7 +256,7 @@ private:
 		}
 
 		FB_SIZE_T getCount();
-		const dsc* getParam(FB_SIZE_T idx);
+		const paramdsc* getParam(FB_SIZE_T idx);
 		const char* getTextUTF8(Firebird::CheckStatusWrapper* status, FB_SIZE_T idx);
 
 	private:
@@ -264,7 +264,7 @@ private:
 
 		DsqlRequest* const m_stmt;
 		const UCHAR* m_buffer;
-		Firebird::HalfStaticArray<dsc, 16> m_descs;
+		Firebird::HalfStaticArray<paramdsc, 16> m_descs;
 		Firebird::string m_tempUTF8;
 	};
 
@@ -333,7 +333,7 @@ public:
 
 	// TraceParams implementation
 	FB_SIZE_T getCount();
-	const dsc* getParam(FB_SIZE_T idx);
+	const paramdsc* getParam(FB_SIZE_T idx);
 	const char* getTextUTF8(Firebird::CheckStatusWrapper* status, FB_SIZE_T idx);
 
 private:
@@ -356,11 +356,11 @@ public:
 		return m_descs.getCount();
 	}
 
-	const dsc* getParam(FB_SIZE_T idx)
+	const paramdsc* getParam(FB_SIZE_T idx)
 	{
 		fillParams();
 
-		if (/*idx >= 0 &&*/ idx < m_descs.getCount())
+		if (idx < m_descs.getCount())
 			return &m_descs[idx];
 
 		return NULL;
@@ -374,7 +374,7 @@ public:
 protected:
 	virtual void fillParams() = 0;
 
-	Firebird::HalfStaticArray<dsc, 16> m_descs;
+	Firebird::HalfStaticArray<paramdsc, 16> m_descs;
 
 private:
 	TraceParamsImpl	m_traceParams;
@@ -427,7 +427,7 @@ public:
 		else
 		{
 			m_descs.grow(1);
-			m_descs[0].setNull();
+			m_descs[0].dsc_flags |= DSC_null;
 		}
 	}
 

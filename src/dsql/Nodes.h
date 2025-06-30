@@ -156,7 +156,7 @@ public:
 		doDsqlPass(dsqlScratch, target, node);
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const = 0;
+	Firebird::string internalPrint(NodePrinter& printer) const override = 0;
 
 	virtual void getChildren(NodeRefsHolder& holder, bool dsql) const
 	{
@@ -219,7 +219,7 @@ public:
 		execute(tdbb, dsqlScratch, transaction);
 	}
 
-	virtual DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		dsqlScratch->getDsqlStatement()->setType(DsqlStatement::TYPE_DDL);
 		return this;
@@ -285,7 +285,7 @@ public:
 	}
 
 public:
-	virtual TransactionNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	TransactionNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		Node::dsqlPass(dsqlScratch);
 		return this;
@@ -304,7 +304,7 @@ public:
 	}
 
 public:
-	virtual SessionManagementNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	SessionManagementNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		Node::dsqlPass(dsqlScratch);
 
@@ -574,7 +574,8 @@ public:
 	}
 
 	virtual Type getType() const = 0;
-	virtual Firebird::string internalPrint(NodePrinter& printer) const = 0;
+
+	Firebird::string internalPrint(NodePrinter& printer) const override = 0;
 
 	virtual bool dsqlAggregateFinder(AggregateFinder& visitor)
 	{
@@ -717,7 +718,7 @@ public:
 
 	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
 
-	virtual ExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	ExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		DmlNode::dsqlPass(dsqlScratch);
 		return this;
@@ -735,9 +736,9 @@ public:
 
 	virtual void findDependentFromStreams(const CompilerScratch* csb,
 		StreamType currentStream, SortedStreamList* streamList);
-	virtual ExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
-	virtual ExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
-	virtual ExprNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
+	ExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) override;
+	ExprNode* pass2(thread_db* tdbb, CompilerScratch* csb) override;
+	virtual ExprNode* copy(thread_db* tdbb, NodeCopier& copier) const override = 0;
 
 public:
 	ULONG impureOffset;
@@ -796,9 +797,9 @@ public:
 	}
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const = 0;
+	Firebird::string internalPrint(NodePrinter& printer) const override = 0;
 
-	virtual Kind getKind()
+	Kind getKind() override
 	{
 		return KIND_VALUE;
 	}
@@ -827,7 +828,7 @@ public:
 		return false;
 	}
 
-	virtual ValueExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	ValueExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		ExprNode::dsqlPass(dsqlScratch);
 		return this;
@@ -842,19 +843,19 @@ public:
 	virtual void setParameterName(dsql_par* parameter) const = 0;
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) = 0;
 
-	virtual ValueExprNode* dsqlFieldRemapper(FieldRemapper& visitor)
+	ValueExprNode* dsqlFieldRemapper(FieldRemapper& visitor) override
 	{
 		ExprNode::dsqlFieldRemapper(visitor);
 		return this;
 	}
 
-	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb)
+	ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass1(tdbb, csb);
 		return this;
 	}
 
-	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb)
+	ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass2(tdbb, csb);
 		return this;
@@ -863,7 +864,7 @@ public:
 	// Compute descriptor for value expression.
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc) = 0;
 
-	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
+	ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const override = 0;
 	virtual dsc* execute(thread_db* tdbb, Request* request) const = 0;
 
 public:
@@ -883,45 +884,45 @@ public:
 	}
 
 public:
-	virtual void setParameterName(dsql_par* /*parameter*/) const
+	void setParameterName(dsql_par* /*parameter*/) const override
 	{
 		fb_assert(false);
 	}
 
-	virtual void genBlr(DsqlCompilerScratch* /*dsqlScratch*/)
+	void genBlr(DsqlCompilerScratch* /*dsqlScratch*/) override
 	{
 		fb_assert(false);
 	}
 
-	virtual void make(DsqlCompilerScratch* /*dsqlScratch*/, dsc* /*desc*/)
+	void make(DsqlCompilerScratch* /*dsqlScratch*/, dsc* /*desc*/) override
 	{
 		fb_assert(false);
 	}
 
-	virtual void getDesc(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, dsc* /*desc*/)
+	void getDesc(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, dsc* /*desc*/) override
 	{
 		fb_assert(false);
 	}
 
-	virtual ValueExprNode* pass1(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
-	{
-		fb_assert(false);
-		return NULL;
-	}
-
-	virtual ValueExprNode* pass2(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
+	ValueExprNode* pass1(thread_db* /*tdbb*/, CompilerScratch* /*csb*/) override
 	{
 		fb_assert(false);
 		return NULL;
 	}
 
-	virtual ValueExprNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const
+	ValueExprNode* pass2(thread_db* /*tdbb*/, CompilerScratch* /*csb*/) override
 	{
 		fb_assert(false);
 		return NULL;
 	}
 
-	virtual dsc* execute(thread_db* /*tdbb*/, Request* /*request*/) const
+	ValueExprNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const override
+	{
+		fb_assert(false);
+		return NULL;
+	}
+
+	dsc* execute(thread_db* /*tdbb*/, Request* /*request*/) const override
 	{
 		fb_assert(false);
 		return NULL;
@@ -1036,50 +1037,50 @@ public:
 
 	static DmlNode* parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* csb, const UCHAR blrOp);
 
-	virtual void getChildren(NodeRefsHolder& holder, bool dsql) const
+	void getChildren(NodeRefsHolder& holder, bool dsql) const override
 	{
 		ValueExprNode::getChildren(holder, dsql);
 		holder.add(arg);
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const = 0;
+	Firebird::string internalPrint(NodePrinter& printer) const override = 0;
 
-	virtual bool dsqlAggregateFinder(AggregateFinder& visitor);
-	virtual bool dsqlAggregate2Finder(Aggregate2Finder& visitor);
-	virtual bool dsqlInvalidReferenceFinder(InvalidReferenceFinder& visitor);
-	virtual bool dsqlSubSelectFinder(SubSelectFinder& visitor);
-	virtual ValueExprNode* dsqlFieldRemapper(FieldRemapper& visitor);
+	bool dsqlAggregateFinder(AggregateFinder& visitor) override;
+	bool dsqlAggregate2Finder(Aggregate2Finder& visitor) override;
+	bool dsqlInvalidReferenceFinder(InvalidReferenceFinder& visitor) override;
+	bool dsqlSubSelectFinder(SubSelectFinder& visitor) override;
+	ValueExprNode* dsqlFieldRemapper(FieldRemapper& visitor) override;
 
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
-	virtual void setParameterName(dsql_par* parameter) const;
-	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
+	void setParameterName(dsql_par* parameter) const override;
+	void genBlr(DsqlCompilerScratch* dsqlScratch) override;
 
-	virtual AggNode* pass1(thread_db* tdbb, CompilerScratch* csb)
+	AggNode* pass1(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ValueExprNode::pass1(tdbb, csb);
 		return this;
 	}
 
-	virtual AggNode* pass2(thread_db* tdbb, CompilerScratch* csb);
+	AggNode* pass2(thread_db* tdbb, CompilerScratch* csb) override;
 
-	virtual bool possiblyUnknown() const
+	bool possiblyUnknown() const override
 	{
 		return true;
 	}
 
-	virtual bool ignoreNulls(const StreamList& /*streams*/) const
+	bool ignoreNulls(const StreamList& /*streams*/) const override
 	{
 		return false;
 	}
 
-	virtual void collectStreams(SortedStreamList& /*streamList*/) const
+	void collectStreams(SortedStreamList& /*streamList*/) const override
 	{
 		// ASF: Although in v2.5 the visitor happens normally for the node childs, nod_count has
 		// been set to 0 in CMP_pass2, so that doesn't happens.
 		return;
 	}
 
-	virtual bool unmappable(const MapNode* /*mapNode*/, StreamType /*shellStream*/) const
+	bool unmappable(const MapNode* /*mapNode*/, StreamType /*shellStream*/) const override
 	{
 		return false;
 	}
@@ -1092,13 +1093,13 @@ public:
 	virtual void aggInit(thread_db* tdbb, Request* request) const = 0;	// pure, but defined
 	virtual void aggFinish(thread_db* tdbb, Request* request) const;
 	virtual bool aggPass(thread_db* tdbb, Request* request) const;
-	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+	dsc* execute(thread_db* tdbb, Request* request) const override;
 
 	virtual unsigned getCapabilities() const = 0;
 	virtual void aggPass(thread_db* tdbb, Request* request, dsc* desc) const = 0;
 	virtual dsc* aggExecute(thread_db* tdbb, Request* request) const = 0;
 
-	virtual AggNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
+	AggNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
 
 protected:
 	virtual void parseArgs(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, unsigned count)
@@ -1161,7 +1162,7 @@ public:
 	{
 	}
 
-	virtual Kind getKind()
+	Kind getKind() override
 	{
 		return KIND_REC_SOURCE;
 	}
@@ -1176,55 +1177,55 @@ public:
 		stream = value;
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const = 0;
+	Firebird::string internalPrint(NodePrinter& printer) const override = 0;
 
-	virtual RecordSourceNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	RecordSourceNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		ExprNode::dsqlPass(dsqlScratch);
 		return this;
 	}
 
-	virtual RecordSourceNode* dsqlFieldRemapper(FieldRemapper& visitor)
+	RecordSourceNode* dsqlFieldRemapper(FieldRemapper& visitor) override
 	{
 		ExprNode::dsqlFieldRemapper(visitor);
 		return this;
 	}
 
-	virtual RecordSourceNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
-	virtual RecordSourceNode* pass1(thread_db* tdbb, CompilerScratch* csb) = 0;
+	RecordSourceNode* copy(thread_db* tdbb, NodeCopier& copier) const override = 0;
+	RecordSourceNode* pass1(thread_db* tdbb, CompilerScratch* csb) override = 0;
 	virtual void pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 		BoolExprNode** boolean, RecordSourceNodeStack& stack) = 0;
-	virtual RecordSourceNode* pass2(thread_db* tdbb, CompilerScratch* csb) = 0;
+	RecordSourceNode* pass2(thread_db* tdbb, CompilerScratch* csb) override = 0;
 	virtual void pass2Rse(thread_db* tdbb, CompilerScratch* csb) = 0;
 	virtual bool containsStream(StreamType checkStream) const = 0;
 
-	virtual void genBlr(DsqlCompilerScratch* /*dsqlScratch*/)
+	void genBlr(DsqlCompilerScratch* /*dsqlScratch*/) override
 	{
 		fb_assert(false);
 	}
 
-	virtual bool possiblyUnknown() const
+	bool possiblyUnknown() const override
 	{
 		return true;
 	}
 
-	virtual bool ignoreNulls(const StreamList& /*streams*/) const
+	bool ignoreNulls(const StreamList& /*streams*/) const override
 	{
 		return false;
 	}
 
-	virtual bool unmappable(const MapNode* /*mapNode*/, StreamType /*shellStream*/) const
+	bool unmappable(const MapNode* /*mapNode*/, StreamType /*shellStream*/) const override
 	{
 		return false;
 	}
 
-	virtual void collectStreams(SortedStreamList& streamList) const
+	void collectStreams(SortedStreamList& streamList) const override
 	{
 		if (!streamList.exist(getStream()))
 			streamList.add(getStream());
 	}
 
-	virtual bool sameAs(const ExprNode* /*other*/, bool /*ignoreStreams*/) const
+	bool sameAs(const ExprNode* /*other*/, bool /*ignoreStreams*/) const override
 	{
 		return false;
 	}
@@ -1259,12 +1260,12 @@ public:
 	{
 	}
 
-	virtual Kind getKind()
+	virtual Kind getKind() override
 	{
 		return KIND_LIST;
 	}
 
-	virtual void genBlr(DsqlCompilerScratch* /*dsqlScratch*/)
+	void genBlr(DsqlCompilerScratch* /*dsqlScratch*/) override
 	{
 		fb_assert(false);
 	}
@@ -1297,7 +1298,7 @@ public:
 	{
 	}
 
-	virtual void getChildren(NodeRefsHolder& holder, bool dsql) const
+	void getChildren(NodeRefsHolder& holder, bool dsql) const override
 	{
 		ListExprNode::getChildren(holder, dsql);
 
@@ -1327,10 +1328,11 @@ public:
 		items.clear();
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 
-	virtual ValueListNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	ValueListNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		ValueListNode* node = FB_NEW_POOL(dsqlScratch->getPool()) ValueListNode(dsqlScratch->getPool(),
 			items.getCount());
@@ -1343,25 +1345,25 @@ public:
 		return node;
 	}
 
-	virtual ValueListNode* dsqlFieldRemapper(FieldRemapper& visitor)
+	ValueListNode* dsqlFieldRemapper(FieldRemapper& visitor) override
 	{
 		ExprNode::dsqlFieldRemapper(visitor);
 		return this;
 	}
 
-	virtual ValueListNode* pass1(thread_db* tdbb, CompilerScratch* csb)
+	ValueListNode* pass1(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass1(tdbb, csb);
 		return this;
 	}
 
-	virtual ValueListNode* pass2(thread_db* tdbb, CompilerScratch* csb)
+	ValueListNode* pass2(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass2(tdbb, csb);
 		return this;
 	}
 
-	virtual ValueListNode* copy(thread_db* tdbb, NodeCopier& copier) const
+	ValueListNode* copy(thread_db* tdbb, NodeCopier& copier) const override
 	{
 		ValueListNode* node = FB_NEW_POOL(*tdbb->getDefaultPool()) ValueListNode(*tdbb->getDefaultPool(),
 			items.getCount());
@@ -1394,7 +1396,7 @@ public:
 		return this;
 	}
 
-	virtual void getChildren(NodeRefsHolder& holder, bool dsql) const
+	void getChildren(NodeRefsHolder& holder, bool dsql) const override
 	{
 		ListExprNode::getChildren(holder, dsql);
 
@@ -1402,29 +1404,29 @@ public:
 			holder.add(item);
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
 
-	virtual RecSourceListNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
+	RecSourceListNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
 
-	virtual RecSourceListNode* dsqlFieldRemapper(FieldRemapper& visitor)
+	RecSourceListNode* dsqlFieldRemapper(FieldRemapper& visitor) override
 	{
 		ExprNode::dsqlFieldRemapper(visitor);
 		return this;
 	}
 
-	virtual RecSourceListNode* pass1(thread_db* tdbb, CompilerScratch* csb)
+	RecSourceListNode* pass1(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass1(tdbb, csb);
 		return this;
 	}
 
-	virtual RecSourceListNode* pass2(thread_db* tdbb, CompilerScratch* csb)
+	RecSourceListNode* pass2(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass2(tdbb, csb);
 		return this;
 	}
 
-	virtual RecSourceListNode* copy(thread_db* tdbb, NodeCopier& copier) const
+	RecSourceListNode* copy(thread_db* tdbb, NodeCopier& copier) const override
 	{
 		fb_assert(false);
 		return NULL;
@@ -1561,23 +1563,23 @@ public:
 		*node = (*node)->pass2(tdbb, csb);
 	}
 
-	virtual Kind getKind()
+	Kind getKind() override
 	{
 		return KIND_STATEMENT;
 	}
 
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
 
-	virtual StmtNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	StmtNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		DmlNode::dsqlPass(dsqlScratch);
 		return this;
 	}
 
-	virtual StmtNode* pass1(thread_db* tdbb, CompilerScratch* csb) = 0;
-	virtual StmtNode* pass2(thread_db* tdbb, CompilerScratch* csb) = 0;
+	StmtNode* pass1(thread_db* tdbb, CompilerScratch* csb) override = 0;
+	StmtNode* pass2(thread_db* tdbb, CompilerScratch* csb) override = 0;
 
-	virtual StmtNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const
+	StmtNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const override
 	{
 		fb_assert(false);
 		Firebird::status_exception::raise(
@@ -1612,25 +1614,25 @@ public:
 	}
 
 public:
-	virtual DsqlOnlyStmtNode* pass1(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
+	DsqlOnlyStmtNode* pass1(thread_db* /*tdbb*/, CompilerScratch* /*csb*/) override
 	{
 		fb_assert(false);
 		return this;
 	}
 
-	virtual DsqlOnlyStmtNode* pass2(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
+	DsqlOnlyStmtNode* pass2(thread_db* /*tdbb*/, CompilerScratch* /*csb*/) override
 	{
 		fb_assert(false);
 		return this;
 	}
 
-	virtual DsqlOnlyStmtNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const
+	DsqlOnlyStmtNode* copy(thread_db* /*tdbb*/, NodeCopier& /*copier*/) const override
 	{
 		fb_assert(false);
 		return NULL;
 	}
 
-	const StmtNode* execute(thread_db* /*tdbb*/, Request* /*request*/, ExeState* /*exeState*/) const
+	const StmtNode* execute(thread_db* /*tdbb*/, Request* /*request*/, ExeState* /*exeState*/) const override
 	{
 		fb_assert(false);
 		return NULL;
@@ -1656,7 +1658,7 @@ public:
 	}
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
 
 public:
 	NestConst<ValueExprNode> length;
@@ -1680,7 +1682,7 @@ public:
 	}
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
 
 public:
 	SLONG id;

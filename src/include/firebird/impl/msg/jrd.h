@@ -997,3 +997,4 @@ FB_IMPL_MSG(JRD, 994, range_for_by_should_be_positive, -833, "42", "000", "Range
 FB_IMPL_MSG(JRD, 995, missing_value_for_format_pattern, -901, "HY", "000", "Cannot find value in input string for \"@1\" pattern")
 FB_IMPL_MSG(JRD, 996, invalid_name, -901, "HY", "000", "Invalid name: @1")
 FB_IMPL_MSG(JRD, 997, invalid_unqualified_name_list, -901, "HY", "000", "Invalid list of unqualified names: @1")
+FB_IMPL_MSG(JRD, 998, no_user_att_while_restore, -901, "HY", "000", "User attachments are not allowed for the database being restored")

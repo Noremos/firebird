@@ -199,7 +199,7 @@ private:
 class TimeZoneRuleIterator
 {
 public:
-	TimeZoneRuleIterator(USHORT aId, const ISC_TIMESTAMP_TZ& aFrom, const ISC_TIMESTAMP_TZ& aTo);
+	TimeZoneRuleIterator(USHORT id, const ISC_TIMESTAMP_TZ& aFrom, const ISC_TIMESTAMP_TZ& aTo);
 
 public:
 	bool next();
@@ -211,7 +211,6 @@ public:
 	SSHORT dstOffset;
 
 private:
-	const USHORT id;
 	UnicodeUtil::ConversionICU& icuLib;
 	SINT64 startTicks;
 	SINT64 toTicks;

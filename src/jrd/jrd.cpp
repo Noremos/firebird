@@ -1944,6 +1944,12 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 				dbb->dbb_crypto_manager->attach(tdbb, attachment);
 			}
 
+			if (dbb->isRestoring())
+			{
+				if (!options.dpb_gbak_attach && !options.dpb_map_attach && !options.dpb_worker_attach)
+					ERR_post(Arg::Gds(isc_no_user_att_while_restore));
+			}
+
 			// Basic DBB initialization complete
 			initGuard.leave();
 
@@ -3145,6 +3151,8 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 
 			// Initialize the global objects
 			dbb->initGlobalObjects();
+			if (attachment->isGbak())
+				dbb->setRestoring(true);
 
 			// Initialize locks
 			LCK_init(tdbb, LCK_OWNER_database);
@@ -7435,6 +7443,8 @@ void DatabaseOptions::get(const UCHAR* dpb, FB_SIZE_T dpb_length, bool& invalid_
 		case isc_dpb_search_path:
 			getString(rdr, tempStr);
 			MetaString::parseList(tempStr, dpb_schema_search_path);
+			if (!dpb_schema_search_path.exist(SYSTEM_SCHEMA))
+				dpb_schema_search_path.add(SYSTEM_SCHEMA);
 			break;
 
 		case isc_dpb_blr_request_search_path:
@@ -7970,6 +7980,9 @@ void release_attachment(thread_db* tdbb, Jrd::Attachment* attachment, XThreadEns
 	// restore database lock if needed
 	if (!other)
 		sync.lock(SYNC_EXCLUSIVE);
+
+	if (attachment->att_flags & ATT_creator)
+		dbb->setRestoring(false);
 
 	// remove the attachment block from the dbb linked list
 	for (Jrd::Attachment** ptr = &dbb->dbb_attachments; *ptr; ptr = &(*ptr)->att_next)

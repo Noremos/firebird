@@ -4260,7 +4260,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 				{f_prv_rel_schema, f_prv_o_type}
 			};
 
-			for (const auto [schemaFieldId, objTypeFieldId] : privSchemaFields)
+			for (const auto& [schemaFieldId, objTypeFieldId] : privSchemaFields)
 			{
 				if (rpb->rpb_record->isNull(schemaFieldId) &&
 					!rpb->rpb_record->isNull(objTypeFieldId) &&

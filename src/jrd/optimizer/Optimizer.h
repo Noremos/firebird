@@ -316,7 +316,8 @@ public:
 			iter->flags = 0;
 		}
 
-		// Assignment is not currently used in the code and I doubt it should be
+		ConjunctIterator() = delete;
+		ConjunctIterator(const ConjunctIterator& other) = delete;
 		ConjunctIterator& operator=(const ConjunctIterator& other) = delete;
 
 	private:
@@ -329,10 +330,6 @@ public:
 		{
 			rewind();
 		}
-
-		ConjunctIterator(const ConjunctIterator& other)
-			: begin(other.begin), end(other.end), iter(other.iter)
-		{}
 	};
 
 	ConjunctIterator getBaseConjuncts()
@@ -441,6 +438,23 @@ public:
 		selectivity = minSelectivity + diffSelectivity * factor;
 	}
 
+	bool deliverJoinConjuncts(const BoolExprNodeStack& conjuncts)
+	{
+		fb_assert(conjuncts.hasData());
+
+		// Look at cardinality of the priorly joined streams. If it's known to be
+		// not very small, give up a possible nested loop join in favor of a hash join.
+		// Here we assume every equi-join condition having a default selectivity (0.1).
+		// TODO: replace with a proper cost-based decision in the future.
+
+		double subSelectivity = MAXIMUM_SELECTIVITY;
+		for (auto count = conjuncts.getCount(); count; count--)
+			subSelectivity *= DEFAULT_SELECTIVITY;
+		const auto thresholdCardinality = MINIMUM_CARDINALITY / subSelectivity;
+
+		return (cardinality && cardinality <= thresholdCardinality);
+	}
+
 	static RecordSource* compile(thread_db* tdbb, CompilerScratch* csb, RseNode* rse)
 	{
 		bool firstRows = false;
@@ -455,7 +469,7 @@ public:
 			firstRows = attachment->att_opt_first_rows.valueOr(defaultFirstRows);
 		}
 
-		return Optimizer(tdbb, csb, rse, firstRows, 0).compile(nullptr);
+		return Optimizer(tdbb, csb, rse, firstRows).compile(nullptr);
 	}
 
 	~Optimizer();
@@ -481,17 +495,27 @@ public:
 
 	bool isInnerJoin() const
 	{
-		return (rse->rse_jointype == blr_inner);
+		return rse->isInnerJoin();
+	}
+
+	bool isOuterJoin() const
+	{
+		return rse->isOuterJoin();
 	}
 
 	bool isLeftJoin() const
 	{
-		return (rse->rse_jointype == blr_left);
+		return rse->isLeftJoin();
 	}
 
 	bool isFullJoin() const
 	{
-		return (rse->rse_jointype == blr_full);
+		return rse->isFullJoin();
+	}
+
+	bool isSpecialJoin() const
+	{
+		return rse->isSpecialJoin();
 	}
 
 	const StreamList& getOuterStreams() const
@@ -519,11 +543,6 @@ public:
 		return composeBoolean(iter, selectivity);
 	}
 
-	bool isSemiJoined() const
-	{
-		return (rse->flags & RseNode::FLAG_SEMI_JOINED) != 0;
-	}
-
 	bool checkEquiJoin(BoolExprNode* boolean);
 	bool getEquiJoinKeys(BoolExprNode* boolean,
 						 NestConst<ValueExprNode>* node1,
@@ -535,7 +554,7 @@ public:
 
 private:
 	Optimizer(thread_db* aTdbb, CompilerScratch* aCsb, RseNode* aRse,
-			  bool parentFirstRows, double parentCardinality);
+			  bool parentFirstRows);
 
 	RecordSource* compile(BoolExprNodeStack* parentStack);
 
@@ -549,7 +568,7 @@ private:
 					RiverList& rivers,
 					SortNode** sortClause,
 					const PlanNode* planClause);
-	bool generateEquiJoin(RiverList& rivers, JoinType joinType = INNER_JOIN);
+	bool generateEquiJoin(RiverList& rivers, JoinType joinType);
 	void generateInnerJoin(StreamList& streams,
 						   RiverList& rivers,
 						   SortNode** sortClause,

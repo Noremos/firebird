@@ -601,7 +601,7 @@ public:
 	MetaName par_name;					// Parameter name, if any
 	QualifiedName par_rel_name;			// Relation name, if any
 	MetaName par_owner_name;			// Owner name, if any
-	Firebird::string par_rel_alias;		// Relation alias, if any
+	MetaName par_rel_alias;				// Relation alias, if any
 	MetaName par_alias;					// Alias, if any
 	dsc par_desc;						// Field data type
 	USHORT par_parameter = 0;			// BLR parameter number
@@ -647,6 +647,8 @@ public:
 		: charset(p),
 		  s(p)
 	{ }
+
+	void dsqlPass(DsqlCompilerScratch* dsqlScratch);
 
 	Firebird::string toUtf8(jrd_tra* transaction) const;
 

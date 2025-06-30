@@ -82,13 +82,13 @@ public:
 	}
 
 public:
-	virtual DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
-	virtual void checkPermission(thread_db* tdbb, jrd_tra* transaction);
-	virtual void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
+	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;
 
 protected:
-	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
+	void putErrorPrefix(Firebird::Arg::StatusVector& statusVector) override
 	{
 		statusVector <<
 			Firebird::Arg::Gds(createAlterCode(create, alter,
@@ -129,11 +129,11 @@ public:
 	}
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
-	virtual void checkPermission(thread_db* tdbb, jrd_tra* transaction);
-	virtual void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
+	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;
 
-	virtual DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		if (recreate)
 			dsqlScratch->qualifyNewName(name);
@@ -147,7 +147,7 @@ public:
 	}
 
 protected:
-	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
+	void putErrorPrefix(Firebird::Arg::StatusVector& statusVector) override
 	{
 		statusVector << Firebird::Arg::Gds(isc_dsql_drop_pack_failed) << name.toQuotedString();
 	}
@@ -177,13 +177,13 @@ public:
 	}
 
 public:
-	virtual DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
-	virtual void checkPermission(thread_db* tdbb, jrd_tra* transaction);
-	virtual void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
+	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;
 
 protected:
-	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
+	void putErrorPrefix(Firebird::Arg::StatusVector& statusVector) override
 	{
 		statusVector << Firebird::Arg::Gds(isc_dsql_create_pack_body_failed) << name.toQuotedString();
 	}
@@ -210,11 +210,11 @@ public:
 	}
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
-	virtual void checkPermission(thread_db* tdbb, jrd_tra* transaction);
-	virtual void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
+	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;
 
-	virtual DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		dsqlScratch->qualifyExistingName(name, obj_package_header);
 		protectSystemSchema(name.schema, obj_package_header);
@@ -224,7 +224,7 @@ public:
 	}
 
 protected:
-	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
+	void putErrorPrefix(Firebird::Arg::StatusVector& statusVector) override
 	{
 		statusVector << Firebird::Arg::Gds(isc_dsql_drop_pack_body_failed) << name.toQuotedString();
 	}

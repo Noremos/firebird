@@ -211,12 +211,12 @@ public:
 
 	YEvents(YAttachment* aAttachment, Firebird::IEvents* aNext, Firebird::IEventCallback* aCallback);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	FB_API_HANDLE& getHandle();
 
 	// IEvents implementation
-	void cancel(Firebird::CheckStatusWrapper* status);
-	void deprecatedCancel(Firebird::CheckStatusWrapper* status);
+	void cancel(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedCancel(Firebird::CheckStatusWrapper* status) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -234,22 +234,22 @@ public:
 
 	YRequest(YAttachment* aAttachment, Firebird::IRequest* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	isc_req_handle& getHandle();
 
 	// IRequest implementation
 	void receive(Firebird::CheckStatusWrapper* status, int level, unsigned int msgType,
-		unsigned int length, void* message);
+		unsigned int length, void* message) override;
 	void send(Firebird::CheckStatusWrapper* status, int level, unsigned int msgType,
-		unsigned int length, const void* message);
+		unsigned int length, const void* message) override;
 	void getInfo(Firebird::CheckStatusWrapper* status, int level, unsigned int itemsLength,
-		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer);
-	void start(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, int level);
+		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer) override;
+	void start(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, int level) override;
 	void startAndSend(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, int level,
-		unsigned int msgType, unsigned int length, const void* message);
-	void unwind(Firebird::CheckStatusWrapper* status, int level);
-	void free(Firebird::CheckStatusWrapper* status);
-	void deprecatedFree(Firebird::CheckStatusWrapper* status);
+		unsigned int msgType, unsigned int length, const void* message) override;
+	void unwind(Firebird::CheckStatusWrapper* status, int level) override;
+	void free(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedFree(Firebird::CheckStatusWrapper* status) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -264,25 +264,25 @@ public:
 
 	YTransaction(YAttachment* aAttachment, Firebird::ITransaction* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	isc_tr_handle& getHandle();
 
 	// ITransaction implementation
 	void getInfo(Firebird::CheckStatusWrapper* status, unsigned int itemsLength,
-		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer);
+		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer) override;
 	void prepare(Firebird::CheckStatusWrapper* status, unsigned int msgLength,
-		const unsigned char* message);
-	void commit(Firebird::CheckStatusWrapper* status);
-	void commitRetaining(Firebird::CheckStatusWrapper* status);
-	void rollback(Firebird::CheckStatusWrapper* status);
-	void rollbackRetaining(Firebird::CheckStatusWrapper* status);
-	void disconnect(Firebird::CheckStatusWrapper* status);
-	Firebird::ITransaction* join(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction);
-	Firebird::ITransaction* validate(Firebird::CheckStatusWrapper* status, Firebird::IAttachment* testAtt);
-	YTransaction* enterDtc(Firebird::CheckStatusWrapper* status);
-	void deprecatedCommit(Firebird::CheckStatusWrapper* status);
-	void deprecatedRollback(Firebird::CheckStatusWrapper* status);
-	void deprecatedDisconnect(Firebird::CheckStatusWrapper* status);
+		const unsigned char* message) override;
+	void commit(Firebird::CheckStatusWrapper* status) override;
+	void commitRetaining(Firebird::CheckStatusWrapper* status) override;
+	void rollback(Firebird::CheckStatusWrapper* status) override;
+	void rollbackRetaining(Firebird::CheckStatusWrapper* status) override;
+	void disconnect(Firebird::CheckStatusWrapper* status) override;
+	Firebird::ITransaction* join(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction) override;
+	Firebird::ITransaction* validate(Firebird::CheckStatusWrapper* status, Firebird::IAttachment* testAtt) override;
+	YTransaction* enterDtc(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedCommit(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedRollback(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedDisconnect(Firebird::CheckStatusWrapper* status) override;
 
 	void addCleanupHandler(Firebird::CheckStatusWrapper* status, CleanupCallback* callback);
 	void selfCheck();
@@ -320,20 +320,20 @@ public:
 
 	YBlob(YAttachment* aAttachment, YTransaction* aTransaction, Firebird::IBlob* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	isc_blob_handle& getHandle();
 
 	// IBlob implementation
 	void getInfo(Firebird::CheckStatusWrapper* status, unsigned int itemsLength,
-		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer);
+		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer) override;
 	int getSegment(Firebird::CheckStatusWrapper* status, unsigned int length, void* buffer,
-								   unsigned int* segmentLength);
-	void putSegment(Firebird::CheckStatusWrapper* status, unsigned int length, const void* buffer);
-	void cancel(Firebird::CheckStatusWrapper* status);
-	void close(Firebird::CheckStatusWrapper* status);
-	int seek(Firebird::CheckStatusWrapper* status, int mode, int offset);
-	void deprecatedCancel(Firebird::CheckStatusWrapper* status);
-	void deprecatedClose(Firebird::CheckStatusWrapper* status);
+								   unsigned int* segmentLength) override;
+	void putSegment(Firebird::CheckStatusWrapper* status, unsigned int length, const void* buffer) override;
+	void cancel(Firebird::CheckStatusWrapper* status) override;
+	void close(Firebird::CheckStatusWrapper* status) override;
+	int seek(Firebird::CheckStatusWrapper* status, int mode, int offset) override;
+	void deprecatedCancel(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedClose(Firebird::CheckStatusWrapper* status) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -350,24 +350,24 @@ public:
 	YResultSet(YAttachment* anAttachment, YTransaction* aTransaction, YStatement* aStatement,
 		Firebird::IResultSet* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 
 	// IResultSet implementation
-	int fetchNext(Firebird::CheckStatusWrapper* status, void* message);
-	int fetchPrior(Firebird::CheckStatusWrapper* status, void* message);
-	int fetchFirst(Firebird::CheckStatusWrapper* status, void* message);
-	int fetchLast(Firebird::CheckStatusWrapper* status, void* message);
-	int fetchAbsolute(Firebird::CheckStatusWrapper* status, int position, void* message);
-	int fetchRelative(Firebird::CheckStatusWrapper* status, int offset, void* message);
-	FB_BOOLEAN isEof(Firebird::CheckStatusWrapper* status);
-	FB_BOOLEAN isBof(Firebird::CheckStatusWrapper* status);
-	Firebird::IMessageMetadata* getMetadata(Firebird::CheckStatusWrapper* status);
-	void close(Firebird::CheckStatusWrapper* status);
-	void deprecatedClose(Firebird::CheckStatusWrapper* status);
-	void setDelayedOutputFormat(Firebird::CheckStatusWrapper* status, Firebird::IMessageMetadata* format);
+	int fetchNext(Firebird::CheckStatusWrapper* status, void* message) override;
+	int fetchPrior(Firebird::CheckStatusWrapper* status, void* message) override;
+	int fetchFirst(Firebird::CheckStatusWrapper* status, void* message) override;
+	int fetchLast(Firebird::CheckStatusWrapper* status, void* message) override;
+	int fetchAbsolute(Firebird::CheckStatusWrapper* status, int position, void* message) override;
+	int fetchRelative(Firebird::CheckStatusWrapper* status, int offset, void* message) override;
+	FB_BOOLEAN isEof(Firebird::CheckStatusWrapper* status) override;
+	FB_BOOLEAN isBof(Firebird::CheckStatusWrapper* status) override;
+	Firebird::IMessageMetadata* getMetadata(Firebird::CheckStatusWrapper* status) override;
+	void close(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedClose(Firebird::CheckStatusWrapper* status) override;
+	void setDelayedOutputFormat(Firebird::CheckStatusWrapper* status, Firebird::IMessageMetadata* format) override;
 	void getInfo(Firebird::CheckStatusWrapper* status,
 		unsigned int itemsLength, const unsigned char* items,
-		unsigned int bufferLength, unsigned char* buffer);
+		unsigned int bufferLength, unsigned char* buffer) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -383,24 +383,24 @@ public:
 
 	YBatch(YAttachment* anAttachment, Firebird::IBatch* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 
 	// IBatch implementation
-	void add(Firebird::CheckStatusWrapper* status, unsigned count, const void* inBuffer);
+	void add(Firebird::CheckStatusWrapper* status, unsigned count, const void* inBuffer) override;
 	void addBlob(Firebird::CheckStatusWrapper* status, unsigned length, const void* inBuffer, ISC_QUAD* blobId,
-		unsigned parLength, const unsigned char* par);
-	void appendBlobData(Firebird::CheckStatusWrapper* status, unsigned length, const void* inBuffer);
-	void addBlobStream(Firebird::CheckStatusWrapper* status, unsigned length, const void* inBuffer);
-	unsigned getBlobAlignment(Firebird::CheckStatusWrapper* status);
-	Firebird::IMessageMetadata* getMetadata(Firebird::CheckStatusWrapper* status);
-	void registerBlob(Firebird::CheckStatusWrapper* status, const ISC_QUAD* existingBlob, ISC_QUAD* blobId);
-	Firebird::IBatchCompletionState* execute(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction);
-	void cancel(Firebird::CheckStatusWrapper* status);
-	void setDefaultBpb(Firebird::CheckStatusWrapper* status, unsigned parLength, const unsigned char* par);
-	void close(Firebird::CheckStatusWrapper* status);
-	void deprecatedClose(Firebird::CheckStatusWrapper* status);
+		unsigned parLength, const unsigned char* par) override;
+	void appendBlobData(Firebird::CheckStatusWrapper* status, unsigned length, const void* inBuffer) override;
+	void addBlobStream(Firebird::CheckStatusWrapper* status, unsigned length, const void* inBuffer) override;
+	unsigned getBlobAlignment(Firebird::CheckStatusWrapper* status) override;
+	Firebird::IMessageMetadata* getMetadata(Firebird::CheckStatusWrapper* status) override;
+	void registerBlob(Firebird::CheckStatusWrapper* status, const ISC_QUAD* existingBlob, ISC_QUAD* blobId) override;
+	Firebird::IBatchCompletionState* execute(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction) override;
+	void cancel(Firebird::CheckStatusWrapper* status) override;
+	void setDefaultBpb(Firebird::CheckStatusWrapper* status, unsigned parLength, const unsigned char* par) override;
+	void close(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedClose(Firebird::CheckStatusWrapper* status) override;
 	void getInfo(Firebird::CheckStatusWrapper* status, unsigned int itemsLength, const unsigned char* items,
-		unsigned int bufferLength, unsigned char* buffer);
+		unsigned int bufferLength, unsigned char* buffer) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -415,12 +415,12 @@ public:
 
 	YReplicator(YAttachment* anAttachment, Firebird::IReplicator* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 
 	// IReplicator implementation
-	void process(Firebird::CheckStatusWrapper* status, unsigned length, const unsigned char* data);
-	void close(Firebird::CheckStatusWrapper* status);
-	void deprecatedClose(Firebird::CheckStatusWrapper* status);
+	void process(Firebird::CheckStatusWrapper* status, unsigned length, const unsigned char* data) override;
+	void close(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedClose(Firebird::CheckStatusWrapper* status) override;
 
 public:
 	AtomicAttPtr attachment;
@@ -450,32 +450,32 @@ public:
 
 	YStatement(YAttachment* aAttachment, Firebird::IStatement* aNext);
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 
 	// IStatement implementation
 	void getInfo(Firebird::CheckStatusWrapper* status,
 		unsigned int itemsLength, const unsigned char* items,
-		unsigned int bufferLength, unsigned char* buffer);
-	unsigned getType(Firebird::CheckStatusWrapper* status);
-	const char* getPlan(Firebird::CheckStatusWrapper* status, FB_BOOLEAN detailed);
-	ISC_UINT64 getAffectedRecords(Firebird::CheckStatusWrapper* status);
-	Firebird::IMessageMetadata* getInputMetadata(Firebird::CheckStatusWrapper* status);
-	Firebird::IMessageMetadata* getOutputMetadata(Firebird::CheckStatusWrapper* status);
+		unsigned int bufferLength, unsigned char* buffer) override;
+	unsigned getType(Firebird::CheckStatusWrapper* status) override;
+	const char* getPlan(Firebird::CheckStatusWrapper* status, FB_BOOLEAN detailed) override;
+	ISC_UINT64 getAffectedRecords(Firebird::CheckStatusWrapper* status) override;
+	Firebird::IMessageMetadata* getInputMetadata(Firebird::CheckStatusWrapper* status) override;
+	Firebird::IMessageMetadata* getOutputMetadata(Firebird::CheckStatusWrapper* status) override;
 	Firebird::ITransaction* execute(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		Firebird::IMessageMetadata* inMetadata, void* inBuffer,
-		Firebird::IMessageMetadata* outMetadata, void* outBuffer);
+		Firebird::IMessageMetadata* outMetadata, void* outBuffer) override;
 	Firebird::IResultSet* openCursor(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		Firebird::IMessageMetadata* inMetadata, void* inBuffer, Firebird::IMessageMetadata* outMetadata,
-		unsigned int flags);
-	void setCursorName(Firebird::CheckStatusWrapper* status, const char* name);
-	void free(Firebird::CheckStatusWrapper* status);
-	void deprecatedFree(Firebird::CheckStatusWrapper* status);
-	unsigned getFlags(Firebird::CheckStatusWrapper* status);
+		unsigned int flags) override;
+	void setCursorName(Firebird::CheckStatusWrapper* status, const char* name) override;
+	void free(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedFree(Firebird::CheckStatusWrapper* status) override;
+	unsigned getFlags(Firebird::CheckStatusWrapper* status) override;
 
-	unsigned int getTimeout(Firebird::CheckStatusWrapper* status);
-	void setTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut);
+	unsigned int getTimeout(Firebird::CheckStatusWrapper* status) override;
+	void setTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut) override;
 	YBatch* createBatch(Firebird::CheckStatusWrapper* status, Firebird::IMessageMetadata* inMetadata,
-		unsigned parLength, const unsigned char* par);
+		unsigned parLength, const unsigned char* par) override;
 
 	unsigned getMaxInlineBlobSize(Firebird::CheckStatusWrapper* status) override;
 	void setMaxInlineBlobSize(Firebird::CheckStatusWrapper* status, unsigned size) override;
@@ -518,53 +518,53 @@ public:
 		const Firebird::PathName& aDbPath);
 	~YAttachment();
 
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	void shutdown();
 	isc_db_handle& getHandle();
 	void getOdsVersion(USHORT* majorVersion, USHORT* minorVersion);
 
 	// IAttachment implementation
 	void getInfo(Firebird::CheckStatusWrapper* status, unsigned int itemsLength,
-		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer);
+		const unsigned char* items, unsigned int bufferLength, unsigned char* buffer) override;
 	YTransaction* startTransaction(Firebird::CheckStatusWrapper* status, unsigned int tpbLength,
-		const unsigned char* tpb);
+		const unsigned char* tpb) override;
 	YTransaction* reconnectTransaction(Firebird::CheckStatusWrapper* status, unsigned int length,
-		const unsigned char* id);
+		const unsigned char* id) override;
 	YRequest* compileRequest(Firebird::CheckStatusWrapper* status, unsigned int blrLength,
-		const unsigned char* blr);
+		const unsigned char* blr) override;
 	void transactRequest(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		unsigned int blrLength, const unsigned char* blr, unsigned int inMsgLength,
-		const unsigned char* inMsg, unsigned int outMsgLength, unsigned char* outMsg);
+		const unsigned char* inMsg, unsigned int outMsgLength, unsigned char* outMsg) override;
 	YBlob* createBlob(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, ISC_QUAD* id,
-		unsigned int bpbLength, const unsigned char* bpb);
+		unsigned int bpbLength, const unsigned char* bpb) override;
 	YBlob* openBlob(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, ISC_QUAD* id,
-		unsigned int bpbLength, const unsigned char* bpb);
+		unsigned int bpbLength, const unsigned char* bpb) override;
 	int getSlice(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, ISC_QUAD* id,
 		unsigned int sdlLength, const unsigned char* sdl, unsigned int paramLength,
-		const unsigned char* param, int sliceLength, unsigned char* slice);
+		const unsigned char* param, int sliceLength, unsigned char* slice) override;
 	void putSlice(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, ISC_QUAD* id,
 		unsigned int sdlLength, const unsigned char* sdl, unsigned int paramLength,
-		const unsigned char* param, int sliceLength, unsigned char* slice);
+		const unsigned char* param, int sliceLength, unsigned char* slice) override;
 	void executeDyn(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction, unsigned int length,
-		const unsigned char* dyn);
+		const unsigned char* dyn) override;
 	YStatement* prepare(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* tra,
-		unsigned int stmtLength, const char* sqlStmt, unsigned int dialect, unsigned int flags);
+		unsigned int stmtLength, const char* sqlStmt, unsigned int dialect, unsigned int flags) override;
 	Firebird::ITransaction* execute(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		unsigned int stmtLength, const char* sqlStmt, unsigned int dialect,
 		Firebird::IMessageMetadata* inMetadata, void* inBuffer,
-		Firebird::IMessageMetadata* outMetadata, void* outBuffer);
+		Firebird::IMessageMetadata* outMetadata, void* outBuffer) override;
 	Firebird::IResultSet* openCursor(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		unsigned int stmtLength, const char* sqlStmt, unsigned int dialect,
 		Firebird::IMessageMetadata* inMetadata, void* inBuffer, Firebird::IMessageMetadata* outMetadata,
-		const char* cursorName, unsigned int cursorFlags);
+		const char* cursorName, unsigned int cursorFlags) override;
 	YEvents* queEvents(Firebird::CheckStatusWrapper* status, Firebird::IEventCallback* callback,
-		unsigned int length, const unsigned char* eventsData);
-	void cancelOperation(Firebird::CheckStatusWrapper* status, int option);
-	void ping(Firebird::CheckStatusWrapper* status);
-	void detach(Firebird::CheckStatusWrapper* status);
-	void dropDatabase(Firebird::CheckStatusWrapper* status);
-	void deprecatedDetach(Firebird::CheckStatusWrapper* status);
-	void deprecatedDropDatabase(Firebird::CheckStatusWrapper* status);
+		unsigned int length, const unsigned char* eventsData) override;
+	void cancelOperation(Firebird::CheckStatusWrapper* status, int option) override;
+	void ping(Firebird::CheckStatusWrapper* status) override;
+	void detach(Firebird::CheckStatusWrapper* status) override;
+	void dropDatabase(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedDetach(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedDropDatabase(Firebird::CheckStatusWrapper* status) override;
 
 	void addCleanupHandler(Firebird::CheckStatusWrapper* status, CleanupCallback* callback);
 	YTransaction* getTransaction(Firebird::ITransaction* tra);
@@ -574,14 +574,14 @@ public:
 		Firebird::IMessageMetadata* inMetadata, void* inBuffer,
 		Firebird::IMessageMetadata* outMetadata, void* outBuffer);
 
-	unsigned int getIdleTimeout(Firebird::CheckStatusWrapper* status);
-	void setIdleTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut);
-	unsigned int getStatementTimeout(Firebird::CheckStatusWrapper* status);
-	void setStatementTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut);
+	unsigned int getIdleTimeout(Firebird::CheckStatusWrapper* status) override;
+	void setIdleTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut) override;
+	unsigned int getStatementTimeout(Firebird::CheckStatusWrapper* status) override;
+	void setStatementTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut) override;
 	YBatch* createBatch(Firebird::CheckStatusWrapper* status, Firebird::ITransaction* transaction,
 		unsigned stmtLength, const char* sqlStmt, unsigned dialect,
-		Firebird::IMessageMetadata* inMetadata, unsigned parLength, const unsigned char* par);
-	YReplicator* createReplicator(Firebird::CheckStatusWrapper* status);
+		Firebird::IMessageMetadata* inMetadata, unsigned parLength, const unsigned char* par) override;
+	YReplicator* createReplicator(Firebird::CheckStatusWrapper* status) override;
 
 	unsigned getMaxBlobCacheSize(Firebird::CheckStatusWrapper* status) override;
 	void setMaxBlobCacheSize(Firebird::CheckStatusWrapper* status, unsigned size) override;
@@ -616,19 +616,19 @@ public:
 	~YService();
 
 	void shutdown();
-	void destroy(unsigned dstrFlags);
+	void destroy(unsigned dstrFlags) override;
 	isc_svc_handle& getHandle();
 
 	// IService implementation
-	void detach(Firebird::CheckStatusWrapper* status);
-	void deprecatedDetach(Firebird::CheckStatusWrapper* status);
+	void detach(Firebird::CheckStatusWrapper* status) override;
+	void deprecatedDetach(Firebird::CheckStatusWrapper* status) override;
 	void query(Firebird::CheckStatusWrapper* status,
 		unsigned int sendLength, const unsigned char* sendItems,
 		unsigned int receiveLength, const unsigned char* receiveItems,
-		unsigned int bufferLength, unsigned char* buffer);
+		unsigned int bufferLength, unsigned char* buffer) override;
 	void start(Firebird::CheckStatusWrapper* status,
-		unsigned int spbLength, const unsigned char* spb);
-	void cancel(Firebird::CheckStatusWrapper* status);
+		unsigned int spbLength, const unsigned char* spb) override;
+	void cancel(Firebird::CheckStatusWrapper* status) override;
 
 public:
 	typedef Firebird::IService NextInterface;
@@ -654,14 +654,14 @@ public:
 
 	// IProvider implementation
 	YAttachment* attachDatabase(Firebird::CheckStatusWrapper* status, const char* filename,
-		unsigned int dpbLength, const unsigned char* dpb);
+		unsigned int dpbLength, const unsigned char* dpb) override;
 	YAttachment* createDatabase(Firebird::CheckStatusWrapper* status, const char* filename,
-		unsigned int dpbLength, const unsigned char* dpb);
+		unsigned int dpbLength, const unsigned char* dpb) override;
 	YService* attachServiceManager(Firebird::CheckStatusWrapper* status, const char* serviceName,
-		unsigned int spbLength, const unsigned char* spb);
-	void shutdown(Firebird::CheckStatusWrapper* status, unsigned int timeout, const int reason);
+		unsigned int spbLength, const unsigned char* spb) override;
+	void shutdown(Firebird::CheckStatusWrapper* status, unsigned int timeout, const int reason) override;
 	void setDbCryptCallback(Firebird::CheckStatusWrapper* status,
-		Firebird::ICryptKeyCallback* cryptCallback);
+		Firebird::ICryptKeyCallback* cryptCallback) override;
 
 	void destroy(unsigned)
 	{ }
@@ -685,17 +685,17 @@ class UtilInterface final :
 	// IUtil implementation
 public:
 	void getFbVersion(Firebird::CheckStatusWrapper* status, Firebird::IAttachment* att,
-		Firebird::IVersionCallback* callback);
+		Firebird::IVersionCallback* callback) override;
 	void loadBlob(Firebird::CheckStatusWrapper* status, ISC_QUAD* blobId, Firebird::IAttachment* att,
-		Firebird::ITransaction* tra, const char* file, FB_BOOLEAN txt);
+		Firebird::ITransaction* tra, const char* file, FB_BOOLEAN txt) override;
 	void dumpBlob(Firebird::CheckStatusWrapper* status, ISC_QUAD* blobId, Firebird::IAttachment* att,
-		Firebird::ITransaction* tra, const char* file, FB_BOOLEAN txt);
+		Firebird::ITransaction* tra, const char* file, FB_BOOLEAN txt) override;
 	void getPerfCounters(Firebird::CheckStatusWrapper* status, Firebird::IAttachment* att,
-		const char* countersSet, ISC_INT64* counters);			// in perf.cpp
+		const char* countersSet, ISC_INT64* counters) override;			// in perf.cpp
 
 	YAttachment* executeCreateDatabase(Firebird::CheckStatusWrapper* status,
 		unsigned stmtLength, const char* creatDBstatement, unsigned dialect,
-		FB_BOOLEAN* stmtIsCreateDb = nullptr)
+		FB_BOOLEAN* stmtIsCreateDb = nullptr) override
 	{
 		return executeCreateDatabase2(status, stmtLength, creatDBstatement, dialect,
 			0, nullptr, stmtIsCreateDb);
@@ -704,39 +704,39 @@ public:
 	YAttachment* executeCreateDatabase2(Firebird::CheckStatusWrapper* status,
 		unsigned stmtLength, const char* creatDBstatement, unsigned dialect,
 		unsigned dpbLength, const unsigned char* dpb,
-		FB_BOOLEAN* stmtIsCreateDb = nullptr);
+		FB_BOOLEAN* stmtIsCreateDb = nullptr) override;
 
-	void decodeDate(ISC_DATE date, unsigned* year, unsigned* month, unsigned* day);
+	void decodeDate(ISC_DATE date, unsigned* year, unsigned* month, unsigned* day) override;
 	void decodeTime(ISC_TIME time,
-		unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions);
-	ISC_DATE encodeDate(unsigned year, unsigned month, unsigned day);
-	ISC_TIME encodeTime(unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions);
-	unsigned formatStatus(char* buffer, unsigned bufferSize, Firebird::IStatus* status);
-	unsigned getClientVersion();
+		unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions) override;
+	ISC_DATE encodeDate(unsigned year, unsigned month, unsigned day) override;
+	ISC_TIME encodeTime(unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions) override;
+	unsigned formatStatus(char* buffer, unsigned bufferSize, Firebird::IStatus* status) override;
+	unsigned getClientVersion() override;
 	Firebird::IXpbBuilder* getXpbBuilder(Firebird::CheckStatusWrapper* status,
-		unsigned kind, const unsigned char* buf, unsigned len);
+		unsigned kind, const unsigned char* buf, unsigned len) override;
 	unsigned setOffsets(Firebird::CheckStatusWrapper* status, Firebird::IMessageMetadata* metadata,
-		Firebird::IOffsetsCallback* callback);
-	Firebird::IDecFloat16* getDecFloat16(Firebird::CheckStatusWrapper* status);
-	Firebird::IDecFloat34* getDecFloat34(Firebird::CheckStatusWrapper* status);
+		Firebird::IOffsetsCallback* callback) override;
+	Firebird::IDecFloat16* getDecFloat16(Firebird::CheckStatusWrapper* status) override;
+	Firebird::IDecFloat34* getDecFloat34(Firebird::CheckStatusWrapper* status) override;
 	void decodeTimeTz(Firebird::CheckStatusWrapper* status, const ISC_TIME_TZ* timeTz,
 		unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions,
-		unsigned timeZoneBufferLength, char* timeZoneBuffer);
+		unsigned timeZoneBufferLength, char* timeZoneBuffer) override;
 	void decodeTimeStampTz(Firebird::CheckStatusWrapper* status, const ISC_TIMESTAMP_TZ* timeStampTz,
 		unsigned* year, unsigned* month, unsigned* day, unsigned* hours, unsigned* minutes, unsigned* seconds,
-		unsigned* fractions, unsigned timeZoneBufferLength, char* timeZoneBuffer);
+		unsigned* fractions, unsigned timeZoneBufferLength, char* timeZoneBuffer) override;
 	void encodeTimeTz(Firebird::CheckStatusWrapper* status, ISC_TIME_TZ* timeTz,
-		unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions, const char* timeZone);
+		unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions, const char* timeZone) override;
 	void encodeTimeStampTz(Firebird::CheckStatusWrapper* status, ISC_TIMESTAMP_TZ* timeStampTz,
 		unsigned year, unsigned month, unsigned day,
-		unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions, const char* timeZone);
-	Firebird::IInt128* getInt128(Firebird::CheckStatusWrapper* status);
+		unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions, const char* timeZone) override;
+	Firebird::IInt128* getInt128(Firebird::CheckStatusWrapper* status) override;
 	void decodeTimeTzEx(Firebird::CheckStatusWrapper* status, const ISC_TIME_TZ_EX* timeEx,
 		unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions,
-		unsigned timeZoneBufferLength, char* timeZoneBuffer);
+		unsigned timeZoneBufferLength, char* timeZoneBuffer) override;
 	void decodeTimeStampTzEx(Firebird::CheckStatusWrapper* status, const ISC_TIMESTAMP_TZ_EX* timeStampEx,
 		unsigned* year, unsigned* month, unsigned* day, unsigned* hours, unsigned* minutes, unsigned* seconds,
-		unsigned* fractions, unsigned timeZoneBufferLength, char* timeZoneBuffer);
+		unsigned* fractions, unsigned timeZoneBufferLength, char* timeZoneBuffer) override;
 };
 
 }	// namespace Why

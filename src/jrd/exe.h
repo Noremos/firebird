@@ -437,20 +437,20 @@ typedef Firebird::RightPooledMap<Item, ItemInfo> MapItemInfo;
 class jrd_table_value_fun
 {
 public:
-	explicit jrd_table_value_fun(MemoryPool& p) : recordFormat(nullptr), fields(p), name(p), funcId(0)
+	explicit jrd_table_value_fun(MemoryPool& p) : recordFormat(nullptr), fields(p), funcId(0)
 	{
 	}
 
 	SSHORT getId(const MetaName& fieldName) const
 	{
-		SSHORT* id = fields.get(fieldName);
+		const SSHORT* const id = fields.get(fieldName);
 		fb_assert(id);
 		return *id;
 	}
 
 	const Format* recordFormat;
 	Firebird::LeftPooledMap<MetaName, SSHORT> fields;
-	Firebird::string name;
+	MetaName name;
 	USHORT funcId;
 };
 
@@ -728,6 +728,7 @@ inline QualifiedName CompilerScratch::csb_repeat::getName(bool allowEmpty) const
 	else if (csb_table_value_fun)
 		return QualifiedName(csb_table_value_fun->name);
 	//// TODO: LocalTableSourceNode
+	//// TODO: JsonTableSourceNode
 	else
 	{
 		fb_assert(allowEmpty);

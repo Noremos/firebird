@@ -1360,8 +1360,7 @@ RseNode* PAR_rse(thread_db* tdbb, CompilerScratch* csb, SSHORT rse_op)
 
 		case blr_join_type:
 			{
-				const USHORT jointype = (USHORT) csb->csb_blr_reader.getByte();
-				rse->rse_jointype = jointype;
+				const auto jointype = csb->csb_blr_reader.getByte();
 				if (jointype != blr_inner &&
 					jointype != blr_left &&
 					jointype != blr_right &&
@@ -1369,6 +1368,7 @@ RseNode* PAR_rse(thread_db* tdbb, CompilerScratch* csb, SSHORT rse_op)
 				{
 					PAR_syntax_error(csb, "join type clause");
 				}
+				rse->rse_jointype = jointype;
 				break;
 			}
 
@@ -1410,7 +1410,7 @@ RseNode* PAR_rse(thread_db* tdbb, CompilerScratch* csb, SSHORT rse_op)
 				// An outer join is only allowed when the stream count is 2
 				// and a boolean expression has been supplied
 
-				if (rse->rse_jointype == blr_inner ||
+				if (rse->isInnerJoin() ||
 					(rse->rse_relations.getCount() == 2 && rse->rse_boolean))
 				{
 					// Convert right outer joins to left joins to avoid
@@ -1485,7 +1485,7 @@ SortNode* PAR_sort(thread_db* tdbb, CompilerScratch* csb, UCHAR expectedBlr,
 	if (blrOp != expectedBlr)
 	{
 		char s[20];
-		sprintf(s, "blr code %d", expectedBlr);
+		snprintf(s, sizeof(s), "blr code %d", expectedBlr);
 		PAR_syntax_error(csb, s);
 	}
 

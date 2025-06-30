@@ -186,7 +186,7 @@ protected:
 	void copyFrom(const Array<T, Storage>& source)
 	{
 		ensureCapacity(source.count, false);
-		memcpy(data, source.data, sizeof(T) * source.count);
+		memcpy(static_cast<void*>(data), source.data, sizeof(T) * source.count);
 		count = source.count;
 	}
 
@@ -244,7 +244,7 @@ public:
 		fb_assert(index <= count);
 		fb_assert(count < FB_MAX_SIZEOF);
 		ensureCapacity(count + 1);
-		memmove(data + index + 1, data + index, sizeof(T) * (count++ - index));
+		memmove(static_cast<void*>(data + index + 1), data + index, sizeof(T) * (count++ - index));
 		data[index] = item;
 	}
 
@@ -253,8 +253,8 @@ public:
 		fb_assert(index <= count);
 		fb_assert(count <= FB_MAX_SIZEOF - items.count);
 		ensureCapacity(count + items.count);
-		memmove(data + index + items.count, data + index, sizeof(T) * (count - index));
-		memcpy(data + index, items.data, items.count);
+		memmove(static_cast<void*>(data + index + items.count), data + index, sizeof(T) * (count - index));
+		memcpy(static_cast<void*>(data + index), items.data, items.count);
 		count += items.count;
 	}
 
@@ -263,8 +263,8 @@ public:
 		fb_assert(index <= count);
 		fb_assert(count <= FB_MAX_SIZEOF - itemsCount);
 		ensureCapacity(count + itemsCount);
-		memmove(data + index + itemsCount, data + index, sizeof(T) * (count - index));
-		memcpy(data + index, items, sizeof(T) * itemsCount);
+		memmove(static_cast<void*>(data + index + itemsCount), data + index, sizeof(T) * (count - index));
+		memcpy(static_cast<void*>(data + index), items, sizeof(T) * itemsCount);
 		count += itemsCount;
 	}
 
@@ -285,30 +285,30 @@ public:
 	{
 		fb_assert(count <= FB_MAX_SIZEOF - itemsCount);
 		ensureCapacity(count + itemsCount);
-		memcpy(data + count, items, sizeof(T) * itemsCount);
+		memcpy(static_cast<void*>(data + count), items, sizeof(T) * itemsCount);
 		count += itemsCount;
 	}
 
 	T* remove(const size_type index) noexcept
 	{
-  		fb_assert(index < count);
-  		memmove(data + index, data + index + 1, sizeof(T) * (--count - index));
+		fb_assert(index < count);
+		memmove(static_cast<void*>(data + index), data + index + 1, sizeof(T) * (--count - index));
 		return &data[index];
 	}
 
 	T* removeRange(const size_type from, const size_type to) noexcept
 	{
-  		fb_assert(from <= to);
-  		fb_assert(to <= count);
-  		memmove(data + from, data + to, sizeof(T) * (count - to));
+		fb_assert(from <= to);
+		fb_assert(to <= count);
+		memmove(static_cast<void*>(data + from), data + to, sizeof(T) * (count - to));
 		count -= (to - from);
 		return &data[from];
 	}
 
 	T* removeCount(const size_type index, const size_type n) noexcept
 	{
-  		fb_assert(index + n <= count);
-  		memmove(data + index, data + index + n, sizeof(T) * (count - index - n));
+		fb_assert(index + n <= count);
+		memmove(static_cast<void*>(data + index), data + index + n, sizeof(T) * (count - index - n));
 		count -= n;
 		return &data[index];
 	}
@@ -316,8 +316,8 @@ public:
 	T* remove(T* itr) noexcept
 	{
 		const size_type index = itr - begin();
-  		fb_assert(index < count);
-  		memmove(data + index, data + index + 1, sizeof(T) * (--count - index));
+		fb_assert(index < count);
+		memmove(static_cast<void*>(data + index), data + index + 1, sizeof(T) * (--count - index));
 		return &data[index];
 	}
 
@@ -337,7 +337,7 @@ public:
 	{
 		fb_assert(newCount >= count);
 		ensureCapacity(newCount);
-		memset(data + count, 0, sizeof(T) * (newCount - count));
+		memset(static_cast<void*>(data + count), 0, sizeof(T) * (newCount - count));
 		count = newCount;
 	}
 
@@ -371,7 +371,7 @@ public:
 	{
 		fb_assert(count <= FB_MAX_SIZEOF - L.count);
 		ensureCapacity(count + L.count);
-		memcpy(data + count, L.data, sizeof(T) * L.count);
+		memcpy(static_cast<void*>(data + count), L.data, sizeof(T) * L.count);
 		count += L.count;
 	}
 
@@ -383,7 +383,7 @@ public:
 	void assign(const T* items, const size_type itemsCount)
 	{
 		resize(itemsCount);
-		memcpy(data, items, sizeof(T) * count);
+		memcpy(static_cast<void*>(data), items, sizeof(T) * count);
 	}
 
 	size_type getCount() const noexcept { return count; }
@@ -403,7 +403,7 @@ public:
 	{
 		fb_assert(count <= FB_MAX_SIZEOF - itemsSize);
 		ensureCapacity(count + itemsSize);
-		memcpy(data + count, items, sizeof(T) * itemsSize);
+		memcpy(static_cast<void*>(data + count), items, sizeof(T) * itemsSize);
 		count += itemsSize;
 	}
 
@@ -533,7 +533,7 @@ protected:
 			T* newdata = static_cast<T*>
 				(this->getPool().allocate(sizeof(T) * newcapacity ALLOC_ARGS));
 			if (preserve)
-				memcpy(newdata, data, sizeof(T) * count);
+				memcpy(static_cast<void*>(newdata), data, sizeof(T) * count);
 			freeData();
 			data = newdata;
 			capacity = newcapacity;

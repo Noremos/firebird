@@ -4104,7 +4104,7 @@ void DFW_reset_icu(thread_db* tdbb)
 			    group by ind.RDB$SCHEMA_NAME,
 			             ind.RDB$INDEX_NAME,
 			             rel.RDB$RELATION_ID,
-			             rtrim(coll.RDB$BASE_COLLATION_NAME),
+			             rtrim(coalesce(coll.RDB$BASE_COLLATION_NAME, coll.RDB$COLLATION_NAME)),
 			             coll.RDB$SCHEMA_NAME,
 			             coll.RDB$COLLATION_NAME,
 			             cs.RDB$SCHEMA_NAME,

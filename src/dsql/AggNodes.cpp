@@ -902,8 +902,9 @@ void ListAggNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 bool ListAggNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, arg, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, delimiter, makeDesc, forceVarChar);
+	const bool argType = PASS1_set_parameter_type(dsqlScratch, arg, makeDesc, forceVarChar);
+	const bool delimiterType = PASS1_set_parameter_type(dsqlScratch, delimiter, makeDesc, forceVarChar);
+	return argType || delimiterType;
 }
 
 void ListAggNode::getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc)

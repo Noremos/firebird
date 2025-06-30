@@ -200,7 +200,7 @@ private:
 			name[sizeof(name) - 1] = 0;
 		}
 
-		unsigned int callback(unsigned int, const void*, unsigned int length, void* buffer)
+		unsigned int callback(unsigned int, const void*, unsigned int length, void* buffer) override
 		{
 			memcpy(buffer, &key, 1);
 			return 1;

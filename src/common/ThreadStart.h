@@ -171,7 +171,7 @@ private:
 			threadArg->exceptionHandler(ex, threadRoutine);
 		}
 
-		if (cleanup)
+		if (cleanup != nullptr)
 			cleanup(threadArg);
 		closing = true;
 	}

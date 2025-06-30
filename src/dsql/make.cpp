@@ -532,8 +532,8 @@ dsql_par* MAKE_parameter(dsql_msg* message, bool sqlda_flag, bool null_flag,
 	parameter->par_parameter = message->msg_parameter++;
 
 	parameter->par_rel_name.clear();
-	parameter->par_owner_name = NULL;
-	parameter->par_rel_alias.clear();
+	parameter->par_owner_name = nullptr;
+	parameter->par_rel_alias = nullptr;
 
 	if (node)
 		MAKE_parameter_names(parameter, node);

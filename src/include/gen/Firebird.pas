@@ -207,7 +207,7 @@ type
 	IntegerPtr = ^Integer;
 	NativeIntPtr = ^NativeInt;
 	PerformanceInfoPtr = ^PerformanceInfo;
-	dscPtr = ^dsc;
+	paramdscPtr = ^paramdsc;
 
 	IReferenceCounted_addRefPtr = procedure(this: IReferenceCounted); cdecl;
 	IReferenceCounted_releasePtr = function(this: IReferenceCounted): Integer; cdecl;
@@ -611,7 +611,7 @@ type
 	ITraceTransaction_getInitialIDPtr = function(this: ITraceTransaction): Int64; cdecl;
 	ITraceTransaction_getPreviousIDPtr = function(this: ITraceTransaction): Int64; cdecl;
 	ITraceParams_getCountPtr = function(this: ITraceParams): Cardinal; cdecl;
-	ITraceParams_getParamPtr = function(this: ITraceParams; idx: Cardinal): dscPtr; cdecl;
+	ITraceParams_getParamPtr = function(this: ITraceParams; idx: Cardinal): paramdscPtr; cdecl;
 	ITraceParams_getTextUTF8Ptr = function(this: ITraceParams; status: IStatus; idx: Cardinal): PAnsiChar; cdecl;
 	ITraceStatement_getStmtIDPtr = function(this: ITraceStatement): Int64; cdecl;
 	ITraceStatement_getPerfPtr = function(this: ITraceStatement): PerformanceInfoPtr; cdecl;
@@ -3089,7 +3089,7 @@ type
 		const VERSION = 3;
 
 		function getCount(): Cardinal;
-		function getParam(idx: Cardinal): dscPtr;
+		function getParam(idx: Cardinal): paramdscPtr;
 		function getTextUTF8(status: IStatus; idx: Cardinal): PAnsiChar;
 	end;
 
@@ -3097,7 +3097,7 @@ type
 		constructor create;
 
 		function getCount(): Cardinal; virtual; abstract;
-		function getParam(idx: Cardinal): dscPtr; virtual; abstract;
+		function getParam(idx: Cardinal): paramdscPtr; virtual; abstract;
 		function getTextUTF8(status: IStatus; idx: Cardinal): PAnsiChar; virtual; abstract;
 	end;
 
@@ -5838,6 +5838,7 @@ const
 	 isc_missing_value_for_format_pattern = 335545315;
 	 isc_invalid_name = 335545316;
 	 isc_invalid_unqualified_name_list = 335545317;
+	 isc_no_user_att_while_restore = 335545318;
 	 isc_gfix_db_name = 335740929;
 	 isc_gfix_invalid_sw = 335740930;
 	 isc_gfix_incmp_sw = 335740932;
@@ -9084,7 +9085,7 @@ begin
 	Result := TraceParamsVTable(vTable).getCount(Self);
 end;
 
-function ITraceParams.getParam(idx: Cardinal): dscPtr;
+function ITraceParams.getParam(idx: Cardinal): paramdscPtr;
 begin
 	Result := TraceParamsVTable(vTable).getParam(Self, idx);
 end;
@@ -15416,7 +15417,7 @@ begin
 	end
 end;
 
-function ITraceParamsImpl_getParamDispatcher(this: ITraceParams; idx: Cardinal): dscPtr; cdecl;
+function ITraceParamsImpl_getParamDispatcher(this: ITraceParams; idx: Cardinal): paramdscPtr; cdecl;
 begin
 	Result := nil;
 	try

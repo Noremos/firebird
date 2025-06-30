@@ -218,6 +218,8 @@ inline const char* getObjectName(ObjectType objType)
 	{
 		case obj_relation:
 			return "TABLE";
+		case obj_trigger:
+			return "TRIGGER";
 		case obj_package_header:
 			return "PACKAGE";
 		case obj_procedure:

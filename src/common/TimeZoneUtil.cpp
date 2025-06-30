@@ -1057,11 +1057,10 @@ ISC_TIMESTAMP_TZ TimeZoneUtil::dateToTimeStampTz(const ISC_DATE& date, Callbacks
 
 //-------------------------------------
 
-TimeZoneRuleIterator::TimeZoneRuleIterator(USHORT aId, const ISC_TIMESTAMP_TZ& aFrom, const ISC_TIMESTAMP_TZ& aTo)
-	: id(aId),
-	  icuLib(UnicodeUtil::getConversionICU()),
+TimeZoneRuleIterator::TimeZoneRuleIterator(USHORT id, const ISC_TIMESTAMP_TZ& aFrom, const ISC_TIMESTAMP_TZ& aTo)
+	: icuLib(UnicodeUtil::getConversionICU()),
 	  toTicks(TimeStamp::timeStampToTicks(aTo.utc_timestamp)),
-	  icuCalendar(getDesc(aId)->getCalendar(icuLib))
+	  icuCalendar(getDesc(id)->getCalendar(icuLib))
 {
 	UErrorCode icuErrorCode = U_ZERO_ERROR;
 

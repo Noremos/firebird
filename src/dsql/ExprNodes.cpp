@@ -653,8 +653,9 @@ void ArithmeticNode::setParameterName(dsql_par* parameter) const
 bool ArithmeticNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, arg1, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, arg2, makeDesc, forceVarChar);
+	const bool arg1Type = PASS1_set_parameter_type(dsqlScratch, arg1, makeDesc, forceVarChar);
+	const bool arg2Type = PASS1_set_parameter_type(dsqlScratch, arg2, makeDesc, forceVarChar);
+	return arg1Type || arg2Type;
 }
 
 void ArithmeticNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -3273,8 +3274,10 @@ bool AtNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 			desc->setNullable(true);
 		};
 
-	return PASS1_set_parameter_type(dsqlScratch, dateTimeArg, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, zoneArg, makeZoneDesc, forceVarChar);
+	const bool dateTimeArgType = PASS1_set_parameter_type(dsqlScratch, dateTimeArg, makeDesc, forceVarChar);
+	const bool zoneArgType = PASS1_set_parameter_type(dsqlScratch, zoneArg, makeZoneDesc, forceVarChar);
+
+	return dateTimeArgType || zoneArgType;
 }
 
 void AtNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -3752,25 +3755,8 @@ dsc* CastNode::perform(thread_db* tdbb, impure_value* impure, dsc* value,
 			impure->vlu_desc.dsc_length = length;
 		}
 
-		length = impure->vlu_desc.dsc_length;
-
 		// Allocate a string block of sufficient size.
-
-		auto string = impure->vlu_string;
-
-		if (string && string->str_length < length)
-		{
-			delete string;
-			string = nullptr;
-		}
-
-		if (!string)
-		{
-			string = impure->vlu_string = FB_NEW_RPT(*tdbb->getDefaultPool(), length) VaryingString();
-			string->str_length = length;
-		}
-
-		impure->vlu_desc.dsc_address = string->str_data;
+		impure->makeTextValueAddress(*tdbb->getDefaultPool());
 	}
 
 	EVL_validate(tdbb, Item(Item::TYPE_CAST), itemInfo,
@@ -4107,8 +4093,9 @@ void ConcatenateNode::setParameterName(dsql_par* parameter) const
 bool ConcatenateNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, arg1, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, arg2, makeDesc, forceVarChar);
+	const bool arg1Type = PASS1_set_parameter_type(dsqlScratch, arg1, makeDesc, forceVarChar);
+	const bool arg2Type = PASS1_set_parameter_type(dsqlScratch, arg2, makeDesc, forceVarChar);
+	return arg1Type || arg2Type;
 }
 
 void ConcatenateNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -7139,29 +7126,7 @@ dsc* FieldNode::execute(thread_db* tdbb, Request* request) const
 		dsc desc = impure->vlu_desc;
 		impure->vlu_desc = format->fmt_desc[fieldId];
 
-		if (impure->vlu_desc.isText())
-		{
-			// Allocate a string block of sufficient size.
-			VaryingString* string = impure->vlu_string;
-
-			if (string && string->str_length < impure->vlu_desc.dsc_length)
-			{
-				delete string;
-				string = NULL;
-			}
-
-			if (!string)
-			{
-				string = impure->vlu_string = FB_NEW_RPT(*tdbb->getDefaultPool(),
-					impure->vlu_desc.dsc_length) VaryingString();
-				string->str_length = impure->vlu_desc.dsc_length;
-			}
-
-			impure->vlu_desc.dsc_address = string->str_data;
-		}
-		else
-			impure->vlu_desc.dsc_address = (UCHAR*) &impure->vlu_misc;
-
+		impure->makeValueAddress(*tdbb->getDefaultPool());
 		MOV_move(tdbb, &desc, &impure->vlu_desc);
 	}
 
@@ -8916,7 +8881,7 @@ void DerivedFieldNode::setParameterName(dsql_par* parameter) const
 	value->setParameterName(parameter);
 
 	parameter->par_alias = name;
-	parameter->par_rel_alias = context->getConcatenatedAlias();
+	parameter->par_rel_alias = context->ctx_alias.hasData() ? context->ctx_alias.front().object : MetaName();
 }
 
 void DerivedFieldNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -11893,9 +11858,10 @@ void SubstringNode::setParameterName(dsql_par* parameter) const
 bool SubstringNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, expr, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, start, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, length, makeDesc, forceVarChar);
+	const bool exprType = PASS1_set_parameter_type(dsqlScratch, expr, makeDesc, forceVarChar);
+	const bool startType = PASS1_set_parameter_type(dsqlScratch, start, makeDesc, forceVarChar);
+	const bool lengthType = PASS1_set_parameter_type(dsqlScratch, length, makeDesc, forceVarChar);
+	return exprType || startType || lengthType;
 }
 
 void SubstringNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -12217,9 +12183,10 @@ void SubstringSimilarNode::setParameterName(dsql_par* parameter) const
 bool SubstringSimilarNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, expr, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, pattern, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, escape, makeDesc, forceVarChar);
+	const bool exprType = PASS1_set_parameter_type(dsqlScratch, expr, makeDesc, forceVarChar);
+	const bool patternType = PASS1_set_parameter_type(dsqlScratch, pattern, makeDesc, forceVarChar);
+	const bool escapeType = PASS1_set_parameter_type(dsqlScratch, escape, makeDesc, forceVarChar);
+	return exprType || patternType || escapeType;
 }
 
 void SubstringSimilarNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -12745,8 +12712,9 @@ void TrimNode::setParameterName(dsql_par* parameter) const
 bool TrimNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, value, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, trimChars, makeDesc, forceVarChar);
+	const bool valueType = PASS1_set_parameter_type(dsqlScratch, value, makeDesc, forceVarChar);
+	const bool trimCharsType = PASS1_set_parameter_type(dsqlScratch, trimChars, makeDesc, forceVarChar);
+	return valueType || trimCharsType;
 }
 
 void TrimNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -13687,30 +13655,7 @@ dsc* UdfCallNode::execute(thread_db* tdbb, Request* request) const
 		const Parameter* const returnParam = function->getOutputFields()[0];
 		value->vlu_desc = returnParam->prm_desc;
 
-		// If the return data type is any of the string types, allocate space to hold value.
-
-		if (value->vlu_desc.dsc_dtype <= dtype_varying)
-		{
-			const USHORT retLength = value->vlu_desc.dsc_length;
-			VaryingString* string = value->vlu_string;
-
-			if (string && string->str_length < retLength)
-			{
-				delete string;
-				string = NULL;
-			}
-
-			if (!string)
-			{
-				string = FB_NEW_RPT(*tdbb->getDefaultPool(), retLength) VaryingString;
-				string->str_length = retLength;
-				value->vlu_string = string;
-			}
-
-			value->vlu_desc.dsc_address = string->str_data;
-		}
-		else
-			value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc;
+		value->makeValueAddress(*tdbb->getDefaultPool());
 
 		if (!impureArea->temp)
 		{
@@ -14118,8 +14063,9 @@ void ValueIfNode::setParameterName(dsql_par* parameter) const
 bool ValueIfNode::setParameterType(DsqlCompilerScratch* dsqlScratch,
 	std::function<void (dsc*)> makeDesc, bool forceVarChar)
 {
-	return PASS1_set_parameter_type(dsqlScratch, trueValue, makeDesc, forceVarChar) |
-		PASS1_set_parameter_type(dsqlScratch, falseValue, makeDesc, forceVarChar);
+	const bool trueValueType = PASS1_set_parameter_type(dsqlScratch, trueValue, makeDesc, forceVarChar);
+	const bool falseValueType = PASS1_set_parameter_type(dsqlScratch, falseValue, makeDesc, forceVarChar);
+	return trueValueType || falseValueType;
 }
 
 void ValueIfNode::genBlr(DsqlCompilerScratch* dsqlScratch)
@@ -14593,7 +14539,7 @@ static void setParameterInfo(dsql_par* parameter, const dsql_ctx* context)
 		parameter->par_owner_name = context->ctx_procedure->prc_owner;
 	}
 
-	parameter->par_rel_alias = context->getConcatenatedAlias();
+	parameter->par_rel_alias = context->ctx_alias.hasData() ? context->ctx_alias.front().object : MetaName();
 }
 
 

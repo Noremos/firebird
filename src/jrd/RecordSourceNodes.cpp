@@ -55,6 +55,29 @@ static ValueExprNode* resolveUsingField(DsqlCompilerScratch* dsqlScratch, const 
 
 namespace
 {
+	struct SpecialJoinItem
+	{
+		RseNode* rse;
+		bool semiJoin;
+		BoolExprNode* boolean;
+	};
+
+	typedef HalfStaticArray<SpecialJoinItem, 4> SpecialJoinList;
+
+  void appendContextAlias(DsqlCompilerScratch* dsqlScratch, const string& alias)
+	{
+		const auto len = alias.length();
+		if (len <= MAX_UCHAR)
+			dsqlScratch->appendMetaString(alias.c_str());
+		else
+		{
+			string truncatedAlias(alias);
+			truncatedAlias.resize(MAX_UCHAR - 3);
+			truncatedAlias += "...";
+			dsqlScratch->appendMetaString(truncatedAlias.c_str());
+		}
+	}
+
 	// Search through the list of ANDed booleans to find comparisons
 	// referring streams of parent select expressions.
 	// Extract those booleans and return them to the caller.
@@ -112,8 +135,7 @@ namespace
 	bool findPossibleJoins(CompilerScratch* csb,
 						   const StreamList& rseStreams,
 						   BoolExprNode** parentBoolean,
-						   RecordSourceNodeStack& rseStack,
-						   BoolExprNodeStack& booleanStack)
+						   SpecialJoinList& result)
 	{
 		auto boolNode = *parentBoolean;
 
@@ -121,9 +143,9 @@ namespace
 		if (binaryNode && binaryNode->blrOp == blr_and)
 		{
 			const bool found1 = findPossibleJoins(csb, rseStreams,
-				binaryNode->arg1.getAddress(), rseStack, booleanStack);
+				binaryNode->arg1.getAddress(), result);
 			const bool found2 = findPossibleJoins(csb, rseStreams,
-				binaryNode->arg2.getAddress(), rseStack, booleanStack);
+				binaryNode->arg2.getAddress(), result);
 
 			if (!binaryNode->arg1 && !binaryNode->arg2)
 				*parentBoolean = nullptr;
@@ -142,7 +164,7 @@ namespace
 			auto rse = rseNode->rse;
 			fb_assert(rse && (rse->flags & RseNode::FLAG_SUB_QUERY));
 
-			if (rse->rse_boolean && rse->rse_jointype == blr_inner &&
+			if (rse->rse_boolean && rse->isInnerJoin() &&
 				!rse->rse_first && !rse->rse_skip && !rse->rse_plan)
 			{
 				// Find booleans convertable into semi-joins
@@ -187,9 +209,7 @@ namespace
 					if (!dependent)
 					{
 						rse->flags &= ~RseNode::FLAG_SUB_QUERY;
-						rse->flags |= RseNode::FLAG_SEMI_JOINED;
-						rseStack.push(rse);
-						booleanStack.push(boolean);
+						result.push({rse, true, boolean});
 						*parentBoolean = nullptr;
 						return true;
 					}
@@ -677,7 +697,7 @@ void LocalTableSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
 	dsqlScratch->appendUChar(blr_local_table_id);
 	dsqlScratch->appendUShort(tableNumber);
-	dsqlScratch->appendMetaString(alias.c_str());	// dsqlContext->ctx_alias?
+	appendContextAlias(dsqlScratch, alias); // dsqlContext->ctx_alias?
 
 	GEN_stuff_context(dsqlScratch, dsqlContext);
 }
@@ -893,7 +913,7 @@ void RelationSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 	if (dsqlContext->ctx_alias.hasData())
 	{
 		const auto& contextAliases = dsqlContext->getConcatenatedAlias();
-		dsqlScratch->appendMetaString(contextAliases.c_str());
+		appendContextAlias(dsqlScratch, contextAliases);
 	}
 
 	GEN_stuff_context(dsqlScratch, dsqlContext);
@@ -1005,7 +1025,7 @@ void RelationSourceNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseN
 	// 1) If the view has a projection, sort, first/skip or explicit plan.
 	// 2) If it's part of an outer join.
 
-	if (rse->rse_jointype != blr_inner || // viewRse->rse_jointype != blr_inner || ???
+	if (!rse->isInnerJoin() || // !viewRse->isInnerJoin() || ???
 		viewRse->rse_sorted || viewRse->rse_projection || viewRse->rse_first ||
 		viewRse->rse_skip || viewRse->rse_plan)
 	{
@@ -1546,7 +1566,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 			dsqlScratch->appendUChar(blr_invsel_procedure_alias);
 
 			const auto& contextAliases = dsqlContext->getConcatenatedAlias();
-			dsqlScratch->appendMetaString(contextAliases.c_str());
+			appendContextAlias(dsqlScratch, contextAliases);
 		}
 
 		dsqlScratch->appendUChar(blr_end);
@@ -1560,7 +1580,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 		dsqlScratch->appendMetaString(dsqlProcedure->prc_name.object.c_str());
 
 		const auto& contextAliases = dsqlContext->getConcatenatedAlias();
-		dsqlScratch->appendMetaString(contextAliases.c_str());
+		appendContextAlias(dsqlScratch, contextAliases);
 	}
 	else
 	{
@@ -1589,7 +1609,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 		if (dsqlContext->ctx_alias.hasData())
 		{
 			const auto& contextAliases = dsqlContext->getConcatenatedAlias();
-			dsqlScratch->appendMetaString(contextAliases.c_str());
+			appendContextAlias(dsqlScratch, contextAliases);
 		}
 	}
 
@@ -2437,21 +2457,29 @@ RecordSource* UnionSourceNode::compile(thread_db* tdbb, Optimizer* opt, bool /*i
 // Identify all of the streams for which a dbkey may need to be carried through a sort.
 void UnionSourceNode::computeDbKeyStreams(StreamList& streamList) const
 {
-	const NestConst<RseNode>* ptr = clauses.begin();
-
-	for (const NestConst<RseNode>* const end = clauses.end(); ptr != end; ++ptr)
-		(*ptr)->computeDbKeyStreams(streamList);
+	for (const auto& clause : clauses)
+		clause->computeDbKeyStreams(streamList);
 }
 
 bool UnionSourceNode::computable(CompilerScratch* csb, StreamType stream,
 	bool allowOnlyCurrentStream, ValueExprNode* /*value*/)
 {
-	NestConst<RseNode>* ptr = clauses.begin();
-
-	for (NestConst<RseNode>* const end = clauses.end(); ptr != end; ++ptr)
+	for (auto& clause : clauses)
 	{
-		if (!(*ptr)->computable(csb, stream, allowOnlyCurrentStream, NULL))
+		if (!clause->computable(csb, stream, allowOnlyCurrentStream, NULL))
 			return false;
+	}
+
+	for (auto& map : maps)
+	{
+		for (auto& source : map->sourceList)
+		{
+			if (!source->computable(csb, stream, allowOnlyCurrentStream, NULL))
+				return false;
+		}
+
+		// dimitr: no need to process also map->targetList,
+		// as its nodes are purely local to the union stream
 	}
 
 	return true;
@@ -2460,8 +2488,17 @@ bool UnionSourceNode::computable(CompilerScratch* csb, StreamType stream,
 void UnionSourceNode::findDependentFromStreams(const CompilerScratch* csb,
 	StreamType currentStream, SortedStreamList* streamList)
 {
-	for (auto clause : clauses)
+	for (auto& clause : clauses)
 		clause->findDependentFromStreams(csb, currentStream, streamList);
+
+	for (auto& map : maps)
+	{
+		for (auto& source : map->sourceList)
+			source->findDependentFromStreams(csb, currentStream, streamList);
+
+		// dimitr: no need to process also map->targetList,
+		// as its nodes are purely local to the union stream
+	}
 }
 
 
@@ -2956,19 +2993,19 @@ RseNode* RseNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 
 	switch (rse_jointype)
 	{
-		case blr_inner:
+		case INNER_JOIN:
 			streamList->items[0] = doDsqlPass(dsqlScratch, fromList->items[0]);
 			streamList->items[1] = doDsqlPass(dsqlScratch, fromList->items[1]);
 			break;
 
-		case blr_left:
+		case LEFT_JOIN:
 			streamList->items[0] = doDsqlPass(dsqlScratch, fromList->items[0]);
 			++dsqlScratch->inOuterJoin;
 			streamList->items[1] = doDsqlPass(dsqlScratch, fromList->items[1]);
 			--dsqlScratch->inOuterJoin;
 			break;
 
-		case blr_right:
+		case RIGHT_JOIN:
 			++dsqlScratch->inOuterJoin;
 			streamList->items[0] = doDsqlPass(dsqlScratch, fromList->items[0]);
 			--dsqlScratch->inOuterJoin;
@@ -2979,7 +3016,7 @@ RseNode* RseNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			streamList->items[1] = doDsqlPass(dsqlScratch, fromList->items[1]);
 			break;
 
-		case blr_full:
+		case FULL_JOIN:
 			++dsqlScratch->inOuterJoin;
 			streamList->items[0] = doDsqlPass(dsqlScratch, fromList->items[0]);
 			// Temporarily remove just created context(s) from the stack,
@@ -3051,7 +3088,7 @@ RseNode* RseNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			if (matched->items.isEmpty())
 			{
 				// There is no match. Transform to CROSS JOIN.
-				node->rse_jointype = blr_inner;
+				node->rse_jointype = INNER_JOIN;
 				usingList = NULL;
 
 				delete matched;
@@ -3266,14 +3303,14 @@ RseNode* RseNode::pass1(thread_db* tdbb, CompilerScratch* csb)
 	ValueExprNode* skip = rse_skip;
 	PlanNode* plan = rse_plan;
 
-	if (rse_jointype == blr_inner)
+	if (isInnerJoin())
 		csb->csb_inner_booleans.push(rse_boolean);
 
 	// zip thru RseNode expanding views and inner joins
 	for (auto sub : rse_relations)
 		processSource(tdbb, csb, this, sub, &boolean, stack);
 
-	if (rse_jointype == blr_inner)
+	if (isInnerJoin())
 		csb->csb_inner_booleans.pop();
 
 	// Now, rebuild the RseNode block.
@@ -3348,7 +3385,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 		return;
 	}
 
-	if (rse_jointype != blr_inner)
+	if (isOuterJoin())
 	{
 		// Check whether any of the upper level booleans (those belonging to the WHERE clause)
 		// is able to filter out rows from the "inner" streams. If this is the case,
@@ -3363,7 +3400,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 		StreamList streams;
 
 		// First check the left stream of the full outer join
-		if (rse_jointype == blr_full)
+		if (isFullJoin())
 		{
 			rse1->computeRseStreams(streams);
 
@@ -3371,7 +3408,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 			{
 				if (boolean && boolean->ignoreNulls(streams))
 				{
-					rse_jointype = blr_left;
+					rse_jointype = LEFT_JOIN;
 					break;
 				}
 			}
@@ -3385,16 +3422,16 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 		{
 			if (boolean && boolean->ignoreNulls(streams))
 			{
-				if (rse_jointype == blr_full)
+				if (isFullJoin())
 				{
 					// We should transform FULL join to RIGHT join,
 					// but as we don't allow them inside the engine
 					// just swap the sides and insist it's LEFT join
 					std::swap(rse_relations[0], rse_relations[1]);
-					rse_jointype = blr_left;
+					rse_jointype = LEFT_JOIN;
 				}
 				else
-					rse_jointype = blr_inner;
+					rse_jointype = INNER_JOIN;
 
 				break;
 			}
@@ -3409,11 +3446,9 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 	// where we are just trying to inner join more than 2 streams. If possible,
 	// try to flatten the tree out before we go any further.
 
-	if (!isLateral() && !isSemiJoined() &&
-		rse->rse_jointype == blr_inner &&
-		rse_jointype == blr_inner &&
-		!rse_sorted && !rse_projection &&
-		!rse_first && !rse_skip && !rse_plan)
+	if (!isLateral() &&
+		rse->isInnerJoin() && isInnerJoin() &&
+		!rse_sorted && !rse_projection && !rse_first && !rse_skip && !rse_plan)
 	{
 		for (auto sub : rse_relations)
 			processSource(tdbb, csb, rse, sub, boolean, stack);
@@ -3504,10 +3539,11 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 	computeRseStreams(rseStreams);
 
 	BoolExprNodeStack conjunctStack;
+	StreamStateHolder stateHolder(csb, opt->getOuterStreams());
 
-	// pass RseNode boolean only to inner substreams because join condition
+	// Pass RseNode boolean only to inner substreams because join condition
 	// should never exclude records from outer substreams
-	if (opt->isInnerJoin() || (opt->isLeftJoin() && innerSubStream))
+	if (opt->isInnerJoin() || ((opt->isLeftJoin() || opt->isSpecialJoin()) && innerSubStream))
 	{
 		// AB: For an (X LEFT JOIN Y) mark the outer-streams (X) as
 		// active because the inner-streams (Y) are always "dependent"
@@ -3515,39 +3551,27 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 		//
 		// dimitr: the same for lateral derived tables in inner joins
 
-		StreamStateHolder stateHolder(csb, opt->getOuterStreams());
-
-		if (opt->isLeftJoin() || isLateral() || isSemiJoined())
-		{
+		if (!opt->isInnerJoin() || isLateral())
 			stateHolder.activate();
 
-			if (opt->isLeftJoin() || isSemiJoined())
-			{
-				// Push all conjuncts except "missing" ones (e.g. IS NULL)
-				for (auto iter = opt->getConjuncts(false, true); iter.hasData(); ++iter)
-				{
-					if (iter->containsAnyStream(rseStreams))
-						conjunctStack.push(iter);
-				}
-			}
-		}
-		else
+		// For the LEFT JOIN, push all conjuncts except "missing" ones (e.g. IS NULL)
+		for (auto iter = opt->getConjuncts(false, opt->isLeftJoin()); iter.hasData(); ++iter)
 		{
-			for (auto iter = opt->getConjuncts(); iter.hasData(); ++iter)
-			{
-				if (iter->containsAnyStream(rseStreams))
-					conjunctStack.push(iter);
-			}
+			if (iter->containsAnyStream(rseStreams))
+				conjunctStack.push(iter);
 		}
 
-		return opt->compile(this, &conjunctStack);
+		if (opt->isSpecialJoin() && !opt->deliverJoinConjuncts(conjunctStack))
+			conjunctStack.clear();
 	}
-
-	// Push only parent conjuncts to the outer stream
-	for (auto iter = opt->getConjuncts(true, false); iter.hasData(); ++iter)
+	else
 	{
-		if (iter->containsAnyStream(rseStreams))
-			conjunctStack.push(iter);
+		// Push only parent conjuncts to the outer stream
+		for (auto iter = opt->getConjuncts(true, false); iter.hasData(); ++iter)
+		{
+			if (iter->containsAnyStream(rseStreams))
+				conjunctStack.push(iter);
+		}
 	}
 
 	return opt->compile(this, &conjunctStack);
@@ -3555,7 +3579,7 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 
 RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 {
-	if (rse_jointype != blr_inner || !rse_boolean || rse_plan)
+	if (!isInnerJoin() || !rse_boolean || rse_plan)
 		return nullptr;
 
 	// If the sub-query is nested inside the other sub-query which wasn't converted into semi-join,
@@ -3575,19 +3599,16 @@ RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 		}
 	}
 
-	RecordSourceNodeStack rseStack;
-	BoolExprNodeStack booleanStack;
-
 	// Find possibly joinable sub-queries
 
 	StreamList rseStreams;
 	computeRseStreams(rseStreams);
+	SpecialJoinList specialJoins;
 
-	if (!findPossibleJoins(csb, rseStreams, rse_boolean.getAddress(), rseStack, booleanStack))
+	if (!findPossibleJoins(csb, rseStreams, rse_boolean.getAddress(), specialJoins))
 		return nullptr;
 
-	fb_assert(rseStack.hasData() && booleanStack.hasData());
-	fb_assert(rseStack.getCount() == booleanStack.getCount());
+	fb_assert(specialJoins.hasData());
 
 	// Create joins between the original node and detected joinable nodes.
 	// Preserve FIRST/SKIP nodes at their original position, i.e. outside semi-joins.
@@ -3602,16 +3623,18 @@ RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 	flags = 0;
 
 	auto rse = this;
-	while (rseStack.hasData())
+	while (specialJoins.hasData())
 	{
 		const auto newRse = FB_NEW_POOL(*tdbb->getDefaultPool())
 			RseNode(*tdbb->getDefaultPool());
 
-		newRse->rse_relations.add(rse);
-		newRse->rse_relations.add(rseStack.pop());
+		const auto item = specialJoins.pop();
 
-		newRse->rse_jointype = blr_inner;
-		newRse->rse_boolean = booleanStack.pop();
+		newRse->rse_relations.add(rse);
+		newRse->rse_relations.add(item.rse);
+
+		newRse->rse_jointype = item.semiJoin ? SEMI_JOIN : ANTI_JOIN;
+		newRse->rse_boolean = item.boolean;
 
 		rse = newRse;
 	}
@@ -3622,7 +3645,7 @@ RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 			RseNode(*tdbb->getDefaultPool());
 
 		newRse->rse_relations.add(rse);
-		newRse->rse_jointype = blr_inner;
+		newRse->rse_jointype = INNER_JOIN;
 		newRse->rse_first = first;
 		newRse->rse_skip = skip;
 
@@ -3646,14 +3669,9 @@ void RseNode::planCheck(const CompilerScratch* csb) const
 		{
 			const auto stream = node->getStream();
 
-			const auto relation = csb->csb_rpt[stream].csb_relation;
-			const auto procedure = csb->csb_rpt[stream].csb_procedure;
-			fb_assert(relation || procedure);
-
 			if (!csb->csb_rpt[stream].csb_plan)
 			{
-				const auto name = relation ? relation->rel_name.toQuotedString() :
-					procedure ? procedure->getName().toQuotedString() : "";
+				const auto name = csb->csb_rpt[stream].getName(false).toQuotedString();
 
 				ERR_post(Arg::Gds(isc_no_stream_plan) << Arg::Str(name));
 			}
@@ -3701,7 +3719,8 @@ void RseNode::planSet(CompilerScratch* csb, PlanNode* plan)
 	fb_assert(planRelation || planProcedure);
 
 	ObjectsArray<QualifiedMetaString> planAliasList;
-	QualifiedMetaString::parseSchemaObjectListNoSep(planAlias, planAliasList);
+	if (planAlias.hasData())
+		QualifiedMetaString::parseSchemaObjectListNoSep(planAlias, planAliasList);
 
 	const auto name = planRelation ? planRelation->rel_name :
 		planProcedure ? planProcedure->getName() :
@@ -3715,9 +3734,7 @@ void RseNode::planSet(CompilerScratch* csb, PlanNode* plan)
 
 	if (tail->csb_map)
 	{
-		auto tailName = tail->csb_relation ? tail->csb_relation->rel_name :
-			tail->csb_procedure ? tail->csb_procedure->getName() :
-			QualifiedName();
+		auto tailName = tail->getName();
 
 		// If the user has specified an alias, skip past it to find the alias
 		// for the base table (if multiple aliases are specified)
@@ -3828,10 +3845,7 @@ void RseNode::planSet(CompilerScratch* csb, PlanNode* plan)
 						}
 						else
 						{
-							duplicateName =
-								relation ? relation->rel_name :
-								procedure ? procedure->getName() :
-								QualifiedName();
+							duplicateName = duplicateTail->getName();
 
 							map = duplicateMap;
 							tail = duplicateTail;
@@ -4028,23 +4042,23 @@ TableValueFunctionSourceNode* TableValueFunctionSourceNode::parse(thread_db* tdb
 	MemoryPool& pool = *tdbb->getDefaultPool();
 
 	const auto funcId = csb->csb_blr_reader.getByte();
-	auto node = TableValueFunctionSourceNode::parseTableValueFunctions(tdbb, csb, funcId);
+	const auto node = TableValueFunctionSourceNode::parseFunction(tdbb, csb, funcId);
 
 	node->stream = PAR_context(csb, nullptr);
 
 	CompilerScratch::csb_repeat& element = csb->csb_rpt[node->stream];
-	auto tableValueFunctionCsb = node->m_csbTableValueFun = FB_NEW_POOL(pool) jrd_table_value_fun(pool);
+	const auto tableValueFunctionCsb = node->m_csbTableValueFun = FB_NEW_POOL(pool) jrd_table_value_fun(pool);
 
 	tableValueFunctionCsb->funcId = funcId;
+	tableValueFunctionCsb->name = node->getName();
 
-	string aliasString;
-	csb->csb_blr_reader.getString(aliasString);
-	if (aliasString.hasData())
-		node->alias = aliasString;
+	AutoPtr<string> aliasString(FB_NEW_POOL(csb->csb_pool) string(csb->csb_pool));
+	csb->csb_blr_reader.getString(*aliasString);
+
+	if (aliasString->hasData())
+		node->alias = *aliasString;
 	else
 		fb_assert(false);
-
-	tableValueFunctionCsb->name = aliasString;
 
 	auto count = csb->csb_blr_reader.getWord();
 	node->inputList = FB_NEW_POOL(pool) ValueListNode(pool, 0U);
@@ -4053,7 +4067,7 @@ TableValueFunctionSourceNode* TableValueFunctionSourceNode::parse(thread_db* tdb
 
 	count = csb->csb_blr_reader.getWord();
 
-	auto recordFormat = Format::newFormat(pool, count);
+	const auto recordFormat = Format::newFormat(pool, count);
 	ULONG& offset = recordFormat->fmt_length = FLAG_BYTES(recordFormat->fmt_count);
 	Format::fmt_desc_iterator descIt = recordFormat->fmt_desc.begin();
 	SSHORT fieldId = 0;
@@ -4077,16 +4091,18 @@ TableValueFunctionSourceNode* TableValueFunctionSourceNode::parse(thread_db* tdb
 
 	element.csb_format = tableValueFunctionCsb->recordFormat = recordFormat;
 	element.csb_table_value_fun = tableValueFunctionCsb;
+	element.csb_alias = aliasString.release();
 
 	return node;
 }
 
-TableValueFunctionSourceNode* TableValueFunctionSourceNode::parseTableValueFunctions(thread_db* tdbb,
-																					 CompilerScratch* csb,
-																					 const SSHORT blrOp)
+TableValueFunctionSourceNode* TableValueFunctionSourceNode::parseFunction(thread_db* tdbb,
+																		  CompilerScratch* csb,
+																		  const SSHORT blrOp)
 {
 	MemoryPool& pool = *tdbb->getDefaultPool();
 	TableValueFunctionSourceNode* node = nullptr;
+
 	switch (blrOp)
 	{
 		case blr_table_value_fun_unlist:
@@ -4141,7 +4157,7 @@ void TableValueFunctionSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
 	dsqlScratch->appendUChar(blr_table_value_fun);
 
-	auto tableValueFunctionContext = dsqlContext->ctx_table_value_fun;
+	const auto tableValueFunctionContext = dsqlContext->ctx_table_value_fun;
 
 	if (tableValueFunctionContext->funName == UnlistFunctionSourceNode::FUNC_NAME)
 		dsqlScratch->appendUChar(blr_table_value_fun_unlist);
@@ -4150,11 +4166,8 @@ void TableValueFunctionSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 
 	GEN_stuff_context(dsqlScratch, dsqlContext);
 
-	if (dsqlContext->ctx_alias.hasData())
-	{
-		const auto& contextAliases = dsqlContext->getConcatenatedAlias();
-		dsqlScratch->appendMetaString(contextAliases.c_str());
-	}
+	const auto& contextAliases = dsqlContext->getConcatenatedAlias();
+	appendContextAlias(dsqlScratch, contextAliases);
 
 	dsqlScratch->appendUShort(dsqlContext->ctx_proc_inputs->items.getCount());
 	for (auto& arg : dsqlContext->ctx_proc_inputs->items)
@@ -4181,17 +4194,17 @@ TableValueFunctionSourceNode* TableValueFunctionSourceNode::copy(thread_db* tdbb
 
 	MemoryPool& pool = *tdbb->getDefaultPool();
 
-	auto newStream = copier.csb->nextStream();
+	const auto newStream = copier.csb->nextStream();
 	copier.remap[stream] = newStream;
 
-	auto element = CMP_csb_element(copier.csb, newStream);
+	const auto element = CMP_csb_element(copier.csb, newStream);
 	element->csb_view_stream = copier.remap[0];
 	element->csb_format = m_csbTableValueFun->recordFormat;
 	element->csb_table_value_fun = m_csbTableValueFun;
 	if (alias.hasData())
 		element->csb_alias = FB_NEW_POOL(pool) string(pool, alias.c_str());
 
-	auto newSource = TableValueFunctionSourceNode::parseTableValueFunctions(
+	const auto newSource = TableValueFunctionSourceNode::parseFunction(
 		tdbb, copier.csb, m_csbTableValueFun->funcId);
 
 	newSource->inputList = copier.copy(tdbb, inputList);
@@ -4212,7 +4225,7 @@ void TableValueFunctionSourceNode::pass1Source(thread_db* tdbb, CompilerScratch*
 	jrd_rel* const parentView = csb->csb_view;
 	const StreamType viewStream = csb->csb_view_stream;
 
-	auto element = CMP_csb_element(csb, stream);
+	const auto element = CMP_csb_element(csb, stream);
 	element->csb_view = parentView;
 	element->csb_view_stream = viewStream;
 
@@ -4290,7 +4303,7 @@ void TableValueFunctionSourceNode::setDefaultNameField(DsqlCompilerScratch* /*ds
 {
 	if (const auto tableValueFunctionContext = dsqlContext->ctx_table_value_fun)
 	{
-		MetaName nameFunc = tableValueFunctionContext->funName;
+		const auto nameFunc = tableValueFunctionContext->funName;
 
 		auto i = 0U;
 
@@ -4312,9 +4325,9 @@ RecordSource* UnlistFunctionSourceNode::compile(thread_db* tdbb, Optimizer* opt,
 {
 	MemoryPool& pool = *tdbb->getDefaultPool();
 	const auto csb = opt->getCompilerScratch();
-	auto aliasOpt = opt->makeAlias(stream);
+	const auto alias = opt->makeAlias(stream);
 
-	return FB_NEW_POOL(pool) UnlistFunctionScan(csb, stream, aliasOpt, inputList);
+	return FB_NEW_POOL(pool) UnlistFunctionScan(csb, stream, alias, inputList);
 }
 
 dsql_fld* UnlistFunctionSourceNode::makeField(DsqlCompilerScratch* dsqlScratch)

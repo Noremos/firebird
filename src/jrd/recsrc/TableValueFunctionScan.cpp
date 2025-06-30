@@ -38,6 +38,10 @@ TableValueFunctionScan::TableValueFunctionScan(CompilerScratch* csb, StreamType 
 											   const string& alias)
 	: RecordStream(csb, stream), m_alias(csb->csb_pool, alias)
 {
+	const auto tabFunc = csb->csb_rpt[stream].csb_table_value_fun;
+	fb_assert(tabFunc);
+	m_name = tabFunc->name;
+
 	m_cardinality = DEFAULT_CARDINALITY;
 }
 
@@ -254,7 +258,9 @@ void UnlistFunctionScan::internalGetPlan(thread_db* tdbb, PlanEntry& planEntry, 
 {
 	planEntry.className = "FunctionScan";
 
-	planEntry.lines.add().text = "Functions " + printName(tdbb, "Unlist", m_alias) + " Scan";
+	planEntry.lines.add().text = "Function " +
+		printName(tdbb, m_name.toQuotedString(), m_alias) + " Scan";
+
 	printOptInfo(planEntry.lines);
 
 	if (m_alias.hasData())

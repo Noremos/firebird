@@ -718,6 +718,12 @@ static UCHAR* put_item(	UCHAR	item,
 }
 
 
+void IntlString::dsqlPass(DsqlCompilerScratch* dsqlScratch)
+{
+	if (charset.object.hasData())
+		dsqlScratch->qualifyExistingName(charset, obj_charset);
+}
+
 // Return as UTF8
 string IntlString::toUtf8(jrd_tra* transaction) const
 {
@@ -1030,7 +1036,8 @@ static void sql_info(thread_db* tdbb,
 										--lineLen;
 
 									char offsetStr[10];
-									const auto offsetLen = sprintf(offsetStr, "%5d", (int) offset);
+									const auto offsetLen = snprintf(offsetStr, sizeof(offsetStr),
+										"%5d", (int) offset);
 
 									localPath.push(reinterpret_cast<const UCHAR*>(offsetStr), offsetLen);
 									localPath.push(' ');
@@ -1284,9 +1291,9 @@ static UCHAR* var_info(const dsql_msg* message,
 				case isc_info_sql_relation_alias:
 					if (param->par_rel_alias.hasData())
 					{
-						str = attachment->stringToUserCharSet(tdbb, param->par_rel_alias);
-						length = str.length();
-						buffer = reinterpret_cast<const UCHAR*>(str.c_str());
+						name = attachment->nameToUserCharSet(tdbb, param->par_rel_alias);
+						length = name.length();
+						buffer = reinterpret_cast<const UCHAR*>(name.c_str());
 					}
 					else
 						length = 0;
