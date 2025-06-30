@@ -241,16 +241,16 @@ void DsqlCompilerScratch::putBlrMarkers(ULONG marks)
 void DsqlCompilerScratch::putType(const dsql_fld* field, bool useSubType)
 {
 	fb_assert(field);
-	putField(*field, useSubType, field->explicitCollation);
+	putType(*field, useSubType, field->explicitCollation);
 }
 
 void DsqlCompilerScratch::putType(const TypeClause* type, bool useSubType)
 {
 	fb_assert(type);
-	putField(*type, useSubType, type->collate.object.hasData());
+	putType(*type, useSubType, type->collate.object.hasData());
 }
 
-void DsqlCompilerScratch::putField(const TypeClause& type, bool useSubType, bool useExplicitCollate)
+void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool useExplicitCollate)
 {
 #ifdef DEV_BUILD
 	// Check if the field describes a known datatype

@@ -295,7 +295,7 @@ private:
 	bool pass1RelProcIsRecursive(RecordSourceNode* input);
 	BoolExprNode* pass1JoinIsRecursive(RecordSourceNode*& input);
 
-	void putField(const TypeClause& type, bool useSubType, bool useExplicitCollate);
+	void putType(const TypeClause& type, bool useSubType, bool useExplicitCollate);
 
 	template<bool THasTableName>
 	void putTypeName(const TypeClause& type, const bool useExplicitCollate);
