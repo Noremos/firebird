@@ -258,7 +258,7 @@ void DsqlCompilerScratch::putType(const TypeClause& type, bool useSubType, bool 
 	if (type.dtype >= FB_NELEM(blr_dtypes) || !blr_dtypes[type.dtype])
 	{
 		SCHAR buffer[100];
-		snprintf(buffer, sizeof(buffer), "Invalid dtype %d in DsqlCompilerScratch::putField", type->dtype);
+		snprintf(buffer, sizeof(buffer), "Invalid dtype %d in DsqlCompilerScratch::putField", type.dtype);
 		ERRD_bugcheck(buffer);
 	}
 #endif
