@@ -188,6 +188,8 @@ void	fix_plugins_schemas(BurpGlobals* tdgbl);
 void	fix_system_generators(BurpGlobals* tdgbl);
 void	set_transaction(BurpGlobals* tdgbl);
 void	general_on_error();
+void 	addScalarBlr(BurpGlobals* tdgbl, UCHAR* blr, const burp_fld& field, const QualifiedMetaString& relationName);
+void 	addFiledDimensionsBlr(UCHAR* blr, const burp_fld& field);
 #ifdef DEBUG
 UCHAR	debug_on = 0;   // able to turn this on in the debugger
 #endif
@@ -1894,46 +1896,7 @@ void get_array(BurpGlobals* tdgbl, burp_rel* relation, UCHAR* record_buffer)
 			bool dont_write = false;
 
 			// build the sdl
-
-			add_byte(blr, isc_sdl_version1);
-
-			add_byte(blr, isc_sdl_struct);
-			add_byte(blr, 1);
-
-			switch (field->fld_type)
-			{
-			case blr_text:
-			case blr_varying:
-				if (field->fld_type == blr_text)
-					add_byte(blr, blr_text2);
-				else
-					add_byte(blr, blr_varying2);
-				add_word(blr, field->fld_character_set_id);
-				add_word(blr, field->fld_length);
-				break;
-			case blr_short:
-			case blr_long:
-			case blr_quad:
-			case blr_int64:
-			case blr_int128:
-				add_byte(blr, field->fld_type);
-				add_byte(blr, field->fld_scale);
-				break;
-			default:
-				add_byte(blr, field->fld_type);
-			}
-
-			if (tdgbl->runtimeODS >= DB_VERSION_DDL14)
-			{
-				add_byte(blr, isc_sdl_schema);
-				add_string(blr,
-					(relation->rel_name.schema.hasData() ? relation->rel_name.schema.c_str() : PUBLIC_SCHEMA));
-			}
-
-			add_byte(blr, isc_sdl_relation);
-			add_string(blr, relation->rel_name.object.c_str());
-			add_byte(blr, isc_sdl_field);
-			add_string(blr, field->fld_name);
+			addScalarBlr(tdgbl, blr, *field, relation->rel_name);
 
 			// each element spec starts here
 
@@ -2050,19 +2013,7 @@ void get_array(BurpGlobals* tdgbl, burp_rel* relation, UCHAR* record_buffer)
 			fprintf(stderr, "\n Elements Written=%d  ", elements_written);
 #endif
 
-			add_byte(blr, isc_sdl_element);
-			add_byte(blr, 1);
-			add_byte(blr, isc_sdl_scalar);
-			add_byte(blr, 0);
-			add_byte(blr, field->fld_dimensions);
-
-			for (count = 0; count < field->fld_dimensions; count++)
-			{
-				add_byte(blr, isc_sdl_variable);
-				add_byte(blr, count);
-			}
-
-			add_byte(blr, isc_sdl_eoc);
+			addFiledDimensionsBlr(blr, *field);
 
 #ifdef DEBUG
 			if (debug_on)
@@ -2136,45 +2087,7 @@ void get_array(BurpGlobals* tdgbl, burp_rel* relation, UCHAR* record_buffer)
 		UCHAR* blr = blr_buffer;
 
 		// build the sdl
-
-		add_byte(blr, isc_sdl_version1);
-
-		add_byte(blr, isc_sdl_struct);
-		add_byte(blr, 1);
-
-		switch (field->fld_type)
-		{
-		case blr_text:
-		case blr_varying:
-			if (field->fld_type == blr_text)
-				add_byte(blr, blr_text2);
-			else
-				add_byte(blr, blr_varying2);
-			add_word(blr, field->fld_character_set_id);
-			add_word(blr, field->fld_length);
-			break;
-		case blr_short:
-		case blr_long:
-		case blr_quad:
-		case blr_int64:
-		case blr_int128:
-			add_byte(blr, field->fld_type);
-			add_byte(blr, field->fld_scale);
-			break;
-		default:
-			add_byte(blr, field->fld_type);
-		}
-
-		if (tdgbl->runtimeODS >= DB_VERSION_DDL14)
-		{
-			add_byte(blr, isc_sdl_schema);
-			add_string(blr, (relation->rel_name.schema.hasData() ? relation->rel_name.schema.c_str() : PUBLIC_SCHEMA));
-		}
-
-		add_byte(blr, isc_sdl_relation);
-		add_string(blr, relation->rel_name.object.c_str());
-		add_byte(blr, isc_sdl_field);
-		add_string(blr, field->fld_name);
+		addScalarBlr(tdgbl, blr, *field, relation->rel_name);
 
 		// each element spec starts here
 
@@ -2188,19 +2101,7 @@ void get_array(BurpGlobals* tdgbl, burp_rel* relation, UCHAR* record_buffer)
 			add_long(blr, range[1]);
 		}
 
-		add_byte(blr, isc_sdl_element);
-		add_byte(blr, 1);
-		add_byte(blr, isc_sdl_scalar);
-		add_byte(blr, 0);
-		add_byte(blr, field->fld_dimensions);
-
-		for (count = 0; count < field->fld_dimensions; count++)
-		{
-			add_byte(blr, isc_sdl_variable);
-			add_byte(blr, count);
-		}
-
-		add_byte(blr, isc_sdl_eoc);
+		addFiledDimensionsBlr(blr, *field);
 
 #ifdef DEBUG
 		if (debug_on)
@@ -13145,6 +13046,65 @@ void set_transaction(BurpGlobals* tdgbl)
 
 		break;
 	}
+}
+
+void addScalarBlr(BurpGlobals* tdgbl, UCHAR* blr, const burp_fld& field, const QualifiedMetaString& relationName)
+{
+	add_byte(blr, isc_sdl_version1);
+
+	add_byte(blr, isc_sdl_struct);
+	add_byte(blr, 1);
+
+	switch (field.fld_type)
+	{
+	case blr_text:
+	case blr_varying:
+		if (field.fld_type == blr_text)
+			add_byte(blr, blr_text2);
+		else
+			add_byte(blr, blr_varying2);
+		add_word(blr, field.fld_character_set_id);
+		add_word(blr, field.fld_length);
+		break;
+	case blr_short:
+	case blr_long:
+	case blr_quad:
+	case blr_int64:
+	case blr_int128:
+		add_byte(blr, field.fld_type);
+		add_byte(blr, field.fld_scale);
+		break;
+	default:
+		add_byte(blr, field.fld_type);
+	}
+
+	if (tdgbl->runtimeODS >= DB_VERSION_DDL14)
+	{
+		add_byte(blr, isc_sdl_schema);
+		add_string(blr, (relationName.schema.hasData() ? relationName.schema.c_str() : PUBLIC_SCHEMA));
+	}
+
+	add_byte(blr, isc_sdl_relation);
+	add_string(blr, relationName.object.c_str());
+	add_byte(blr, isc_sdl_field);
+	add_string(blr, field.fld_name);
+}
+
+void addFiledDimensionsBlr(UCHAR* blr, const burp_fld& field)
+{
+	add_byte(blr, isc_sdl_element);
+	add_byte(blr, 1);
+	add_byte(blr, isc_sdl_scalar);
+	add_byte(blr, 0);
+	add_byte(blr, field.fld_dimensions);
+
+	for (USHORT count = 0; count < field.fld_dimensions; count++)
+	{
+		add_byte(blr, isc_sdl_variable);
+		add_byte(blr, count);
+	}
+
+	add_byte(blr, isc_sdl_eoc);
 }
 
 } // namespace
