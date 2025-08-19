@@ -31,7 +31,7 @@
 [[noreturn]] void CPR_assert(const TEXT*, int);
 #endif
 [[noreturn]] void CPR_bugcheck(const TEXT*);
-void	CPR_end_text(gpre_txt*);
+void	CPR_end_text(gpre_txt*) noexcept;
 int		CPR_error(const TEXT*);
 [[noreturn]] void CPR_exit(int);
 void	CPR_warn(const TEXT*);

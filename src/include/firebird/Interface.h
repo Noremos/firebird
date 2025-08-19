@@ -93,7 +93,7 @@ struct PerformanceInfo
 	ISC_INT64 pin_records_fetched;	// records fetched from statement/procedure
 };
 
-inline const intptr_t* stubError()
+inline const intptr_t* stubError() noexcept
 {
 	static const intptr_t codes[] = {
 		isc_arg_gds, isc_random,
@@ -153,7 +153,7 @@ namespace Firebird
 		}
 
 	public:
-		IStatus* getStatus() const
+		IStatus* getStatus() const noexcept
 		{
 			return status;
 		}
@@ -166,7 +166,7 @@ namespace Firebird
 	class BaseStatusWrapper : public IStatusImpl<T, T>
 	{
 	public:
-		BaseStatusWrapper(IStatus* aStatus)
+		BaseStatusWrapper(IStatus* aStatus) noexcept
 			: status(aStatus),
 			  dirty(false)
 		{
@@ -188,7 +188,7 @@ namespace Firebird
 			}
 			catch (...)
 			{
-				ISC_STATUS statusVector[] = {
+				const ISC_STATUS statusVector[] = {
 					isc_arg_gds, isc_random,
 					isc_arg_string, (ISC_STATUS) "Unrecognized C++ exception",
 					isc_arg_end};
@@ -210,7 +210,7 @@ namespace Firebird
 			}
 		}
 
-		bool isDirty() const
+		bool isDirty() const noexcept
 		{
 			return dirty;
 		}
@@ -308,23 +308,23 @@ namespace Firebird
 		IStatus* status;
 		bool dirty;
 
-		static const intptr_t* cleanStatus()
+		static const intptr_t* cleanStatus() noexcept
 		{
-			static intptr_t clean[3] = {1, 0, 0};
+			static const intptr_t clean[3] = {1, 0, 0};
 			return clean;
 		}
 	};
 
-	class CheckStatusWrapper : public BaseStatusWrapper<CheckStatusWrapper>
+	class CheckStatusWrapper final : public BaseStatusWrapper<CheckStatusWrapper>
 	{
 	public:
-		CheckStatusWrapper(IStatus* aStatus)
+		CheckStatusWrapper(IStatus* aStatus) noexcept
 			: BaseStatusWrapper(aStatus)
 		{
 		}
 
 	public:
-		static void checkException(CheckStatusWrapper* /* status */)
+		static void checkException(CheckStatusWrapper* /* status */) noexcept
 		{
 		}
 	};
@@ -332,7 +332,7 @@ namespace Firebird
 	class ThrowStatusWrapper : public BaseStatusWrapper<ThrowStatusWrapper>
 	{
 	public:
-		ThrowStatusWrapper(IStatus* aStatus)
+		ThrowStatusWrapper(IStatus* aStatus) noexcept
 			: BaseStatusWrapper(aStatus)
 		{
 		}

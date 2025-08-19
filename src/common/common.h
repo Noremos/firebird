@@ -1013,7 +1013,7 @@ inline constexpr const TEXT* FB_LONG_DAYS_UPPER[] =
 
 inline constexpr FB_SIZE_T FB_MAX_SIZEOF = ~FB_SIZE_T(0); // Assume FB_SIZE_T is unsigned
 
-inline constexpr FB_SIZE_T fb_strlen(const char* str)
+inline constexpr FB_SIZE_T fb_strlen(const char* str) noexcept
 {
 	return static_cast<FB_SIZE_T>(std::char_traits<char>::length(str));
 }

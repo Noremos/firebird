@@ -66,12 +66,12 @@ public:
 	virtual void listSessions();
 
 private:
-	void readSession(TraceSession& session);
+	void readSession(const TraceSession& session);
 	bool changeFlags(ULONG id, int setFlags, int clearFlags);
 	bool checkAliveAndFlags(ULONG sesId, int& flags);
 
 	// Check if current service is allowed to list\stop given other session
-	bool checkPrivileges(TraceSession& session);
+	bool checkPrivileges(const TraceSession& session);
 
 	Service& m_svc;
 	string m_user;
@@ -85,7 +85,7 @@ void TraceSvcJrd::setAttachInfo(const string& /*svc_name*/, const string& user, 
 	const string& /*pwd*/, bool /*trusted*/)
 {
 	const unsigned char* bytes;
-	unsigned int authBlockSize = m_svc.getAuthBlock(&bytes);
+	const unsigned int authBlockSize = m_svc.getAuthBlock(&bytes);
 	if (authBlockSize)
 	{
 		m_authBlock.add(bytes, authBlockSize);
@@ -237,7 +237,7 @@ void TraceSvcJrd::listSessions()
 			}
 			m_svc.printf(false, "  user:  %s\n", session.ses_user.c_str());
 
-			struct tm* t = localtime(&session.ses_start);
+			const struct tm* t = localtime(&session.ses_start);
 			m_svc.printf(false, "  date:  %04d-%02d-%02d %02d:%02d:%02d\n",
 					t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
 					t->tm_hour, t->tm_min, t->tm_sec);
@@ -269,7 +269,7 @@ void TraceSvcJrd::listSessions()
 	}
 }
 
-void TraceSvcJrd::readSession(TraceSession& session)
+void TraceSvcJrd::readSession(const TraceSession& session)
 {
 	if (session.ses_logfile.empty())
 	{
@@ -331,7 +331,7 @@ bool TraceSvcJrd::checkAliveAndFlags(ULONG sesId, int& flags)
 	return alive;
 }
 
-bool TraceSvcJrd::checkPrivileges(TraceSession& session)
+bool TraceSvcJrd::checkPrivileges(const TraceSession& session)
 {
 	// Our service run in embedded mode and have no auth info - trust user name as is
 	if (m_admin || (m_user.hasData() && (m_user == session.ses_user)))

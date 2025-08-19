@@ -36,7 +36,7 @@ using namespace Replication;
 
 namespace Replication
 {
-	const size_t MAX_BG_WRITER_LAG = 10 * 1024 * 1024;	// 10 MB
+	constexpr size_t MAX_BG_WRITER_LAG = 10 * 1024 * 1024;	// 10 MB
 }
 
 
@@ -132,7 +132,7 @@ Manager::Manager(const string& dbId,
 	// Startup the journalling
 
 	const auto tdbb = JRD_get_thread_data();
-	const auto dbb = tdbb->getDatabase();
+	const auto* dbb = tdbb->getDatabase();
 
 	const auto& guid = dbb->dbb_guid;
 	m_sequence = dbb->dbb_repl_sequence;
@@ -258,7 +258,7 @@ void Manager::flush(UCharBuffer* buffer, bool sync, bool prepare)
 	fb_assert(!m_shutdown);
 	fb_assert(buffer && buffer->hasData());
 
-	const auto prepareBuffer = prepare ? buffer : nullptr;
+	const auto* prepareBuffer = prepare ? buffer : nullptr;
 
 	MutexLockGuard guard(m_queueMutex, FB_FUNCTION);
 

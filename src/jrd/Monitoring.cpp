@@ -54,7 +54,7 @@
 #define getpid _getpid
 #endif
 
-const char* const SCRATCH = "fb_monitor_";
+constexpr const char* SCRATCH = "fb_monitor_";
 
 using namespace Firebird;
 using namespace Jrd;
@@ -62,7 +62,7 @@ using namespace Jrd;
 
 namespace
 {
-	class DumpWriter : public SnapshotData::DumpRecord::Writer
+	class DumpWriter final : public SnapshotData::DumpRecord::Writer
 	{
 	public:
 		DumpWriter(MonitoringData* data, AttNumber att_id, const char* user_name, ULONG generation)
@@ -71,7 +71,7 @@ namespace
 			fb_assert(offset);
 		}
 
-		void write(const SnapshotData::DumpRecord& record)
+		void write(const SnapshotData::DumpRecord& record) override
 		{
 			const ULONG length = record.getLength();
 			dump->write(offset, sizeof(ULONG), &length);
@@ -83,14 +83,14 @@ namespace
 		const ULONG offset;
 	};
 
-	class TempWriter : public SnapshotData::DumpRecord::Writer
+	class TempWriter final : public SnapshotData::DumpRecord::Writer
 	{
 	public:
-		TempWriter(TempSpace& temp)
+		TempWriter(TempSpace& temp) noexcept
 			: tempSpace(temp)
 		{}
 
-		void write(const SnapshotData::DumpRecord& record)
+		void write(const SnapshotData::DumpRecord& record) override
 		{
 			const offset_t offset = tempSpace.getSize();
 			const ULONG length = record.getLength();
@@ -102,14 +102,14 @@ namespace
 		TempSpace& tempSpace;
 	};
 
-	const ULONG HEADER_SIZE = (ULONG) FB_ALIGN(sizeof(MonitoringHeader), FB_ALIGNMENT);
+	constexpr ULONG HEADER_SIZE = (ULONG) FB_ALIGN(sizeof(MonitoringHeader), FB_ALIGNMENT);
 
 } // namespace
 
 
 const Format* MonitoringTableScan::getFormat(thread_db* tdbb, jrd_rel* relation) const
 {
-	MonitoringSnapshot* const snapshot = MonitoringSnapshot::create(tdbb);
+	const auto* const snapshot = MonitoringSnapshot::create(tdbb);
 	return snapshot->getData(relation)->getFormat();
 }
 
@@ -117,7 +117,7 @@ const Format* MonitoringTableScan::getFormat(thread_db* tdbb, jrd_rel* relation)
 bool MonitoringTableScan::retrieveRecord(thread_db* tdbb, jrd_rel* relation,
 										 FB_UINT64 position, Record* record) const
 {
-	MonitoringSnapshot* const snapshot = MonitoringSnapshot::create(tdbb);
+	const auto* const snapshot = MonitoringSnapshot::create(tdbb);
 	if (!snapshot->getData(relation)->fetch(position, record))
 		return false;
 
@@ -149,7 +149,7 @@ bool MonitoringTableScan::retrieveRecord(thread_db* tdbb, jrd_rel* relation,
 
 			// hvlad: this will assign local system (server) time zone that was actual
 			// when current attachment created.
-			Attachment* att = tdbb->getAttachment();
+			const Attachment* att = tdbb->getAttachment();
 			ts->time_zone = att->att_timestamp.time_zone;
 		}
 	}
@@ -260,8 +260,8 @@ void MonitoringData::enumerate(const char* userName, ULONG generation, SessionLi
 
 	for (ULONG offset = HEADER_SIZE; offset < m_sharedMemory->getHeader()->used;)
 	{
-		const auto ptr = (UCHAR*) m_sharedMemory->getHeader() + offset;
-		const auto element = (Element*) ptr;
+		const auto* ptr = (UCHAR*) m_sharedMemory->getHeader() + offset;
+		const auto* element = (Element*) ptr;
 		const ULONG length = element->getBlockLength();
 
 		if (!userName || !strcmp(element->userName, userName)) // permitted
@@ -288,8 +288,8 @@ void MonitoringData::read(const char* userName, TempSpace& temp)
 
 	for (ULONG offset = HEADER_SIZE; offset < m_sharedMemory->getHeader()->used;)
 	{
-		const auto ptr = (UCHAR*) m_sharedMemory->getHeader() + offset;
-		const auto element = (Element*) ptr;
+		const auto* ptr = (UCHAR*) m_sharedMemory->getHeader() + offset;
+		const auto* element = (Element*) ptr;
 		const ULONG length = element->getBlockLength();
 
 		if (!userName || !strcmp(element->userName, userName)) // permitted
@@ -344,7 +344,7 @@ void MonitoringData::cleanup(AttNumber att_id)
 	for (ULONG offset = HEADER_SIZE; offset < m_sharedMemory->getHeader()->used;)
 	{
 		const auto ptr = (UCHAR*) m_sharedMemory->getHeader() + offset;
-		const auto element = (Element*) ptr;
+		const auto* element = (Element*) ptr;
 		const ULONG length = element->getBlockLength();
 
 		if (element->attId == att_id)
@@ -369,7 +369,7 @@ void MonitoringData::cleanup(AttNumber att_id)
 
 void MonitoringData::ensureSpace(ULONG length)
 {
-	FB_UINT64 newSize = m_sharedMemory->getHeader()->used + length;
+	const FB_UINT64 newSize = m_sharedMemory->getHeader()->used + length;
 
 	if (newSize > m_sharedMemory->getHeader()->allocated)
 	{
@@ -693,7 +693,7 @@ MonitoringSnapshot::MonitoringSnapshot(thread_db* tdbb, MemoryPool& pool)
 }
 
 
-void SnapshotData::clearSnapshot()
+void SnapshotData::clearSnapshot() noexcept
 {
 	for (FB_SIZE_T i = 0; i < m_snapshot.getCount(); i++)
 		delete m_snapshot[i].data;
@@ -702,7 +702,7 @@ void SnapshotData::clearSnapshot()
 }
 
 
-RecordBuffer* SnapshotData::getData(const jrd_rel* relation) const
+RecordBuffer* SnapshotData::getData(const jrd_rel* relation) const noexcept
 {
 	fb_assert(relation);
 
@@ -710,7 +710,7 @@ RecordBuffer* SnapshotData::getData(const jrd_rel* relation) const
 }
 
 
-RecordBuffer* SnapshotData::getData(int id) const
+RecordBuffer* SnapshotData::getData(int id) const noexcept
 {
 	for (FB_SIZE_T i = 0; i < m_snapshot.getCount(); i++)
 	{
@@ -897,7 +897,7 @@ void SnapshotData::putField(thread_db* tdbb, Record* record, const DumpField& fi
 // Monitoring class
 
 
-SINT64 Monitoring::getGlobalId(int value)
+SINT64 Monitoring::getGlobalId(int value) noexcept
 {
 	return ((SINT64) getpid() << BITS_PER_LONG) + value;
 }
@@ -912,7 +912,7 @@ void Monitoring::putDatabase(thread_db* tdbb, SnapshotData::DumpRecord& record)
 	// Determine the backup state
 	int backupState = backup_state_unknown;
 
-	const auto bm = dbb->dbb_backup_manager;
+	const auto* bm = dbb->dbb_backup_manager;
 
 	if (bm && !bm->isShutDown())
 	{
@@ -1042,7 +1042,7 @@ void Monitoring::putAttachment(SnapshotData::DumpRecord& record, const Jrd::Atta
 	if (!attachment->att_user)
 		return;
 
-	const auto dbb = attachment->att_database;
+	const auto* dbb = attachment->att_database;
 
 	record.reset(rel_mon_attachments);
 
@@ -1281,7 +1281,7 @@ void Monitoring::putRequest(SnapshotData::DumpRecord& record, const Request* req
 {
 	fb_assert(request);
 
-	const auto dbb = request->req_attachment->att_database;
+	const auto* dbb = request->req_attachment->att_database;
 
 	record.reset(rel_mon_statements);
 
@@ -1344,7 +1344,7 @@ void Monitoring::putCall(SnapshotData::DumpRecord& record, const Request* reques
 {
 	fb_assert(request);
 
-	const auto dbb = request->req_attachment->att_database;
+	const auto* dbb = request->req_attachment->att_database;
 	auto initialRequest = request->req_caller;
 
 	while (initialRequest->req_caller)
@@ -1527,7 +1527,7 @@ void Monitoring::putMemoryUsage(SnapshotData::DumpRecord& record, const MemorySt
 
 void Monitoring::checkState(thread_db* tdbb)
 {
-	const auto dbb = tdbb->getDatabase();
+	const auto* dbb = tdbb->getDatabase();
 	const auto attachment = tdbb->getAttachment();
 
 	if (!(attachment && (attachment->att_flags & ATT_monitor_init)))
@@ -1621,7 +1621,7 @@ void Monitoring::dumpAttachment(thread_db* tdbb, Attachment* attachment, ULONG g
 
 	for (const auto request : attachment->att_requests)
 	{
-		const auto statement = request->getStatement();
+		const auto* statement = request->getStatement();
 
 		if (!(statement->flags & (Statement::FLAG_INTERNAL | Statement::FLAG_SYS_TRIGGER)))
 		{

@@ -132,10 +132,10 @@ enum cob_t
 // and lang_internal.
 //
 
-bool isLangCpp(lang_t lang);
+bool isLangCpp(lang_t lang) noexcept;
 
 #ifdef GPRE_COBOL
-bool isAnsiCobol(cob_t dialect);
+bool isAnsiCobol(cob_t dialect) noexcept;
 #endif
 
 

@@ -76,16 +76,16 @@
 // Globals
 GpreGlobals gpreGlob;
 
-const char* const SCRATCH = "fb_query_";
+constexpr const char* SCRATCH = "fb_query_";
 
-const char* const FOPEN_READ_TYPE = "r";
-const char* const FOPEN_WRITE_TYPE = "w";
+constexpr const char* FOPEN_READ_TYPE = "r";
+constexpr const char* FOPEN_WRITE_TYPE = "w";
 
-static bool			all_digits(const char*);
+static bool			all_digits(const char*) noexcept;
 static bool			arg_is_string(SLONG, TEXT**, const TEXT*);
-static SSHORT		compare_ASCII7z(const char*, const char*);
+static SSHORT		compare_ASCII7z(const char*, const char*) noexcept;
 static SLONG		compile_module(SLONG, const TEXT*);
-static bool			file_rename(TEXT*, const TEXT*, const TEXT*);
+static bool			file_rename(TEXT*, const TEXT*, const TEXT*) noexcept;
 #ifdef GPRE_FORTRAN
 static void			finish_based(act*);
 #endif
@@ -101,8 +101,7 @@ static void			print_switches();
 static void			remember_label(const TEXT*);
 #endif
 
-//static FILE*		reposition_file(FILE *, SLONG);
-static void			return_char(SSHORT);
+static void			return_char(SSHORT) noexcept;
 static SSHORT		skip_white();
 
 // Program wide globals
@@ -121,22 +120,22 @@ static act* global_last_action;
 static act* global_first_action;
 static UCHAR classes_array[256];
 
-inline UCHAR get_classes(int idx)
+inline UCHAR get_classes(int idx) noexcept
 {
 	return classes_array[(UCHAR) idx];
 }
 
-inline UCHAR get_classes(UCHAR idx)
+inline UCHAR get_classes(UCHAR idx) noexcept
 {
 	return classes_array[idx];
 }
 
-inline void set_classes(int idx, UCHAR v)
+inline void set_classes(int idx, UCHAR v) noexcept
 {
 	classes_array[(UCHAR) idx] = v;
 }
 
-inline void set_classes(UCHAR idx, UCHAR v)
+inline void set_classes(UCHAR idx, UCHAR v) noexcept
 {
 	classes_array[idx] = v;
 }
@@ -167,14 +166,14 @@ static SLONG traced_position = 0;
 //___________________________________________________________________
 // Test if input language is cpp based.
 //
-bool isLangCpp(lang_t lang)
+bool isLangCpp(lang_t lang) noexcept
 {
     return (lang == lang_cxx || lang == lang_internal);
 }
 
 // Test if input language is an ANSI-85 Cobol variant
 #ifdef GPRE_COBOL
-bool isAnsiCobol(cob_t dialect)
+bool isAnsiCobol(cob_t dialect) noexcept
 {
 	return (dialect == cob_ansi) || (dialect == cob_rmc);
 }
@@ -934,7 +933,7 @@ int main(int argc, char* argv[])
 //       Mark end of a text description.
 //
 
-void CPR_end_text(gpre_txt* text)
+void CPR_end_text(gpre_txt* text) noexcept
 {
 	text->txt_length = (USHORT) (gpreGlob.token_global.tok_position - text->txt_position - 1);
 }
@@ -1236,7 +1235,7 @@ tok* CPR_token()
 //		Return true if the string consists entirely of digits.
 //
 
-static bool all_digits(const char* str1)
+static bool all_digits(const char* str1) noexcept
 {
 	for (; *str1; str1++)
 	{
@@ -1279,7 +1278,7 @@ static bool arg_is_string(SLONG argc, TEXT** argvstring, const TEXT* errstring)
 //		(positive) if str1 > str2
 //
 
-static SSHORT compare_ASCII7z(const char* str1, const char* str2)
+static SSHORT compare_ASCII7z(const char* str1, const char* str2) noexcept
 {
 
 	for (; *str1; str1++, str2++)
@@ -1371,7 +1370,7 @@ static SLONG compile_module( SLONG start_position, const TEXT* base_directory)
 //		new extension is given, use it.
 //
 
-static bool file_rename(TEXT* file_nameL, const TEXT* extension, const TEXT* new_extension)
+static bool file_rename(TEXT* file_nameL, const TEXT* extension, const TEXT* new_extension) noexcept
 {
 	TEXT* p = file_nameL;
 
@@ -1420,7 +1419,7 @@ static bool file_rename(TEXT* file_nameL, const TEXT* extension, const TEXT* new
 	}
 
 	// Didn't match extension, so add the extension
-	while (*terminator++ = *extension++)
+	while ((*terminator++ = *extension++))
 		;
 
 	return true;
@@ -2470,9 +2469,9 @@ static void pass2( SLONG start_position)
 #endif
 
 	// Let's prepare for worst case: a lot of small dirs, many "\" to duplicate.
-	char backlash_fixed_file_name[MAXPATHLEN + MAXPATHLEN];
+	char backslash_fixed_file_name[MAXPATHLEN + MAXPATHLEN]{ 0 };
 	{ // scope
-		char* p = backlash_fixed_file_name;
+		char* p = backslash_fixed_file_name;
 		for (const char* q = file_name; *q;)
 		{
 			if ((*p++ = *q++) == '\\')
@@ -2482,14 +2481,14 @@ static void pass2( SLONG start_position)
 	} // scope
 
 	//if (sw_lines)
-	//	fprintf (gpreGlob.out_file, "#line 1 \"%s\"\n", backlash_fixed_file_name);
+	//	fprintf (gpreGlob.out_file, "#line 1 \"%s\"\n", backslash_fixed_file_name);
 
 	SLONG line = 0;
 	bool line_pending = sw_lines;
 	SLONG current = 1 + start_position;
 	SLONG column = 0;
 
-	SSHORT comment_start_len = static_cast<SSHORT>(strlen(comment_start));
+	const SSHORT comment_start_len = static_cast<SSHORT>(strlen(comment_start));
 #if defined(GPRE_COBOL)
 	SSHORT to_skip = 0;
 #endif
@@ -2515,9 +2514,9 @@ static void pass2( SLONG start_position)
 				if (line_pending)
 				{
 					if (line == 1)
-						fprintf(gpreGlob.out_file, "#line %" SLONGFORMAT" \"%s\"\n", line, backlash_fixed_file_name);
+						fprintf(gpreGlob.out_file, "#line %" SLONGFORMAT" \"%s\"\n", line, backslash_fixed_file_name);
 					else
-						fprintf(gpreGlob.out_file, "\n#line %" SLONGFORMAT" \"%s\"", line, backlash_fixed_file_name);
+						fprintf(gpreGlob.out_file, "\n#line %" SLONGFORMAT" \"%s\"", line, backslash_fixed_file_name);
 
 					line_pending = false;
 				}
@@ -2655,7 +2654,7 @@ static void pass2( SLONG start_position)
 
 	if (!line && line_pending)
 	{
-		fprintf(gpreGlob.out_file, "#line 1 \"%s\"\n", backlash_fixed_file_name);
+		fprintf(gpreGlob.out_file, "#line 1 \"%s\"\n", backslash_fixed_file_name);
 		line_pending = false;
 	}
 
@@ -2664,7 +2663,7 @@ static void pass2( SLONG start_position)
 	{
 		if (c == '\n' && line_pending)
 		{
-			fprintf(gpreGlob.out_file, "\n#line %" SLONGFORMAT" \"%s\"", line + 1, backlash_fixed_file_name);
+			fprintf(gpreGlob.out_file, "\n#line %" SLONGFORMAT" \"%s\"", line + 1, backslash_fixed_file_name);
 			line_pending = false;
 		}
 		if (c == EOF)
@@ -2738,7 +2737,7 @@ static void remember_label(const TEXT* label_string)
 //		Return a character to the input stream.
 //
 
-static void return_char( SSHORT c)
+static void return_char(SSHORT c) noexcept
 {
 
 	--position;

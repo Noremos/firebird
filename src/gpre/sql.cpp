@@ -6786,10 +6786,9 @@ static void to_upcase(const TEXT* p, TEXT* q, int target_size)
 // with the internal buffer. We should provide the correct size if we provide
 // the output variable to put the result in it.
 
-void SQL_resolve_identifier( const TEXT* err_mesg, TEXT* str_in, int in_size)
+void SQL_resolve_identifier(const TEXT* err_mesg, TEXT* str_in, int in_size)
 {
-	static TEXT internal_buffer[MAX_CURSOR_SIZE];
-	internal_buffer[0] = 0;
+	TEXT internal_buffer[MAX_CURSOR_SIZE];
 	TEXT* str;
 	int len;
 	if (str_in)
@@ -6806,6 +6805,7 @@ void SQL_resolve_identifier( const TEXT* err_mesg, TEXT* str_in, int in_size)
 		else if (in_size > len + 1)
 		    PAR_error("Provide your own buffer for sizes bigger than 64.");
 	}
+	*str = '\0';
 
 	TEXT* const tk_string = gpreGlob.token_global.tok_string;
 

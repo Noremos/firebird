@@ -88,7 +88,7 @@ void Replicator::storeBlob(Transaction* transaction, ISC_QUAD blobId)
 		localStatus.raise();
 
 	UCharBuffer buffer;
-	const auto bufferLength = MAX_USHORT;
+	constexpr FB_SIZE_T bufferLength = MAX_USHORT;
 	auto data = buffer.getBuffer(bufferLength);
 
 	auto& txnData = transaction->getData();
@@ -428,16 +428,16 @@ void Replicator::executeSqlIntl(CheckStatusWrapper* status,
 
 void Replicator::storeBlobs(Transaction* transaction, Firebird::IReplicatedRecord* record)
 {
-	for (unsigned id = 0; id < record->getCount(); id++)
+	for (unsigned id = 0; id < newRecord->getCount(); id++)
 	{
-		IReplicatedField* field = record->getField(id);
+		IReplicatedField* field = newRecord->getField(id);
 		if (field == nullptr)
 			continue;
 
-		auto type = field->getType();
+		const auto type = field->getType();
 		if (type == SQL_ARRAY || type == SQL_BLOB)
 		{
-			const auto blobId = (ISC_QUAD*) field->getData();
+			const auto* blobId = (ISC_QUAD*) field->getData();
 
 			if (blobId && !BlobWrapper::blobIsNull(*blobId))
 				storeBlob(transaction, *blobId);

@@ -8686,8 +8686,7 @@ static bool get_new_dpb(ClumpletWriter& dpb, const ParametersSet& par, bool loop
  *	Analyze and prepare dpb for attachment to remote server.
  *
  **************************************/
-	bool redirection = Config::getRedirection();
-    if (((loopback || !redirection) && dpb.find(par.address_path)) || dpb.find(par.map_attach))
+    if (dpb.find(par.address_path) || dpb.find(par.map_attach))
 	{
 		status_exception::raise(Arg::Gds(isc_unavailable));
 	}

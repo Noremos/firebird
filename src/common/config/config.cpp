@@ -76,6 +76,9 @@ public:
 		}
 	}
 
+	ConfigImpl(const ConfigImpl&) = delete;
+	void operator=(const ConfigImpl&) = delete;
+
 	/***
 	It was a kind of getting ready for changing config remotely...
 
@@ -85,12 +88,12 @@ public:
 	}
 	***/
 
-	Firebird::RefPtr<const Firebird::Config>& getDefaultConfig()
+	Firebird::RefPtr<const Firebird::Config>& getDefaultConfig() noexcept
 	{
 		return defaultConfig;
 	}
 
-	bool missFirebirdConf() const
+	bool missFirebirdConf() const noexcept
 	{
 		return missConf;
 	}
@@ -104,9 +107,6 @@ public:
 
 private:
 	Firebird::RefPtr<const Firebird::Config> defaultConfig;
-
-    ConfigImpl(const ConfigImpl&);
-    void operator=(const ConfigImpl&);
 
 	bool missConf;
 };
@@ -150,7 +150,6 @@ Config::Config(const ConfigFile& file)
 	serverMode(-1),
 	defaultConfig(true)
 {
-	memset(sourceIdx, 0, sizeof(sourceIdx));
 	valuesSource.add(NULL);
 
 	setupDefaultConfig();
@@ -185,7 +184,6 @@ Config::Config(const ConfigFile& file, const char* srcName, const Config& base, 
 	serverMode(-1),
 	defaultConfig(false)
 {
-	memset(sourceIdx, 0, sizeof(sourceIdx));
 	valuesSource.add(NULL);
 
 	for (FB_SIZE_T i = 1; i < base.valuesSource.getCount(); i++)
@@ -485,7 +483,7 @@ void Config::setRootDirectoryFromCommandLine(const PathName& newRoot)
 		PathName(*getDefaultMemoryPool(), newRoot);
 }
 
-const PathName* Config::getCommandLineRootDirectory()
+const PathName* Config::getCommandLineRootDirectory() noexcept
 {
 	return rootFromCommandLine;
 }
@@ -563,7 +561,7 @@ bool Config::valueAsString(ConfigValue val, ConfigType type, string& str)
 	return true;
 }
 
-const char* Config::getKeyName(unsigned int key)
+const char* Config::getKeyName(unsigned int key) noexcept
 {
 	if (key >= MAX_CONFIG_KEY)
 		return nullptr;
@@ -732,13 +730,13 @@ int Config::getWireCrypt(WireCryptMode wcMode) const
 // array format: major, minor, release, build
 static constexpr unsigned short fileVerNumber[4] = {FILE_VER_NUMBER};
 
-static inline unsigned int getPartialVersion()
+static inline constexpr unsigned int getPartialVersion() noexcept
 {
 			// major				   // minor
 	return (fileVerNumber[0] << 24) | (fileVerNumber[1] << 16);
 }
 
-static inline unsigned int getFullVersion()
+static inline constexpr unsigned int getFullVersion() noexcept
 {
 								 // build_no
 	return getPartialVersion() | fileVerNumber[3];
@@ -747,7 +745,7 @@ static inline unsigned int getFullVersion()
 static constexpr unsigned int PARTIAL_MASK = 0xFFFF0000;
 static constexpr unsigned int KEY_MASK = 0xFFFF;
 
-static inline void checkKey(unsigned int& key)
+static inline void checkKey(unsigned int& key) noexcept
 {
 	if ((key & PARTIAL_MASK) != getPartialVersion())
 		key = KEY_MASK;
@@ -755,7 +753,7 @@ static inline void checkKey(unsigned int& key)
 		key &= KEY_MASK;
 }
 
-unsigned int FirebirdConf::getVersion(CheckStatusWrapper* status)
+unsigned int FirebirdConf::getVersion(CheckStatusWrapper* status) noexcept
 {
 	return getFullVersion();
 }

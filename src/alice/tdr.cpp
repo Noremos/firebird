@@ -57,7 +57,7 @@ static void reattach_databases(tdr*);
 static bool reconnect(FB_API_HANDLE, TraNumber, const TEXT*, SINT64);
 
 
-static const UCHAR limbo_info[] = { isc_info_limbo, isc_info_end };
+static constexpr UCHAR limbo_info[] = { isc_info_limbo, isc_info_end };
 
 
 //
@@ -292,7 +292,7 @@ void TDR_list_limbo(FB_API_HANDLE handle, const TEXT* name, const SINT64 switche
 	for (Firebird::ClumpletReader p(Firebird::ClumpletReader::InfoResponse, buffer, sizeof(buffer));
 		!p.isEof(); p.moveNext())
 	{
-		UCHAR item = p.getClumpTag();
+		const UCHAR item = p.getClumpTag();
 		if (item == isc_info_end)
 			break;
 

@@ -120,7 +120,7 @@ FrontendParser::AnyNode FrontendParser::internalParse()
 		} while(true);
 	}
 	else if (command == TOKEN_COPY)
-{
+	{
 		CopyNode node;
 
 		if (auto source = parseQualifiedName())
@@ -462,6 +462,7 @@ FrontendParser::AnyShowNode FrontendParser::parseShow()
 	static constexpr std::string_view TOKEN_COLLATIONS("COLLATIONS");
 	static constexpr std::string_view TOKEN_COMMENTS("COMMENTS");
 	static constexpr std::string_view TOKEN_DATABASE("DATABASE");
+	static constexpr std::string_view TOKEN_DB("DB");
 	static constexpr std::string_view TOKEN_DEPENDENCIES("DEPENDENCIES");
 	static constexpr std::string_view TOKEN_DEPENDENCY("DEPENDENCY");
 	static constexpr std::string_view TOKEN_DOMAINS("DOMAINS");
@@ -511,7 +512,7 @@ FrontendParser::AnyShowNode FrontendParser::parseShow()
 				if (parseEof())
 					return ShowCommentsNode();
 			}
-			else if (text == TOKEN_DATABASE)
+			else if (text == TOKEN_DATABASE || text == TOKEN_DB)
 			{
 				if (parseEof())
 					return ShowDatabaseNode();

@@ -45,7 +45,7 @@ namespace
 	using namespace Firebird;
 
 	using MsgFormat::SafeArg;
-	const USHORT TRACEMGR_MSG_FAC = 25;
+	constexpr USHORT TRACEMGR_MSG_FAC = FB_IMPL_MSG_FACILITY_FBTRACEMGR;
 
 	void printMsg(USHORT number, const SafeArg& arg, bool newLine = true)
 	{
@@ -63,7 +63,7 @@ namespace
 		printMsg(number, dummy, newLine);
 	}
 
-	void usage(UtilSvc* uSvc, const ISC_STATUS code, const char* msg1 = NULL, const char* msg2 = NULL)
+	[[noreturn]] void usage(UtilSvc* uSvc, const ISC_STATUS code, const char* msg1 = NULL, const char* msg2 = NULL)
 	{
 		if (uSvc->isService())
 		{
@@ -80,7 +80,7 @@ namespace
 		{
 			printMsg(2, false); // ERROR:
 			USHORT dummy;
-			USHORT number = (USHORT) gds__decode(code, &dummy, &dummy);
+			const USHORT number = (USHORT) gds__decode(code, &dummy, &dummy);
 			fb_assert(number);
 			SafeArg safe;
 			if (msg1)
@@ -94,9 +94,9 @@ namespace
 
 		// If the items aren't contiguous, a scheme like in nbackup.cpp will have to be used.
 		// ASF: This is message codes!
-		const int MAIN_USAGE[] = {3, 21};
-		const int EXAMPLES[] = {22, 27};
-		const int NOTES[] = {28, 29};
+		constexpr int MAIN_USAGE[] = {3, 21};
+		constexpr int EXAMPLES[] = {22, 27};
+		constexpr int NOTES[] = {28, 29};
 
 		for (int i = MAIN_USAGE[0]; i <= MAIN_USAGE[1]; ++i)
 			printMsg(i);
