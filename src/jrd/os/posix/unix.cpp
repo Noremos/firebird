@@ -323,10 +323,13 @@ void PIO_extend(thread_db* tdbb, jrd_file* file, const ULONG extPages, const USH
 	const ULONG filePages = PIO_get_number_of_pages(file, pageSize);
 	const ULONG extendBy = MIN(MAX_ULONG - filePages, extPages);
 
+	const off_t offset = static_cast<off_t>(filePages) * pageSize;
+	const off_t length = static_cast<off_t>(extendBy) * pageSize;
+
 	int r;
 	for (r = 0; r < IO_RETRY; r++)
 	{
-		int err = fallocate(file->fil_desc, 0, filePages * pageSize, extendBy * pageSize);
+		int err = fallocate(file->fil_desc, 0, offset, length);
 		if (err == 0)
 			break;
 
