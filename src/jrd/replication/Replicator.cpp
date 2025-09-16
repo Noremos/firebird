@@ -428,9 +428,9 @@ void Replicator::executeSqlIntl(CheckStatusWrapper* status,
 
 void Replicator::storeBlobs(Transaction* transaction, Firebird::IReplicatedRecord* record)
 {
-	for (unsigned id = 0; id < newRecord->getCount(); id++)
+	for (unsigned id = 0; id < record->getCount(); id++)
 	{
-		IReplicatedField* field = newRecord->getField(id);
+		IReplicatedField* field = record->getField(id);
 		if (field == nullptr)
 			continue;
 
