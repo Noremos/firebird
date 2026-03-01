@@ -39,6 +39,7 @@
 #include "../jrd/cvt_proto.h" // CVT_get_string_ptr
 #include "../jrd/mov_proto.h" // MOV_get_string_ptr
 #include "../common/classes/VaryStr.h"
+#include "../common/classes/alloc.h" // ALLOC_ARGS0
 
 using namespace Firebird;
 using namespace Jrd;
