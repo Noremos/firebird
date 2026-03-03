@@ -1361,6 +1361,17 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 
+	virtual bool constant() const override
+	{
+		for (auto& child : items)
+		{
+			if (!child->constant())
+				return false;
+		}
+
+		return true;
+	}
+
 	ValueListNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		ValueListNode* node = FB_NEW_POOL(dsqlScratch->getPool()) ValueListNode(dsqlScratch->getPool(),
