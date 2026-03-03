@@ -490,6 +490,9 @@ static ISC_STATUS getErrorNotFound(int obj_type)
 	case obj_udf:
 		err_code = isc_dyn_func_not_found;
 		break;
+	case obj_package_constant:
+		err_code = isc_dyn_const_not_found;
+		break;
 	default:
 		fb_assert(false);
 	}
