@@ -29,7 +29,8 @@
 #define JRD_CONSTANT_H
 
 #include "firebird.h"
-#include "../jrd/Routine.h"
+#include "../jrd/CacheVector.h"
+#include "../jrd/Resources.h"
 #include "../jrd/obj.h"
 #include "../jrd/val.h"
 #include "../jrd/lck.h"
@@ -39,36 +40,72 @@ namespace Jrd
 class DsqlCompilerScratch;
 class dsql_fld;
 
-class Constant final : public Routine
+class ConstantPermanent : public Firebird::PermanentStorage
+{
+public:
+	explicit ConstantPermanent(thread_db* tdbb, MemoryPool& p, MetaId metaId, NoData)
+		: PermanentStorage(p),
+			id(metaId),
+			name(p)
+	{ }
+
+	explicit ConstantPermanent(MemoryPool& p)
+		: PermanentStorage(p),
+			id(~0),
+			name(p)
+	{ }
+
+	MetaId getId() const
+	{
+		return id;
+	}
+
+	static bool destroy(thread_db* tdbb, ConstantPermanent* routine)
+	{
+		return false;
+	}
+
+	void releaseLock(thread_db*) { }
+
+	const QualifiedName& getName() const noexcept { return name; }
+	void setName(const QualifiedName& value) { name = value; }
+
+	bool hasData() const { return name.hasData(); }
+
+public:
+	MetaId id;							// routine ID
+	QualifiedName name;					// routine name
+};
+
+class Constant final : public Firebird::PermanentStorage, public ObjectBase
 {
 public:
 	static Constant* lookup(thread_db* tdbb, MetaId id);
 	static Constant* lookup(thread_db* tdbb, const QualifiedName& name, ObjectBase::Flag flags);
 
-public:
+	// lock requeued by CacheElement
 	static const enum lck_t LOCKTYPE = LCK_constant_rescan;
 
 private:
 	explicit Constant(Cached::Constant* perm)
-		: Routine(perm->getPool()),
+		: Firebird::PermanentStorage(perm->getPool()),
 		  cachedConstant(perm)
-	{
-		// Make sure the constant value will be read in at less at reload state
-		flReload = true;
-	}
+	{ }
 
 public:
 	explicit Constant(MemoryPool& p)
-		: Routine(p)
+		: Firebird::PermanentStorage(p)
+	{ }
+
+	static bool destroy(thread_db* tdbb, Constant* routine)
 	{
-		// Make sure the constant value will be read in at less at reload state
-		flReload = true;
+		return false;
 	}
 
 	static Constant* create(thread_db* tdbb, MemoryPool& pool, Cached::Constant* perm);
 	ScanResult scan(thread_db* tdbb, ObjectBase::Flag flags);
 	static std::optional<MetaId> getIdByName(thread_db* tdbb, const QualifiedName& name);
-	void checkReload(thread_db* tdbb) const override;
+	void checkReload(thread_db* tdbb) const;
 
 	static const char* objectFamily(void*)
 	{
@@ -76,12 +113,15 @@ public:
 	}
 
 public:
-	int getObjectType() const noexcept final
+	const QualifiedName& getName() const noexcept { return getPermanent()->getName(); }
+	MetaId getId() const noexcept { return getPermanent()->getId(); }
+
+	int getObjectType() const noexcept
 	{
 		return objectType();
 	}
 
-	SLONG getSclType() const noexcept final
+	SLONG getSclType() const noexcept
 	{
 		return obj_package_constant;
 	}
@@ -89,6 +129,8 @@ public:
 	ScanResult reload(thread_db* tdbb, ObjectBase::Flag fl);
 
 	static int objectType();
+
+	bool hash(thread_db* tdbb, Firebird::sha512& digest);
 
 public:
 	inline const dsc& getValue() const
@@ -106,7 +148,7 @@ public:
 private:
 	void makeValue(thread_db* tdbb, Attachment* attachment, bid blob_id);
 
-	virtual ~Constant() override
+	virtual ~Constant()
 	{
 		delete m_value.vlu_string;
 	}
@@ -114,13 +156,16 @@ private:
 public:
 	Cached::Constant* cachedConstant;		// entry in the cache
 
-	Cached::Constant* getPermanent() const noexcept override
+	Cached::Constant* getPermanent() const noexcept
 	{
 		return cachedConstant;
 	}
 
 private:
 	impure_value m_value{};
+
+	// Make sure the constant value will be read in at less at reload state
+	bool m_callReload = true;
 };
 
 } // namespace Jrd

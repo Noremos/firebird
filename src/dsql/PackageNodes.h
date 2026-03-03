@@ -148,7 +148,7 @@ public:
 	}
 
 private:
-	CachedResource<Constant, RoutinePermanent> m_constant;
+	CachedResource<Constant, ConstantPermanent> m_constant;
 	const QualifiedName m_fullName;
 
 	const UCHAR m_itemType;

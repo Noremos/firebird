@@ -43,6 +43,7 @@ class CharSetVers;
 class IndexPermanent;
 class IndexVersion;
 class Constant;
+class ConstantPermanent;
 
 namespace Cached
 {
@@ -53,7 +54,7 @@ namespace Cached
 	typedef CacheElement<Function, RoutinePermanent> Function;
 	typedef CacheElement<DbTriggers, DbTriggersHeader> Triggers;
 	typedef CacheElement<IndexVersion, IndexPermanent> Index;
-	typedef CacheElement<Constant, RoutinePermanent> Constant;
+	typedef CacheElement<Constant, ConstantPermanent> Constant;
 }
 
 class Resources;
@@ -300,7 +301,7 @@ public:
 	RscArray<Function, RoutinePermanent> functions;
 	RscArray<DbTriggers, DbTriggersHeader> triggers;
 	RscArray<IndexVersion, IndexPermanent> indices;
-	RscArray<Constant, RoutinePermanent> constants;
+	RscArray<Constant, ConstantPermanent> constants;
 
 	inline FB_SIZE_T countVersionedObjects() const noexcept
 	{
@@ -316,7 +317,7 @@ template <> inline const Resources::RscArray<Function, RoutinePermanent>& Resour
 template <> inline const Resources::RscArray<CharSetVers, CharSetContainer>& Resources::objects() const { return charSets; }
 template <> inline const Resources::RscArray<DbTriggers, DbTriggersHeader>& Resources::objects() const { return triggers; }
 template <> inline const Resources::RscArray<IndexVersion, IndexPermanent>& Resources::objects() const { return indices; }
-template <> inline const Resources::RscArray<Constant, RoutinePermanent>& Resources::objects() const { return constants; }
+template <> inline const Resources::RscArray<Constant, ConstantPermanent>& Resources::objects() const { return constants; }
 
 namespace Rsc
 {
@@ -326,7 +327,7 @@ namespace Rsc
 	typedef CachedResource<CharSetVers, CharSetContainer> CSet;
 	typedef CachedResource<DbTriggers, DbTriggersHeader> Trig;
 	typedef CachedResource<IndexVersion, IndexPermanent> Idx;
-	typedef CachedResource<Constant, RoutinePermanent> Const;
+	typedef CachedResource<Constant, ConstantPermanent> Const;
 }; //namespace Rsc
 
 

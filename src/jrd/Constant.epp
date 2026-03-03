@@ -50,7 +50,7 @@ DATABASE DB = FILENAME "ODS.RDB";
 
 Constant* Constant::lookup(thread_db* tdbb, MetaId id)
 {
-	return MetadataCache::getVersioned<Cached::Constant>(tdbb, id, CacheFlag::AUTOCREATE);;
+	return MetadataCache::getVersioned<Cached::Constant>(tdbb, id, CacheFlag::AUTOCREATE);
 }
 
 Constant* Constant::lookup(thread_db* tdbb, const QualifiedName& name, ObjectBase::Flag flags)
@@ -103,10 +103,10 @@ ScanResult Constant::scan(thread_db* tdbb, ObjectBase::Flag flags)
 
 					owner = PKG.RDB$OWNER_NAME;
 
-					if (!PKG.RDB$SECURITY_CLASS.NULL)
-					{
-						getPermanent()->setSecurityName(QualifiedName(PKG.RDB$SECURITY_CLASS, SCH.RDB$SECURITY_CLASS));
-					}
+					// if (!PKG.RDB$SECURITY_CLASS.NULL)
+					// {
+					// 	getPermanent()->setSecurityName(QualifiedName(PKG.RDB$SECURITY_CLASS, SCH.RDB$SECURITY_CLASS));
+					// }
 
 					// SQL SECURITY of function must be the same if it's defined in package
 					if (!PKG.RDB$SQL_SECURITY.NULL)
@@ -120,18 +120,18 @@ ScanResult Constant::scan(thread_db* tdbb, ObjectBase::Flag flags)
 				ssDefiner = MET_get_ss_definer(tdbb, CONST.RDB$SCHEMA_NAME);
 			}
 
-			if (ssDefiner.asBool())
-				invoker = dbb->getUserId(getPermanent()->owner);
+			// if (ssDefiner.asBool())
+			// 	invoker = dbb->getUserId(getPermanent()->owner);
 
 			if ((flags & CacheFlag::MINISCAN) == 0)
 				makeValue(tdbb, attachment, CONST.RDB$CONSTANT_BLR);
 			else
-				this->flReload = true; // Call makeValue in reload
+				this->m_callReload = true; // Call makeValue in reload
 		}
 		END_FOR
 	}
 
-	return found ? (this->flReload ? ScanResult::REPEAT : ScanResult::COMPLETE) : ScanResult::MISS;
+	return found ? (this->m_callReload ? ScanResult::REPEAT : ScanResult::COMPLETE) : ScanResult::MISS;
 }
 
 
@@ -173,11 +173,11 @@ ScanResult Constant::reload(thread_db* tdbb, ObjectBase::Flag)
 		WITH CONST.RDB$CONSTANT_ID EQ this->getId()
 	{
 
-		if (compiling)
-		{
-			fb_assert(false);
-			return ScanResult::REPEAT;
-		}
+		// if (compiling)
+		// {
+		// 	fb_assert(false);
+		// 	return ScanResult::REPEAT;
+		// }
 
 		found = true;
 		makeValue(tdbb, attachment, CONST.RDB$CONSTANT_BLR);
@@ -192,9 +192,24 @@ int Constant::objectType()
 	return obj_package_constant;
 }
 
+bool Constant::hash(thread_db* tdbb, Firebird::sha512& digest)
+{
+	if (m_value.vlu_desc.dsc_dtype == 0)
+	{
+		dsc type = getDesc(tdbb, tdbb->getTransaction(), getName());
+		digest.process(sizeof(type), &type);
+	}
+	else
+	{
+		digest.process(sizeof(m_value.vlu_desc), &m_value.vlu_desc);
+	}
+
+	return true;
+}
+
 void Constant::checkReload(thread_db* tdbb) const
 {
-	if (flReload)
+	if (m_callReload)
 		getPermanent()->reload(tdbb, 0);
 }
 
@@ -492,11 +507,11 @@ void Constant::makeValue(thread_db* tdbb, Attachment* attachment, bid blob_id)
 			Cleanup cc([csb]() {delete csb;});
 
 			{ // blr
-				flReload = false;
+				m_callReload = false;
 				MET_parse_blob(tdbb, &getName().schema, nullptr, &blob_id, &csb, nullptr, false, false);
 
 				fb_assert(csb != nullptr);
-				flReload = (csb->csb_g_flags & csb_reload);
+				m_callReload = (csb->csb_g_flags & csb_reload);
 			}
 
 			executeConstantExpression(tdbb, csb, getPermanent()->getPool(), m_value);
