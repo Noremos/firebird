@@ -87,42 +87,6 @@ ScanResult Constant::scan(thread_db* tdbb, ObjectBase::Flag flags)
 			getPermanent()->setName(QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME,
 				(CONST.RDB$PACKAGE_NAME.NULL ? nullptr : CONST.RDB$PACKAGE_NAME)));
 
-			MetaName owner;
-			TriState ssDefiner;
-			if (!CONST.RDB$PACKAGE_NAME.NULL)
-			{
-				static const CachedRequestId requestId;
-				AutoCacheRequest requestHandle(tdbb, requestId);
-
-				FOR (REQUEST_HANDLE requestHandle)
-					PKG IN RDB$PACKAGES
-					CROSS SCH IN RDB$SCHEMAS WITH
-						PKG.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME AND
-						PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME
-				{
-
-					owner = PKG.RDB$OWNER_NAME;
-
-					// if (!PKG.RDB$SECURITY_CLASS.NULL)
-					// {
-					// 	getPermanent()->setSecurityName(QualifiedName(PKG.RDB$SECURITY_CLASS, SCH.RDB$SECURITY_CLASS));
-					// }
-
-					// SQL SECURITY of function must be the same if it's defined in package
-					if (!PKG.RDB$SQL_SECURITY.NULL)
-						ssDefiner = (bool) PKG.RDB$SQL_SECURITY;
-				}
-				END_FOR
-			}
-
-			if (!ssDefiner.isAssigned())
-			{
-				ssDefiner = MET_get_ss_definer(tdbb, CONST.RDB$SCHEMA_NAME);
-			}
-
-			// if (ssDefiner.asBool())
-			// 	invoker = dbb->getUserId(getPermanent()->owner);
-
 			if ((flags & CacheFlag::MINISCAN) == 0)
 				makeValue(tdbb, attachment, CONST.RDB$CONSTANT_BLR);
 			else
