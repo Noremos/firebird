@@ -48,7 +48,6 @@ class SysFunction
 public:
 	enum Flags : UCHAR
 	{
-		NONE = 0,
 		DETERMINISTIC = 1,
 		CONSTANT = 2
 	};
