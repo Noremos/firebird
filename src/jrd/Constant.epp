@@ -41,6 +41,11 @@
 #include "../common/classes/VaryStr.h"
 #include "../common/classes/alloc.h" // ALLOC_ARGS0
 
+// I do not know why but the macros is undefined in CI
+#ifndef ALLOC_ARGS0
+#define ALLOC_ARGS0
+#endif
+
 using namespace Firebird;
 using namespace Jrd;
 
