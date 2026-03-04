@@ -690,6 +690,9 @@ public:
 	}
 
 	// Check if expression returns deterministic result
+	// Determinate whether the node is volatile (or not) in the current execution context.
+	// A DBKEY is deterministic (it cannot change for an already fetched row)
+	// but it's not constant (and thus cannot be used as an initializer expression).
 	virtual bool deterministic(thread_db* tdbb) const;
 
 	// Check if expression could return NULL or expression can turn NULL into a true/false.
@@ -702,6 +705,7 @@ public:
 	virtual bool unmappable(const MapNode* mapNode, StreamType shellStream) const;
 
 	// Check if expression returns constant result
+	// The result true means the value does not change after recompilation
 	virtual bool constant() const
 	{
 		return false;
