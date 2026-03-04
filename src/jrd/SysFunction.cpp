@@ -6951,7 +6951,7 @@ const SysFunction SysFunction::functions[] =
 		{"EXP", 1, 1, DEFAULT, setParamsDblDec, makeDblDecResult, evlExp, NULL},
 		{"FIRST_DAY", 2, 2, DEFAULT, setParamsFirstLastDay, makeFirstLastDayResult, evlFirstLastDay, (void*) funFirstDay},
 		{"FLOOR", 1, 1, DEFAULT, setParamsDblDec, makeCeilFloor, evlFloor, NULL},
-		{"GEN_UUID", 0, 0, 0, NULL, makeUuid, evlGenUuid, NULL},
+		{"GEN_UUID", 0, 0, CONSTANT, NULL, makeUuid, evlGenUuid, NULL},
 		{"GREATEST", 1, -1, DEFAULT, setParamsFromList, makeFromListResult, evlMaxMinValue, (void*) funMaxValue},
 		{"HASH", 1, 2, DEFAULT, setParamsHash, makeHash, evlHash, NULL},
 		{"HEX_DECODE", 1, 1, DEFAULT, NULL, makeDecodeHex, evlDecodeHex, NULL},
