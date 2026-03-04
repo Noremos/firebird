@@ -6951,7 +6951,7 @@ const SysFunction SysFunction::functions[] =
 		{"EXP", 1, 1, DEFAULT, setParamsDblDec, makeDblDecResult, evlExp, NULL},
 		{"FIRST_DAY", 2, 2, DEFAULT, setParamsFirstLastDay, makeFirstLastDayResult, evlFirstLastDay, (void*) funFirstDay},
 		{"FLOOR", 1, 1, DEFAULT, setParamsDblDec, makeCeilFloor, evlFloor, NULL},
-		{"GEN_UUID", 0, 0, NONE, NULL, makeUuid, evlGenUuid, NULL},
+		{"GEN_UUID", 0, 0, 0, NULL, makeUuid, evlGenUuid, NULL},
 		{"GREATEST", 1, -1, DEFAULT, setParamsFromList, makeFromListResult, evlMaxMinValue, (void*) funMaxValue},
 		{"HASH", 1, 2, DEFAULT, setParamsHash, makeHash, evlHash, NULL},
 		{"HEX_DECODE", 1, 1, DEFAULT, NULL, makeDecodeHex, evlDecodeHex, NULL},
@@ -6973,11 +6973,11 @@ const SysFunction SysFunction::functions[] =
 		{"POSITION", 2, 4, DEFAULT, setParamsPosition, makeLongResult, evlPosition, NULL},
 		{"POWER", 2, 2, DEFAULT, setParamsDblDec, makeDblDecResult, evlPower, NULL},
 		{"QUANTIZE", 2, 2, DEFAULT, setParamsDecFloat, makeDecFloatResult, evlQuantize, NULL},
-		{"RAND", 0, 0, NONE, NULL, makeDoubleResult, evlRand, NULL},
+		{"RAND", 0, 0, 0, NULL, makeDoubleResult, evlRand, NULL},
 		{RDB_GET_CONTEXT, 2, 2, DETERMINISTIC, setParamsGetSetContext, makeGetSetContext, evlGetContext, NULL},
-		{"RDB$GET_TRANSACTION_CN", 1, 1, NONE, setParamsInt64, makeGetTranCN, evlGetTranCN, NULL},
+		{"RDB$GET_TRANSACTION_CN", 1, 1, 0, setParamsInt64, makeGetTranCN, evlGetTranCN, NULL},
 		{"RDB$ROLE_IN_USE", 1, 1, DETERMINISTIC, setParamsAsciiVal, makeBooleanResult, evlRoleInUse, NULL},
-		{RDB_SET_CONTEXT, 3, 3, NONE, setParamsGetSetContext, makeGetSetContext, evlSetContext, NULL},
+		{RDB_SET_CONTEXT, 3, 3, 0, setParamsGetSetContext, makeGetSetContext, evlSetContext, NULL},
 		{"RDB$SYSTEM_PRIVILEGE", 1, 1, DETERMINISTIC, NULL, makeBooleanResult, evlSystemPrivilege, NULL},
 		{"REPLACE", 3, 3, DEFAULT, setParamsFromList, makeReplace, evlReplace, NULL},
 		{"REVERSE", 1, 1, DEFAULT, NULL, makeReverse, evlReverse, NULL},
@@ -6986,8 +6986,8 @@ const SysFunction SysFunction::functions[] =
 		{"RPAD", 2, 3, DEFAULT, setParamsSecondInteger, makePad, evlPad, (void*) funRPad},
 		{"RSA_DECRYPT", RSA_CRYPT_ARG_MAX, RSA_CRYPT_ARG_MAX, DEFAULT, setParamsRsaEncrypt, makeRsaCrypt, evlRsaDecrypt, NULL},
 		{"RSA_ENCRYPT", RSA_CRYPT_ARG_MAX, RSA_CRYPT_ARG_MAX, DEFAULT, setParamsRsaEncrypt, makeRsaCrypt, evlRsaEncrypt, NULL},
-		{"RSA_PRIVATE", 1, 1, NONE, setParamsInteger, makeRsaPrivate, evlRsaPrivate, NULL},
-		{"RSA_PUBLIC", 1, 1, NONE, setParamsRsaPublic, makeRsaPublic, evlRsaPublic, NULL},
+		{"RSA_PRIVATE", 1, 1, 0, setParamsInteger, makeRsaPrivate, evlRsaPrivate, NULL},
+		{"RSA_PUBLIC", 1, 1, 0, setParamsRsaPublic, makeRsaPublic, evlRsaPublic, NULL},
 		{"RSA_SIGN_HASH", RSA_SIGN_ARG_MAX, RSA_SIGN_ARG_MAX, DEFAULT, setParamsRsaSign, makeRsaSign, evlRsaSign, NULL},
 		{"RSA_VERIFY_HASH", RSA_VERIFY_ARG_MAX, RSA_VERIFY_ARG_MAX, DEFAULT, setParamsRsaVerify, makeBoolResult, evlRsaVerify, NULL},
 		{"SIGN", 1, 1, DEFAULT, setParamsDblDec, makeShortResult, evlSign, NULL},
@@ -7001,7 +7001,7 @@ const SysFunction SysFunction::functions[] =
 		{"UNICODE_CHAR", 1, 1, DEFAULT, setParamsInteger, makeUnicodeChar, evlUnicodeChar, NULL},
 		{"UNICODE_VAL", 1, 1, DEFAULT, setParamsUnicodeVal, makeLongResult, evlUnicodeVal, NULL},
 		{"UUID_TO_CHAR", 1, 1, DEFAULT, setParamsUuidToChar, makeUuidToChar, evlUuidToChar, NULL},
-		{"", 0, 0, NONE, NULL, NULL, NULL, NULL}
+		{"", 0, 0, 0, NULL, NULL, NULL, NULL}
 	};
 
 
