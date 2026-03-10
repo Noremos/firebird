@@ -372,6 +372,8 @@ public:
 		return mdc_generators.lookup(id, name);
 	}
 
+	// Ensure old (current) version of object is loaded into cache
+
 	template <typename C>
 	static C* oldVersion(thread_db* tdbb, MetaId id, ObjectBase::Flag scanType)
 	{
@@ -380,6 +382,8 @@ public:
 		return vrsn ? getPermanent(vrsn) : nullptr;
 	}
 
+	// Create new version of object in cache (if not exists)
+
 	template <typename C>
 	static C* newVersion(thread_db* tdbb, MetaId id)
 	{
@@ -387,12 +391,16 @@ public:
 		return vector.newVersion(tdbb, id);
 	}
 
+	// Mark object in cache as dropped
+
 	template <typename C>
 	static C* erase(thread_db* tdbb, MetaId id)
 	{
 		auto& vector = Vector<C>::get(getCache(tdbb));
 		return vector.erase(tdbb, id);
 	}
+
+	// Get versioned part of cached object by ID or name
 
 	template <typename C, typename V = C::Versioned>
 	static V* getVersioned(thread_db* tdbb, MetaId id, ObjectBase::Flag flags)
@@ -412,6 +420,8 @@ public:
 		return rc;
 	}
 
+	// Get permanent part of cached object by ID or name
+
 	template <typename C>
 	static C* getPerm(thread_db* tdbb, MetaId id, ObjectBase::Flag flags)
 	{
@@ -430,7 +440,7 @@ public:
 		return rc;
 	}
 
-	static bool isLtt(MetaId id)
+	static bool isLTT(MetaId id)
 	{
 		return (id >= MIN_LTT_ID && id <= MAX_LTT_ID);
 	}
@@ -620,7 +630,7 @@ template <>
 inline jrd_rel* MetadataCache::getVersioned<Cached::Relation, jrd_rel>(thread_db* tdbb,
 	MetaId id, ObjectBase::Flag flags)
 {
-	if (isLtt(id))
+	if (isLTT(id))
 		return getLtt(tdbb, id);
 
 	auto& vector = getCache(tdbb)->mdc_relations;
@@ -644,7 +654,7 @@ template <>
 inline Cached::Relation* MetadataCache::getPerm<Cached::Relation>(thread_db* tdbb,
 	MetaId id, ObjectBase::Flag flags)
 {
-	if (isLtt(id))
+	if (isLTT(id))
 		return getPermanent(getLtt(tdbb, id));
 
 	auto& vector = getCache(tdbb)->mdc_relations;

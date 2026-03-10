@@ -440,33 +440,33 @@ public:
 		bool parseContext);
 
 public:
-	virtual Firebird::string internalPrint(NodePrinter& printer) const;
-	virtual RecordSourceNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	RecordSourceNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
 
-	virtual bool dsqlAggregateFinder(AggregateFinder& visitor);
-	virtual bool dsqlAggregate2Finder(Aggregate2Finder& visitor);
-	virtual bool dsqlInvalidReferenceFinder(InvalidReferenceFinder& visitor);
-	virtual bool dsqlSubSelectFinder(SubSelectFinder& visitor);
-	virtual bool dsqlFieldFinder(FieldFinder& visitor);
-	virtual RecordSourceNode* dsqlFieldRemapper(FieldRemapper& visitor);
+	bool dsqlAggregateFinder(AggregateFinder& visitor) override;
+	bool dsqlAggregate2Finder(Aggregate2Finder& visitor) override;
+	bool dsqlInvalidReferenceFinder(InvalidReferenceFinder& visitor) override;
+	bool dsqlSubSelectFinder(SubSelectFinder& visitor) override;
+	bool dsqlFieldFinder(FieldFinder& visitor) override;
+	RecordSourceNode* dsqlFieldRemapper(FieldRemapper& visitor) override;
 
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
-	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
+	void genBlr(DsqlCompilerScratch* dsqlScratch) override;
 
-	virtual ProcedureSourceNode* copy(thread_db* tdbb, NodeCopier& copier) const;
+	ProcedureSourceNode* copy(thread_db* tdbb, NodeCopier& copier) const override;
 
-	virtual RecordSourceNode* pass1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
-		BoolExprNode** boolean, RecordSourceNodeStack& stack);
-	virtual RecordSourceNode* pass2(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Rse(thread_db* tdbb, CompilerScratch* csb);
+	RecordSourceNode* pass1(thread_db* tdbb, CompilerScratch* csb) override;
+	void pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
+		BoolExprNode** boolean, RecordSourceNodeStack& stack) override;
+	RecordSourceNode* pass2(thread_db* tdbb, CompilerScratch* csb) override;
+	void pass2Rse(thread_db* tdbb, CompilerScratch* csb) override;
 
-	virtual bool containsStream(StreamType checkStream) const
+	bool containsStream(StreamType checkStream) const override
 	{
 		return checkStream == stream;
 	}
 
-	virtual void computeDbKeyStreams(StreamList& /*streamList*/) const
+	void computeDbKeyStreams(StreamList& /*streamList*/) const override
 	{
 	}
 
@@ -475,14 +475,14 @@ public:
 		return false;
 	}
 
-	virtual bool computable(CompilerScratch* csb, StreamType stream,
-		bool allowOnlyCurrentStream, ValueExprNode* value);
-	virtual void findDependentFromStreams(const CompilerScratch* csb,
-		StreamType currentStream, SortedStreamList* streamList);
+	bool computable(CompilerScratch* csb, StreamType stream,
+		bool allowOnlyCurrentStream, ValueExprNode* value) override;
+	void findDependentFromStreams(const CompilerScratch* csb,
+		StreamType currentStream, SortedStreamList* streamList) override;
 
-	virtual void collectStreams(SortedStreamList& streamList) const;
+	void collectStreams(SortedStreamList& streamList) const override;
 
-	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
+	RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream) override;
 
 public:
 	QualifiedName dsqlName;
@@ -1070,6 +1070,9 @@ public:
 	{
 		return FUNC_NAME;
 	}
+
+public:
+	NestConst<ValueExprNode> dsqlAutoTypeFromValue;
 };
 
 class GenSeriesFunctionSourceNode final : public TableValueFunctionSourceNode

@@ -131,9 +131,9 @@ dsql_dbb::~dsql_dbb()
 {
 }
 
-MemoryPool* dsql_dbb::createPool(ALLOC_PARAMS0)
+MemoryPool* dsql_dbb::createPool(ALLOC_PARAMS_NO_COMMA_DEF)
 {
-	return dbb_attachment->att_database->createPool(ALLOC_PASS_ARGS0);
+	return dbb_attachment->att_database->createPool(true ALLOC_PASS_ARGS);
 }
 
 void dsql_dbb::deletePool(MemoryPool* pool)
@@ -439,7 +439,7 @@ static dsql_dbb* init(thread_db* tdbb, Jrd::Attachment* attachment)
 	if (attachment->att_dsql_instance)
 		return attachment->att_dsql_instance;
 
-	MemoryPool& pool = *attachment->att_database->createPool(ALLOC_ARGS0);
+	MemoryPool& pool = *attachment->att_database->createPool();
 	dsql_dbb* const database = FB_NEW_POOL(pool) dsql_dbb(pool, attachment);
 	attachment->att_dsql_instance = database;
 
@@ -579,12 +579,12 @@ static RefPtr<DsqlStatement> prepareStatement(thread_db* tdbb, dsql_dbb* databas
 
 	MemoryPool* scratchPool = nullptr;
 	DsqlCompilerScratch* scratch = nullptr;
-	MemoryPool* statementPool = database->createPool(ALLOC_ARGS0);
+	MemoryPool* statementPool = database->createPool();
 
 	Jrd::ContextPoolHolder statementContext(tdbb, statementPool);
 	try
 	{
-		scratchPool = database->createPool(ALLOC_ARGS0);
+		scratchPool = database->createPool();
 
 		if (!transaction)		// Useful for session management statements
 			transaction = database->dbb_attachment->getSysTransaction();
@@ -1351,9 +1351,9 @@ static UCHAR* var_info(const dsql_msg* message,
 	return info;
 }
 
+
 dsql_rel::dsql_rel(MemoryPool& p, jrd_rel* jrel)
-	: rel_fields(nullptr),
-	  rel_name(p, jrel->getName()),
+	: rel_name(p, jrel->getName()),
 	  rel_owner(p, jrel->getOwnerName()),
 	  rel_id(jrel->getId()),
 	  rel_dbkey_length(jrel->rel_dbkey_length),
@@ -1407,8 +1407,7 @@ dsql_rel::dsql_rel(MemoryPool& p, jrd_rel* jrel)
 }
 
 dsql_rel::dsql_rel(MemoryPool& p, const dsql_rel* rel)
-	: rel_fields(nullptr),
-	  rel_name(p, rel->rel_name),
+	: rel_name(p, rel->rel_name),
 	  rel_owner(p, rel->rel_owner),
 	  rel_id(rel->rel_id),
 	  rel_dbkey_length(rel->rel_dbkey_length),
@@ -1429,6 +1428,7 @@ dsql_rel::dsql_rel(MemoryPool& p, const dsql_rel* rel)
 		to = &(fld->fld_next);
 	}
 }
+
 
 dsql_prc::dsql_prc(MemoryPool& p, const jrd_prc* jproc)
 	: prc_inputs(cpFields(p, jproc->getInputFields())),
@@ -1465,6 +1465,7 @@ dsql_fld* dsql_prc::cpFields(MemoryPool& p, const Array<NestConst<Parameter>>& f
 	return rc;
 }
 
+
 dsql_fld::dsql_fld(MemoryPool& p, const dsc& desc, dsql_fld*** prev)
 	: TypeClause(p, {}),
 	  fld_name(p)
@@ -1483,6 +1484,7 @@ dsql_fld::dsql_fld(MemoryPool& p, const dsc& desc, dsql_fld*** prev)
 	textType = desc.getTextType();
 	charSetId = desc.getCharSet();
 }
+
 
 dsql_udf::dsql_udf(MemoryPool& p, const class Function* jfun)
 	: udf_name(p, jfun->getName()),

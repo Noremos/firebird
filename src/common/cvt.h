@@ -57,9 +57,9 @@ public:
 public:
 	virtual bool transliterate(const dsc* from, dsc* to, CSetId&) = 0;
 	virtual CSetId getChid(const dsc* d) = 0;
-	virtual Firebird::CharSet* getToCharset(CSetId charset2) = 0;
-	virtual void validateData(Firebird::CharSet* toCharset, SLONG length, const UCHAR* q) = 0;
-	virtual ULONG validateLength(Firebird::CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
+	virtual CharSet* getToCharset(CSetId charset2) = 0;
+	virtual void validateData(CharSet* toCharset, SLONG length, const UCHAR* q) = 0;
+	virtual ULONG validateLength(CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
 		const USHORT size) = 0;
 	virtual SLONG getLocalDate() = 0;
 	virtual ISC_TIMESTAMP getCurrentGmtTimeStamp() = 0;

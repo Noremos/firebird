@@ -156,9 +156,9 @@ namespace Jrd
 		return dbb_file_id;
 	}
 
-	MemoryPool* Database::createPool(ALLOC_PARAMS1 bool separateStats)
+	MemoryPool* Database::createPool(bool separateStats ALLOC_PARAMS_DEF)
 	{
-		MemoryPool* const pool = MemoryPool::createPool(ALLOC_PASS_ARGS1 dbb_permanent, dbb_memory_stats);
+		MemoryPool* const pool = MemoryPool::createPool(dbb_permanent, dbb_memory_stats ALLOC_PASS_ARGS);
 
 		if (separateStats)
 		{
@@ -196,25 +196,6 @@ namespace Jrd
 		}
 	}
 
-#ifdef DEBUG_LOST_POOLS
-	static Database* toCheck = nullptr;
-
-	void checkPool(MemoryPool* pool)
-	{
-		if (toCheck)
-			toCheck->checkPool(pool);
-	}
-
-	void Database::checkPool(MemoryPool* pool)
-	{
-		SyncLockGuard guard(&dbb_pools_sync, SYNC_EXCLUSIVE, "Database::checkPool");
-		FB_SIZE_T pos;
-
-		if (dbb_pools.find(pool, pos))
-			abort();
-	}
-#endif
-
 	Database::~Database()
 	{
 		if (dbb_linger_timer)
@@ -241,11 +222,6 @@ namespace Jrd
 		{
 			MemoryPool::deletePool(dbb_pools[i]);
 		}
-
-#ifdef DEBUG_LOST_POOLS
-		if (toCheck == this)
-			toCheck = nullptr;
-#endif
 	}
 
 	int Database::blocking_ast_sweep(void* ast_object)
@@ -854,10 +830,6 @@ namespace Jrd
 
 		dbb_internal.grow(irq_MAX);
 		dbb_dyn_req.grow(drq_MAX);
-
-#ifdef DEBUG_LOST_POOLS
-		toCheck = this;
-#endif
 	}
 
 	bool Database::GlobalObjectHolder::incTempCacheUsage(FB_SIZE_T size)

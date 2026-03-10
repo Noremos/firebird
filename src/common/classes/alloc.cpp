@@ -201,12 +201,6 @@ inline size_t get_map_page_size()
 
 } // anonymous namespace
 
-#ifdef DEBUG_LOST_POOLS
-namespace Jrd {
-	void checkPool(MemoryPool* pool);
-}
-#endif
-
 namespace Firebird {
 
 namespace SemiDoubleLink
@@ -299,8 +293,7 @@ private:
 
 public:
 #ifdef DEBUG_GDS_ALLOC
-	INT32		lineNumber = -1;
-	const char	*fileName = nullptr;
+	Firebird::CustomSourceLocation location;
 #elif (SIZEOF_VOID_P == 4)
 	FB_UINT64 dummyAlign;
 #endif
@@ -418,8 +411,8 @@ public:
 		{
 			bool filter = filter_path != NULL;
 
-			if (isActive() && filter && fileName)
-				filter = strncmp(filter_path, fileName, filter_len) != 0;
+			if (isActive() && filter && location.fileName)
+				filter = strncmp(filter_path, location.fileName, filter_len) != 0;
 
 			if (!filter)
 			{
@@ -427,7 +420,7 @@ public:
 				{
 					fprintf(file, "%s %p: size=%" SIZEFORMAT " allocated at %s:%d",
 						isExtent() ? "EXTN" : redirected() ? "RDIR" : "USED",
-						this, getSize(), fileName, lineNumber);
+						this, getSize(), location.fileName, location.line);
 				}
 				else
 					fprintf(file, "FREE %p: size=%" SIZEFORMAT, this, getSize());
@@ -2132,7 +2125,7 @@ void MemPool::newExtent(size_t& size, Extent** linkedList)
 	size = extent->spaceRemaining;
 }
 
-MemoryPool* MemoryPool::createPool(ALLOC_PARAMS1 MemoryPool* parentPool, MemoryStats& stats)
+MemoryPool* MemoryPool::createPool(MemoryPool* parentPool, MemoryStats& stats ALLOC_PARAMS_DEF)
 {
 	if (!parentPool)
 		parentPool = getDefaultMemoryPool();
@@ -2140,8 +2133,7 @@ MemoryPool* MemoryPool::createPool(ALLOC_PARAMS1 MemoryPool* parentPool, MemoryS
 	MemPool* p = new(*parentPool ALLOC_PASS_ARGS) MemPool(*(parentPool->pool), stats, &defaultExtentsCache);
 #ifdef MEM_DEBUG
 #ifdef DEBUG_LOST_POOLS
-	p->fileName = file;
-	p->lineNum = line;
+	p->location = location;
 
 	static std::atomic<int> seqGen = 0;
 	p->seq = ++seqGen;
@@ -2237,7 +2229,7 @@ MemBlock* MemPool::allocateInternal2(size_t from, size_t& length, bool flagRedir
 	return hunk->block;
 }
 
-MemBlock* MemPool::allocateRange(size_t from, size_t& size ALLOC_PARAMS)
+MemBlock* MemPool::allocateRange(size_t from, size_t& size ALLOC_PARAMS_DEF)
 {
 	size_t length = from ? size : ROUNDUP(size + VALGRIND_REDZONE, roundingSize) + GUARD_BYTES;
 	MemBlock* memory = allocateInternal(from, length, true);
@@ -2248,8 +2240,7 @@ MemBlock* MemPool::allocateRange(size_t from, size_t& size ALLOC_PARAMS)
 #endif
 
 #ifdef DEBUG_GDS_ALLOC
-	memory->fileName = file;
-	memory->lineNumber = line;
+	memory->location = location;
 #endif
 
 #ifdef MEM_DEBUG
@@ -2266,7 +2257,7 @@ MemBlock* MemPool::allocateRange(size_t from, size_t& size ALLOC_PARAMS)
 }
 
 
-void* MemPool::allocate(size_t size ALLOC_PARAMS)
+void* MemPool::allocate(size_t size ALLOC_PARAMS_DEF)
 {
 #ifdef VALIDATE_POOL
 	MutexLockGuard guard(mutex, "MemPool::allocate");
@@ -2341,7 +2332,7 @@ void MemPool::releaseMemory(void* object, bool flagExtent) noexcept
 		block->valgrindInternal();
 
 #ifdef DEBUG_GDS_ALLOC
-		block->fileName = NULL;
+		block->location.fileName = nullptr;
 #endif
 
 		// Finally delete it
@@ -2512,7 +2503,7 @@ void* MemPool::getExtent(size_t from, size_t& to)		// pass desired minimum size,
 #ifdef VALIDATE_POOL
 	MutexLockGuard guard(mutex, "MemPool::getExtent");
 #endif
-	MemBlock* extent = allocateRange(from, to ALLOC_ARGS);
+	MemBlock* extent = allocateRange(from, to);
 	extent->setExtent();
 	return &extent->body;
 }
@@ -2628,7 +2619,7 @@ void MemPool::globalFree(void* block) noexcept
 	deallocate(block);
 }
 
-void* MemoryPool::calloc(size_t size ALLOC_PARAMS)
+void* MemoryPool::calloc(size_t size ALLOC_PARAMS_DEF)
 {
 	void* block = allocate(size ALLOC_PASS_ARGS);
 	memset(block, 0, size);
@@ -2774,7 +2765,7 @@ MemoryPool& AutoStorage::getAutoMemoryPool()
 	return *p;
 }
 
-void* MemoryPool::allocate(size_t size ALLOC_PARAMS)
+void* MemoryPool::allocate(size_t size ALLOC_PARAMS_DEF)
 {
 	return pool->allocate(size ALLOC_PASS_ARGS);
 }
@@ -2786,10 +2777,6 @@ void MemoryPool::deallocate(void* block) noexcept
 
 void MemoryPool::deletePool(MemoryPool* pool)
 {
-#ifdef DEBUG_LOST_POOLS
-	Jrd::checkPool(pool);
-#endif
-
 	while (pool->finalizers)
 	{
 		auto finalizer = pool->finalizers;
@@ -3047,12 +3034,12 @@ void AutoStorage::ProbeStack() const noexcept
 
 void* operator new(size_t s)
 {
-	return getExternalMemoryPool()->allocate(s ALLOC_ARGS);
+	return getExternalMemoryPool()->allocate(s);
 }
 
 void* operator new[](size_t s)
 {
-	return getExternalMemoryPool()->allocate(s ALLOC_ARGS);
+	return getExternalMemoryPool()->allocate(s);
 }
 
 void operator delete(void* mem) noexcept

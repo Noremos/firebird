@@ -521,7 +521,7 @@ bool IndexCreateTask::handler(WorkItem& _item)
 	if (idx->idx_flags & idx_foreign)
 	{
 		partner_relation = MetadataCache::getVersioned<Cached::Relation>(tdbb, idx->idx_primary_relation,
-			CacheFlag::AUTOCREATE | CacheFlag::NOSCAN);
+			CacheFlag::AUTOCREATE);
 		partner_index_id = idx->idx_primary_index;
 	}
 
@@ -530,7 +530,7 @@ bool IndexCreateTask::handler(WorkItem& _item)
 		fb_assert(!m_exprBlob.isEmpty());
 
 		CompilerScratch* csb = NULL;
-		Jrd::ContextPoolHolder context(tdbb, dbb->createPool(ALLOC_ARGS0));
+		Jrd::ContextPoolHolder context(tdbb, dbb->createPool());
 
 		idx->idx_expression_node = static_cast<ValueExprNode*> (MET_parse_blob(tdbb, &relation->getName().schema,
 			getPermanent(relation), &m_exprBlob, &csb, &idx->idx_expression_statement, false, false));
@@ -543,7 +543,7 @@ bool IndexCreateTask::handler(WorkItem& _item)
 		fb_assert(!m_condBlob.isEmpty());
 
 		CompilerScratch* csb = NULL;
-		Jrd::ContextPoolHolder context(tdbb, dbb->createPool(ALLOC_ARGS0));
+		Jrd::ContextPoolHolder context(tdbb, dbb->createPool());
 
 		idx->idx_condition_node = static_cast<BoolExprNode*> (MET_parse_blob(tdbb, &relation->getName().schema,
 			getPermanent(relation), &m_condBlob, &csb, &idx->idx_condition_statement, false, false));

@@ -273,7 +273,7 @@ Statement* Statement::makeStatement(thread_db* tdbb, CompilerScratch* csb, bool 
 	const auto dbb = tdbb->getDatabase();
 	fb_assert(dbb);
 
-#ifdef DEV_BUILD
+#if defined(DEV_BUILD) && defined(DEBUG_LOST_POOLS)
 	MemoryPool* defPool = tdbb->getDefaultPool();
 	{ // scope
 		Firebird::SyncLockGuard guard(&dbb->dbb_pools_sync, Firebird::SYNC_SHARED, "Statement::makeStatement");
@@ -529,7 +529,7 @@ Request* Statement::getRequest(thread_db* tdbb, const Requests::ReadAccessor& g,
 		return g->value(level);
 
 	// Create the request.
-	AutoMemoryPool reqPool(MemoryPool::createPool(ALLOC_ARGS1 pool));
+	AutoMemoryPool reqPool(MemoryPool::createPool(pool));
 #ifdef DEBUG_LOST_POOLS
 	fprintf(stderr, "%p %s %s\n", reqPool->mp(), sqlText ? sqlText->c_str() : "<nullptr>",
 		procedure ? procedure->getName().toQuotedString().c_str() :

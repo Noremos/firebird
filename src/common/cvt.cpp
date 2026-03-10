@@ -3726,9 +3726,9 @@ namespace
 	public:
 		virtual bool transliterate(const dsc* from, dsc* to, CSetId&);
 		virtual CSetId getChid(const dsc* d);
-		virtual Firebird::CharSet* getToCharset(CSetId charset2);
-		virtual void validateData(Firebird::CharSet* toCharset, SLONG length, const UCHAR* q);
-		virtual ULONG validateLength(Firebird::CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
+		virtual CharSet* getToCharset(CSetId charset2);
+		virtual void validateData(CharSet* toCharset, SLONG length, const UCHAR* q);
+		virtual ULONG validateLength(CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
 			const USHORT size);
 		virtual SLONG getLocalDate();
 		virtual ISC_TIMESTAMP getCurrentGmtTimeStamp();
@@ -3742,7 +3742,7 @@ namespace
 		return false;
 	}
 
-	Firebird::CharSet* CommonCallbacks::getToCharset(CSetId)
+	CharSet* CommonCallbacks::getToCharset(CSetId)
 	{
 		return NULL;
 	}
@@ -3751,7 +3751,7 @@ namespace
 	{
 	}
 
-	ULONG CommonCallbacks::validateLength(Firebird::CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
+	ULONG CommonCallbacks::validateLength(CharSet* charSet, CSetId charSetId, ULONG length, const UCHAR* start,
 		const USHORT size)
 	{
 		if (length > size)

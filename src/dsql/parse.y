@@ -853,6 +853,7 @@ using namespace Firebird;
 	Jrd::ExecBlockNode* execBlockNode;
 	Jrd::StoreNode* storeNode;
 	Jrd::UpdateOrInsertNode* updInsNode;
+	Jrd::UsingNode* usingNode;
 	Jrd::AggNode* aggNode;
 	Jrd::SysFuncCallNode* sysFuncCallNode;
 	Jrd::ValueIfNode* valueIfNode;
@@ -930,6 +931,7 @@ dml_statement
 	| select									{ $$ = $1; }
 	| update									{ $$ = $1; }
 	| update_or_insert							{ $$ = $1; }
+	| using										{ $$ = $1; }
 	;
 
 %type <ddlNode> ddl_statement
@@ -4184,6 +4186,36 @@ block_parameter($parameters)
 			setCollate($1, $2);
 			$parameters->add(newNode<ParameterClause>($1, (ValueSourceClause*) NULL, $4));
 		}
+	;
+
+// USING
+
+%type <usingNode> using
+using
+	: USING
+			{ $<usingNode>$ = newNode<UsingNode>(); }
+			block_input_params(NOTRIAL(&$2->parameters))
+			local_declarations_opt
+			DO
+			using_dml_statement
+		{
+			const auto node = $2;
+			node->localDeclList = $4;
+			node->body = $6;
+			$$ = node;
+		}
+	;
+
+%type <stmtNode> using_dml_statement
+using_dml_statement
+	: call				{ $$ = $1; }
+	| delete			{ $$ = $1; }
+	| insert			{ $$ = $1; }
+	| merge				{ $$ = $1; }
+	| exec_procedure	{ $$ = $1; }
+	| select			{ $$ = $1; }
+	| update			{ $$ = $1; }
+	| update_or_insert	{ $$ = $1; }
 	;
 
 // CREATE VIEW
@@ -7780,6 +7812,38 @@ in_predicate
 			const auto node = newNode<ComparativeBoolNode>(blr_eql, $1,
 				ComparativeBoolNode::DFLAG_ANSI_ANY, $4);
 			$$ = newNode<NotBoolNode>(node);
+		}
+	| value IN table_value_function_unlist_short(NOTRIAL($1))
+		{
+			$$ = newNode<ComparativeBoolNode>(blr_eql, $1,
+				ComparativeBoolNode::DFLAG_ANSI_ANY, $3);
+		}
+	| value NOT IN table_value_function_unlist_short(NOTRIAL($1))
+		{
+			const auto node = newNode<ComparativeBoolNode>(blr_eql, $1,
+				ComparativeBoolNode::DFLAG_ANSI_ANY, $4);
+			$$ = newNode<NotBoolNode>(node);
+		}
+	;
+
+%type <exprNode> table_value_function_unlist_short(<valueExprNode>)
+table_value_function_unlist_short($autoTypeFromValue)
+	: table_value_function_unlist
+		{
+			const auto unlistNode = nodeAs<UnlistFunctionSourceNode>($1);
+			unlistNode->alias = UnlistFunctionSourceNode::FUNC_NAME;
+
+			if (unlistNode->dsqlField == nullptr)
+				unlistNode->dsqlAutoTypeFromValue = $autoTypeFromValue;
+
+			const auto rseNode = newNode<RseNode>();
+			rseNode->dsqlFlags |= RecordSourceNode::DFLAG_BODY_WRAPPER;
+			rseNode->dsqlFrom = newNode<RecSourceListNode>(unlistNode);
+
+			const auto selectNode = newNode<SelectExprNode>();
+			selectNode->querySpec = rseNode;
+
+			$$ = selectNode;
 		}
 	;
 

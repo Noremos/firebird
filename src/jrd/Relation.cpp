@@ -339,7 +339,7 @@ RelationPages* RelationPermanent::getPagesInternal(thread_db* tdbb, TraNumber tr
 		const bool poolCreated = !pool;
 
 		if (poolCreated)
-			pool = dbb->createPool(ALLOC_ARGS1 false);
+			pool = dbb->createPool(false);
 		Jrd::ContextPoolHolder context(tdbb, pool);
 
 		jrd_tra* idxTran = tdbb->getTransaction();
@@ -778,6 +778,10 @@ bool GCLock::acquire(thread_db* tdbb, int wait)
 		oldFlags = gcFlags.load(std::memory_order_acquire);			// and retry
 	}
 
+	// No need to use LM for LTT
+	if (gcRel->isLTT())
+		return true;
+
 	// We incremented counter from 0 to 1 - take care about lck
 	if (!gcLck)
 		gcLck = gcRel->createLock(tdbb, LCK_rel_gc, false);
@@ -826,7 +830,7 @@ void GCLock::downgrade(thread_db* tdbb)
 		checkGuard(newFlags);
 	} while (!gcFlags.compare_exchange_weak(oldFlags, newFlags, std::memory_order_release, std::memory_order_acquire));
 
-	if ((newFlags & GC_counterMask == 0) && (newFlags & GC_blocking))
+	if ((!gcRel->isLTT()) && (newFlags & GC_counterMask == 0) && (newFlags & GC_blocking))
 	{
 		fb_assert(newFlags & GC_locked);
 		fb_assert(gcLck->lck_id);
@@ -886,6 +890,9 @@ bool GCLock::disable(thread_db* tdbb, int wait, Lock*& tempLock)
 		return false;
 	}
 
+	if (gcRel->isLTT())
+		return true;
+
 	ensureReleased(tdbb);
 
 	// we need no AST here
@@ -901,6 +908,9 @@ bool GCLock::disable(thread_db* tdbb, int wait, Lock*& tempLock)
 
 void GCLock::ensureReleased(thread_db* tdbb)
 {
+	if (!gcLck)
+		return;
+
 	unsigned oldFlags = gcFlags.load(std::memory_order_acquire);
 	for (;;)
 	{
@@ -980,7 +990,7 @@ const QualifiedName& IndexPermanent::getName()
 
 FB_UINT64 IndexPermanent::makeLockId(MetaId relId, MetaId indexId)
 {
-	if (MetadataCache::isLtt(relId))
+	if (MetadataCache::isLTT(relId))
 		return ElementBase::NO_METALOCK;
 
 	const int REL_ID_KEY_OFFSET = 16;

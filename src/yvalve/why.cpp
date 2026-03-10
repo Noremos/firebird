@@ -48,6 +48,7 @@
 #include "../common/IntlParametersBlock.h"
 #include "../common/os/isc_i_proto.h"
 #include "../common/os/path_utils.h"
+#include "../common/os/os_utils.h"
 #include "../common/classes/alloc.h"
 #include "../common/classes/array.h"
 #include "../common/classes/stack.h"
@@ -137,7 +138,7 @@ private:
 	// Fool-proof requested by Alex
 	// Private memory operators to be sure that this class is used in heap only with launcher
 	void* operator new (size_t s, Firebird::MemoryPool& pool ALLOC_PARAMS) { return pool.allocate(s ALLOC_PASS_ARGS); }
-	void operator delete (void* mem, Firebird::MemoryPool& ALLOC_PARAMS) { MemoryPool::globalFree(mem); }
+	void operator delete (void* mem, Firebird::MemoryPool& ALLOC_PARAMS_DEF) { MemoryPool::globalFree(mem); }
 	void operator delete (void* mem) { MemoryPool::globalFree(mem); }
 
 public:
@@ -863,6 +864,7 @@ private:
 	void signalInit()
 	{
 #ifdef UNIX
+		static GlobalPtr<os_utils::StopHandler> stopHandler;
 		static GlobalPtr<CtrlCHandler> ctrlCHandler;
 #else
 		static GlobalPtr<ShutdownInit> shutdownInit;

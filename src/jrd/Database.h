@@ -295,7 +295,7 @@ public:
 	static Database* create(Firebird::IPluginConfig* pConf, bool shared)
 	{
 		Firebird::MemoryStats temp_stats;
-		MemoryPool* const pool = MemoryPool::createPool(ALLOC_ARGS1 NULL, temp_stats);
+		MemoryPool* const pool = MemoryPool::createPool(NULL, temp_stats);
 		Database* const dbb = FB_NEW_POOL(*pool) Database(pool, pConf, shared);
 		pool->setStatsGroup(dbb->dbb_memory_stats);
 		return dbb;
@@ -477,11 +477,8 @@ public:
 	}
 #endif
 
-	MemoryPool* createPool(ALLOC_PARAMS1 bool separateStats = true);
+	MemoryPool* createPool(bool separateStats = true ALLOC_PARAMS);
 	void deletePool(MemoryPool* pool);
-#ifdef DEBUG_LOST_POOLS
-	void checkPool(MemoryPool* pool);
-#endif
 
 	void registerModule(Module&);
 

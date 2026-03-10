@@ -419,6 +419,7 @@ static bool set_linger(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool clear_cache(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool change_repl_state(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool set_statistics(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
+static bool deps_to_disk(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 
 // ----------------------------------------------------------------
 
@@ -727,7 +728,7 @@ namespace
 						SSHORT validBlr = FALSE;
 
 						Jrd::Database* dbb = tdbb->getDatabase();
-						MemoryPool* newPool = dbb->createPool(ALLOC_ARGS0);
+						MemoryPool* newPool = dbb->createPool();
 						try
 						{
 							Jrd::ContextPoolHolder context(tdbb, newPool);
@@ -856,7 +857,7 @@ namespace
 			{
 				Statement* statement = NULL;
 				// Nickolay Samofatov: allocate statement memory pool...
-				MemoryPool* new_pool = dbb->createPool(ALLOC_ARGS0);
+				MemoryPool* new_pool = dbb->createPool();
 				// block is used to ensure verify_cache()
 				// works in not deleted context
 				{
@@ -889,13 +890,13 @@ namespace
 							Dependency dependency(obj_relation);
 							dependency.relation = MetadataCache::getPerm<Cached::Relation>(tdbb,
 								parameter->prm_type_of_table, CacheFlag::AUTOCREATE);
-							dependency.subName = &parameter->prm_type_of_column;
+							dependency.subName = parameter->prm_type_of_column;
 							dependencies.push(dependency);
 						}
 						else if (!fb_utils::implicit_domain(parameter->prm_field_source.object.c_str()))
 						{
 							Dependency dependency(obj_field);
-							dependency.name = &parameter->prm_field_source;
+							dependency.name = parameter->prm_field_source;
 							dependencies.push(dependency);
 						}
 
@@ -909,8 +910,7 @@ namespace
 				}
 
 				MET_store_dependencies(tdbb, dependencies, nullptr, depName,
-					(work->dfw_package.isEmpty() ? objType : obj_package_header),
-					transaction);
+					(work->dfw_package.isEmpty() ? objType : obj_package_header));
 			}
 
 			MetadataCache::verify_cache(tdbb);
@@ -1176,6 +1176,7 @@ namespace
 
 static inline constexpr deferred_task task_table[] =
 {
+	{ dfw_deps_to_disk, deps_to_disk },			// must be first
 	{ dfw_add_shadow, add_shadow },
 	{ dfw_delete_ltt_index, delete_ltt_index },
 	{ dfw_delete_index, delete_index },
@@ -3008,7 +3009,7 @@ static bool create_field(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			if (!validation.isEmpty())
 			{
 				Jrd::Database* dbb = tdbb->getDatabase();
-				MemoryPool* new_pool = dbb->createPool(ALLOC_ARGS0);
+				MemoryPool* new_pool = dbb->createPool();
 				Jrd::ContextPoolHolder context(tdbb, new_pool);
 
 				MET_get_dependencies(tdbb, nullptr, NULL, 0, NULL, &validation,
@@ -3180,7 +3181,7 @@ static bool modify_field(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			if (!validation.isEmpty())
 			{
 				Jrd::Database* dbb = tdbb->getDatabase();
-				MemoryPool* new_pool = dbb->createPool(ALLOC_ARGS0);
+				MemoryPool* new_pool = dbb->createPool();
 				Jrd::ContextPoolHolder context(tdbb, new_pool);
 
 				MET_get_dependencies(tdbb, nullptr, NULL, 0, NULL, &validation,
@@ -4205,7 +4206,7 @@ static bool modify_trigger(thread_db* tdbb, SSHORT phase, DeferredWork* work, jr
 
 						auto* rel = relation->getVersioned(tdbb, 0);
 
-						MemoryPool* new_pool = dbb->createPool(ALLOC_ARGS0);
+						MemoryPool* new_pool = dbb->createPool();
 						TrigArray triggers(*new_pool);
 
 						try
@@ -4362,7 +4363,7 @@ static void get_trigger_dependencies(DeferredWork* work, bool compile, jrd_tra* 
 	{
 		Statement* statement = NULL;
 		// Nickolay Samofatov: allocate statement memory pool...
-		MemoryPool* new_pool = dbb->createPool(ALLOC_ARGS0);
+		MemoryPool* new_pool = dbb->createPool();
 		USHORT par_flags;
 
 		Cleanup mem([&]
@@ -5060,3 +5061,32 @@ static bool make_ltt_version(thread_db* tdbb, SSHORT phase, DeferredWork* work, 
 }
 
 
+// Store dependencies
+static bool deps_to_disk(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction)
+{
+	switch (phase)
+	{
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+			return true;
+
+		case 7:
+			break;
+
+		default:
+			return false;
+	}
+
+	transaction->tra_flags |= TRA_deps_to_disk;
+
+	for (auto& dep : transaction->tra_dependencies)
+		MET_store_dependency(tdbb, dep.dependency, dep.dep_rel, dep.object_name, dep.dependency_type);
+
+	transaction->tra_dependencies.clear();
+
+	return false;
+}

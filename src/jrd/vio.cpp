@@ -2167,7 +2167,8 @@ bool VIO_erase(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			EVL_field(0, rpb->rpb_record, f_rfr_rname, &desc);
 			MOV_get_metaname(tdbb, &desc, object_name.object);
 
-			if ( (r2 = MetadataCache::getPerm<Cached::Relation>(tdbb, object_name, CacheFlag::AUTOCREATE)) )
+			if ( (r2 = MetadataCache::getPerm<Cached::Relation>(tdbb, object_name,
+				  CacheFlag::AUTOCREATE | CacheFlag::MINISCAN)) )
 			{
 				EVL_field(0, rpb->rpb_record, f_rfr_fname, &desc2);
 				DFW_post_work(transaction, dfw_delete_rfr, &desc2, &schemaDesc, r2->getId());
@@ -4472,7 +4473,8 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 				EVL_field(0, rpb->rpb_record, f_idx_relation, &desc);
 				MOV_get_metaname(tdbb, &schemaDesc, object_name.schema);
 				MOV_get_metaname(tdbb, &desc, object_name.object);
-				auto* irel = MetadataCache::getPerm<Cached::Relation>(tdbb, object_name, CacheFlag::AUTOCREATE);
+				auto* irel = MetadataCache::getPerm<Cached::Relation>(tdbb, object_name,
+					CacheFlag::AUTOCREATE | CacheFlag::MINISCAN);
 				fb_assert(irel);
 
 				EVL_field(0, rpb->rpb_record, f_idx_id, &desc);
@@ -4723,7 +4725,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 		default:	// Shut up compiler warnings
 			break;
 	}
-	
+
 	rpb->rpb_b_page = 0;
 	rpb->rpb_b_line = 0;
 	rpb->rpb_flags = 0;
@@ -5904,6 +5906,7 @@ void Database::garbage_collector(Database* dbb)
 			TRA_commit(tdbb, transaction, false);
 
 		Monitoring::cleanupAttachment(tdbb);
+		attachment->rollbackMetaTransaction(tdbb);
 		attachment->releaseLocks(tdbb);
 		LCK_fini(tdbb, LCK_OWNER_attachment);
 	}	// try

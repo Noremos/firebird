@@ -1185,4 +1185,3 @@ void DsqlCompilerScratch::addCTEAlias(const string& alias)
 	fb_assert(currCteAlias == NULL);
 	cteAliases.add(FB_NEW_POOL(*tdbb->getDefaultPool()) string(*tdbb->getDefaultPool(), alias));
 }
-

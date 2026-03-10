@@ -1104,7 +1104,7 @@ bool ComparativeBoolNode::sleuth(thread_db* tdbb, Request* request,
 
 	// Choose interpretation for the operation
 
- 	auto ttype = (desc1->isBlob() && (desc1->dsc_sub_type != isc_blob_text) ? desc2 : desc1)->getTextType();
+	const auto ttype = (desc1->isBlob() && (desc1->dsc_sub_type != isc_blob_text) ? desc2 : desc1)->getTextType();
 	Collation* obj = INTL_texttype_lookup(tdbb, ttype);
 
 	// Get operator definition string (control string)

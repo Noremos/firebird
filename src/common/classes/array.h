@@ -482,7 +482,7 @@ public:
 		return false;
 	}
 
-	bool find(std::function<int(const T& item)> compare, size_type& pos) const
+	bool find(const std::function<int(const T& item)>& compare, size_type& pos) const
 	{
 		for (size_type i = 0; i < count; i++)
 		{
@@ -572,7 +572,7 @@ protected:
 			fb_assert(newcapacity < FB_MAX_SIZEOF / sizeof(T));
 
 			T* newdata = static_cast<T*>
-				(this->getPool().allocate(sizeof(T) * newcapacity ALLOC_ARGS));
+				(this->getPool().allocate(sizeof(T) * newcapacity));
 			if (preserve)
 				memcpy(static_cast<void*>(newdata), data, sizeof(T) * count);
 			freeData();
