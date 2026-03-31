@@ -243,6 +243,7 @@ enum drq_type_t
 	drq_l_rel_con,			// lookup relation constraint
 	drq_l_rel_fld_name,		// lookup relation field name
 	drq_g_nxt_const_id,			// lookup next constant ID
+	drq_g_nxt_package_id,			// lookup next package ID
 
 	drq_MAX
 };

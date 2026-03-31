@@ -1602,14 +1602,14 @@ void afterInsertRelation(thread_db* tdbb, Record* record)
 
 }
 
-template<class CachedType, USHORT Field, class IdType = MetaId>
-void afterInsertCachedObject(thread_db* tdbb, Record* record)
+template<USHORT Field, class CachedType, class IdType = MetaId>
+void populateCache(thread_db* tdbb, Record* record)
 {
 	if (!tdbb->getAttachment()->isRWGbak())
 		return;
 
 	dsc desc;
-	bool idSet = EVL_field(nullptr, record, Field, &desc);
+	const bool idSet = EVL_field(nullptr, record, Field, &desc);
 	fb_assert(idSet);
 	if (!idSet)
 		return;
@@ -1621,7 +1621,7 @@ void afterInsertCachedObject(thread_db* tdbb, Record* record)
 
 void afterInsertProcedure(thread_db* tdbb, Record* record)
 {
-	afterInsertCachedObject<Cached::Procedure, f_prc_id>(tdbb, record);
+	populateCache<f_prc_id, Cached::Procedure>(tdbb, record);
 }
 
 void afterUpdateProcedure(thread_db* tdbb, Record* orgRecord, Record* newRecord)
@@ -1631,7 +1631,7 @@ void afterUpdateProcedure(thread_db* tdbb, Record* orgRecord, Record* newRecord)
 
 void afterInsertFunction(thread_db* tdbb, Record* record)
 {
-	afterInsertCachedObject<Cached::Function, f_fun_id>(tdbb, record);
+	populateCache<f_fun_id, Cached::Function>(tdbb, record);
 }
 
 
@@ -1703,12 +1703,7 @@ void beforeInsertCollation(thread_db* tdbb, Record* record, jrd_rel* relation)
 
 void afterInsertCollation(thread_db* tdbb, Record* record)
 {
-	afterInsertCachedObject<Cached::CharSet, f_coll_cs_id, CSetId>(tdbb, record);
-}
-
-void afterInsertConstant(thread_db* tdbb, Record* record)
-{
-	afterInsertCachedObject<Cached::Constant, f_const_id>(tdbb, record);
+	populateCache<f_coll_cs_id, Cached::CharSet, CSetId>(tdbb, record);
 }
 
 }	// anonymous
@@ -1812,8 +1807,8 @@ void SystemTriggers::executeAfterInsertTriggers(thread_db* tdbb, jrd_rel* relati
 			afterInsertFunction(tdbb, record);
 			break;
 
-		case rel_constants:
-			afterInsertConstant(tdbb, record);
+		case rel_packages:
+			populateCache<f_pkg_id, Cached::Package>(tdbb, record);
 			break;
 	}
 }

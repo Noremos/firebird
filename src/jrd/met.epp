@@ -98,7 +98,7 @@
 #include "../jrd/trace/TraceJrdHelpers.h"
 #include "firebird/impl/msg_helper.h"
 #include "../jrd/LocalTemporaryTable.h"
-#include "../jrd/Constant.h"
+#include "../jrd/Package.h"
 
 
 #ifdef HAVE_CTYPE_H
@@ -341,7 +341,7 @@ void MetadataCache::cleanup(thread_db* tdbb)
 	mdc_procedures.cleanup(tdbb);
 	mdc_functions.cleanup(tdbb);
 	mdc_charsets.cleanup(tdbb);
-	mdc_constants.cleanup(tdbb);
+	mdc_packages.cleanup(tdbb);
 
 	for (unsigned i = 0; i < DB_TRIGGERS_COUNT; ++i)
 	{
@@ -812,10 +812,14 @@ Cached::Relation* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const
 
 	request.reset(tdbb, irq_m_fields10, IRQ_REQUESTS);
 
+	Package* package = nullptr;
 	FOR(REQUEST_HANDLE request)
 		DEP IN RDB$DEPENDENCIES CROSS
-		CONST IN RDB$CONSTANTS
-		WITH DEP.RDB$DEPENDED_ON_SCHEMA_NAME EQ schemaName->dsc_address AND
+		CONST IN RDB$CONSTANTS CROSS
+		PKG IN RDB$PACKAGES
+		WITH PKG.RDB$SCHEMA_NAME EQ schemaName->dsc_address AND
+			 PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME AND
+			 DEP.RDB$DEPENDED_ON_SCHEMA_NAME EQ schemaName->dsc_address AND
 			 DEP.RDB$DEPENDED_ON_NAME EQ fieldSource->dsc_address AND
 			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_field AND
 			 (DEP.RDB$DEPENDENT_TYPE EQ obj_package_header OR
@@ -829,9 +833,14 @@ Cached::Relation* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const
 
 		DeferredWork* dw2 = DFW_post_work(transaction, dfw_modify_package_constant,
 			string(constantFullName.object.c_str()), constantFullName.schema, id, constantFullName.package);
-		DFW_post_work_arg(transaction, dw2, nullptr, nullptr, 0, dfw_arg_check_blr);
 
-		MetadataCache::newVersion<Cached::Constant>(tdbb, id);
+		if (package == nullptr)
+		{
+			package = MetadataCache::newVersion<Cached::Package>(tdbb, id)->getVersioned(tdbb, 0);
+			fb_assert(package);
+		}
+
+		package->addConstant(tdbb, id, constantFullName, CONST.RDB$PRIVATE_FLAG, CONST.RDB$CONSTANT_BLR);
 	}
 	END_FOR
 
@@ -4687,12 +4696,12 @@ void MetadataCache::releaseLocks(thread_db* tdbb)
 			charset->releaseLocks(tdbb);
 	}
 
-	// Release constants locks
+	// Release packages locks
 
-	for (auto constant : mdc_constants)
+	for (auto package : mdc_packages)
 	{
-		if (constant)
-			constant->releaseLocks(tdbb);
+		if (package)
+			package->releaseLocks(tdbb);
 	}
 
 	// Release database triggers locks

@@ -94,7 +94,7 @@
 #include "../jrd/trace/TraceJrdHelpers.h"
 #include "../common/Task.h"
 #include "../jrd/WorkerAttachment.h"
-#include "../jrd/Constant.h"
+#include "../jrd/Package.h"
 
 using namespace Jrd;
 using namespace Firebird;
@@ -2360,12 +2360,6 @@ bool VIO_erase(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			EVL_field(0, rpb->rpb_record, f_const_id, &desc2);
 			id = MOV_get_long(tdbb, &desc2, 0);
 
-			{
-				[[maybe_unused]]
-				auto constant =  Constant::lookup(tdbb, id);
-				fb_assert(constant);
-			}
-
 			DFW_post_work(transaction, dfw_delete_package_constant, &desc, &schemaDesc, id, object_name.package);
 			break;
 
@@ -3452,6 +3446,12 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 					MOV_get_metaname(tdbb, &schemaDesc, object_name.schema);
 					MOV_get_metaname(tdbb, &desc1, object_name.object);
 					SCL_check_package(tdbb, object_name, SCL_alter);
+
+					{ // Send dfw
+						EVL_field(0, org_rpb->rpb_record, f_pkg_id, &desc2);
+						const USHORT id = MOV_get_long(tdbb, &desc2, 0);
+						DFW_post_work(transaction, dfw_modify_package_header, &desc1, &schemaDesc, id, object_name.package);
+					}
 				}
 			}
 			check_class(tdbb, transaction, org_rpb, new_rpb, f_pkg_class);
@@ -3770,7 +3770,7 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 			{ // Send dfw
 				EVL_field(0, org_rpb->rpb_record, f_const_id, &desc2);
 				const USHORT id = MOV_get_long(tdbb, &desc2, 0);
-				DFW_post_work(transaction, Jrd::dfw_modify_package_constant, &desc1, &schemaDesc, id, object_name.package);
+				DFW_post_work(transaction, dfw_modify_package_constant, &desc1, &schemaDesc, id, object_name.package);
 			}
 			break;
 
@@ -4397,6 +4397,11 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			set_owner_name(tdbb, rpb->rpb_record, f_pkg_owner);
 			if (set_security_class(tdbb, rpb->rpb_record, f_pkg_class))
 				DFW_post_work(transaction, dfw_grant, &desc, &schemaDesc, obj_package_header);
+
+			object_id = set_metadata_id(tdbb, rpb->rpb_record,
+										f_pkg_id, drq_g_nxt_package_id, PACKAGES_GENERATOR);
+
+			work = DFW_post_work(transaction, dfw_create_package, &desc, &schemaDesc, object_id, object_name.package);
 			break;
 
 		case rel_procedures:
@@ -4694,9 +4699,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 				MOV_get_metaname(tdbb, &desc2, object_name.package);
 
 			object_id = set_metadata_id(tdbb, rpb->rpb_record,
-										f_const_id, drq_g_nxt_const_id, "RDB$CONSTANTS");
-
-			work = DFW_post_work(transaction, dfw_create_package_constant, &desc, &schemaDesc, object_id, object_name.package);
+							f_const_id, drq_g_nxt_const_id, CONSTANTS_GENERATOR);
 			break;
 
 		default:    // Shut up compiler warnings

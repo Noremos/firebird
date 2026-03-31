@@ -39,7 +39,7 @@
 #include "../jrd/scl_proto.h"
 
 #include "../common/dsc_proto.h" // DSC_make_descriptor
-#include "../jrd/Constant.h" // Constant
+#include "../jrd/Package.h" // Constant
 
 #include "../dsql/metd_proto.h" // METD_get_domain
 #include "../common/classes/VaryStr.h" // METD_get_domain
@@ -76,7 +76,18 @@ public:
 
 	void execute(thread_db* tdbb, DsqlCompilerScratch*, jrd_tra* transaction)
 	{
-		Constant::drop(tdbb, transaction, m_name);
+		static const CachedRequestId requestId;
+		AutoCacheRequest request(tdbb, requestId);
+
+		FOR (REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
+			CONST IN RDB$CONSTANTS
+			WITH CONST.RDB$SCHEMA_NAME EQ m_name.schema.c_str() AND
+				CONST.RDB$PACKAGE_NAME EQ m_name.package.c_str() AND
+				CONST.RDB$CONSTANT_NAME EQ m_name.object.c_str()
+		{
+			ERASE CONST;
+		}
+		END_FOR
 	}
 
 private:
@@ -403,19 +414,21 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 		if (csb->collectingDependencies())
 		{
 			Dependency dependency(obj_package_constant);
-			dependency.name = FB_NEW_POOL(pool) QualifiedName(pool, fullName);
+			dependency.name = fullName;
 
 			csb->addDependency(dependency);
 		}
 
 		{
 			csb->qualifyExistingName(tdbb, fullName, obj_package_constant);
-			auto* constant = MetadataCache::getPerm<Cached::Constant>(tdbb, fullName, CacheFlag::AUTOCREATE);
-			if (constant)
-				node->m_constant = csb->csb_resources->constants.registerResource(constant);
+			auto package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
+			if (package)
+			{
+				node->m_package = csb->csb_resources->packages.registerResource(package->getPermanent());
+			}
 		}
 
-		if (!node->m_constant)
+		if (!node->m_package)
 			status_exception::raise(Arg::Gds(isc_bad_constant_name) <<
 				Arg::Str(fullName.toQuotedString()));
 
@@ -448,41 +461,37 @@ void PackageReferenceNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 {
 	jrd_tra* transaction = dsqlScratch->getTransaction();
 	thread_db* tdbb = JRD_get_thread_data();
-	*desc = Constant::getDesc(tdbb, transaction, m_fullName);
+	*desc = ConstantValue::getDesc(tdbb, transaction, m_fullName);
 }
 
 bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
-	const QualifiedName& fullName, bool* isPrivate)
+	QualifiedName fullName, bool* isPrivate)
 {
 	if (fullName.package.isEmpty() || fullName.object.isEmpty())
 		return false;
 
 	// Use default schema if one not specified
-	const char* schemaName = fullName.schema.hasData() ? fullName.schema.c_str() : PUBLIC_SCHEMA;
+	if (fullName.schema.isEmpty())
+		fullName.schema = PUBLIC_SCHEMA;
 
-	static const CachedRequestId requestId;
-	AutoCacheRequest getConstantRequest(tdbb, requestId);
-	FOR (REQUEST_HANDLE getConstantRequest TRANSACTION_HANDLE transaction)
-		CONST IN RDB$CONSTANTS
-		WITH CONST.RDB$SCHEMA_NAME EQ schemaName AND
-		CONST.RDB$PACKAGE_NAME EQ fullName.package.c_str() AND
-		CONST.RDB$CONSTANT_NAME EQ fullName.object.c_str()
-	{
-		if (isPrivate)
-		{
-			*isPrivate = !CONST.RDB$PRIVATE_FLAG.NULL && CONST.RDB$PRIVATE_FLAG;
-		}
+	auto* package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
+	if (package == nullptr)
+		return false;
 
-		return true;
-	}
-	END_FOR
+	ConstantValue* value = package->findConstant(tdbb, fullName);
 
-	return false;
+	if (value == nullptr)
+		return false;
+
+	if (isPrivate)
+		*isPrivate = value->isPrivate;
+
+	return true;
 }
 
 void PackageReferenceNode::getDesc(thread_db* tdbb, CompilerScratch*, dsc* desc)
 {
-	*desc = Constant::getDesc(tdbb, tdbb->getTransaction(), m_fullName);
+	*desc = ConstantValue::getDesc(tdbb, tdbb->getTransaction(), m_fullName);
 }
 
 ValueExprNode* PackageReferenceNode::copy(thread_db* tdbb, NodeCopier& copier) const
@@ -490,8 +499,7 @@ ValueExprNode* PackageReferenceNode::copy(thread_db* tdbb, NodeCopier& copier) c
 	MemoryPool& pool = *tdbb->getDefaultPool();
 	auto* node = FB_NEW_POOL(pool) PackageReferenceNode(pool, m_fullName, m_itemType);
 
-	auto* constant = MetadataCache::getPerm<Cached::Constant>(tdbb, m_fullName, 0);
-	node->m_constant = copier.csb->csb_resources->constants.registerResource(constant);
+	node->m_package = copier.csb->csb_resources->packages.registerResource(m_package());
 
 	return node;
 }
@@ -508,16 +516,16 @@ ValueExprNode* PackageReferenceNode::pass2(thread_db* tdbb, CompilerScratch* csb
 
 dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 {
-	impure_value* impure = request->getImpure<impure_value>(m_impureOffset);
+	impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
 	switch (m_itemType)
 	{
 	case blr_pkg_ref_item_const:
 	{
-		const Constant* constant = m_constant(request->getResources());
-		constant->checkReload(tdbb);
+		Package* package = m_package(request->getResources());
+		package->checkReload(tdbb);
 
-		EVL_make_value(tdbb, &constant->getValue(), impure);
-		return &impure->vlu_desc;
+		EVL_make_value(tdbb, &package->findConstant(tdbb, m_fullName)->makeValue(tdbb), outputImpure);
+		return &outputImpure->vlu_desc;
 	}
 	default:
 		fb_assert(false);
@@ -555,8 +563,6 @@ DdlNode* CreatePackageConstantNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	{
 		status_exception::raise(Arg::Gds(isc_dyn_non_constant_constant) << name.toQuotedString());
 	}
-	// DsqlDescMaker::fromField(&node->castDesc, type);
-	// node->castDesc.dsc_flags = node->source->getDsqlDesc().dsc_flags & DSC_nullable;
 
 	DdlNode::dsqlPass(dsqlScratch);
 	return nullptr;
@@ -582,7 +588,6 @@ void CreatePackageConstantNode::execute(thread_db* tdbb, DsqlCompilerScratch* ds
 		executeAlter(tdbb, dsqlScratch, transaction);
 
 	fb_assert(m_id);
-	MetadataCache::newVersion<Cached::Constant>(tdbb, m_id);
 }
 
 void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
@@ -593,7 +598,8 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 	AutoCacheRequest storeConstantRequest(tdbb, requestId);
 
 	// Check uniqueness
-	if (PackageReferenceNode::constantExists(tdbb, transaction, name))
+	fb_assert(package != nullptr);
+	if (package->findConstant(tdbb, name))
 	{
 		status_exception::raise(Arg::Gds(isc_dyn_dup_const) << name.toQuotedString());
 	}
@@ -612,7 +618,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 	{
 		try
 		{
-			SINT64 id = DYN_UTIL_gen_unique_id(tdbb, drq_g_nxt_const_id, "RDB$CONSTANTS");
+			SINT64 id = DYN_UTIL_gen_unique_id(tdbb, drq_g_nxt_const_id, CONSTANTS_GENERATOR);
 			id %= (MAX_SSHORT + 1);
 			if (!id)
 				continue;
@@ -635,7 +641,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 				strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
 
 				// Gen value blr
-				Constant::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
+				ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
 				// Put the blr
 				blb* blob = blb::create(tdbb, transaction, &CONST.RDB$CONSTANT_BLR);
@@ -643,8 +649,14 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 				blob->BLB_close(tdbb);
 
 				// Parent package
-				CONST.RDB$PACKAGE_NAME.NULL = FALSE;
-				strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
+				fb_assert(name.package.hasData());
+				{
+					CONST.RDB$PACKAGE_NAME.NULL = FALSE;
+					strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
+
+					fb_assert(package);
+					package->addConstant(tdbb, m_id, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
+				}
 
 				// Schema of the parent package
 				CONST.RDB$SCHEMA_NAME.NULL = FALSE;
@@ -690,15 +702,16 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 	// Store constant dsc in RDB$FIELDS
 	FOR (REQUEST_HANDLE eraseDscRequest TRANSACTION_HANDLE transaction)
 		FLD IN RDB$FIELDS CROSS CONST IN RDB$CONSTANTS
-			WITH CONST.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+		CROSS PACKAGE IN RDB$PACKAGES
+			WITH PACKAGE.RDB$PACKAGE_NAME EQ name.package.c_str() AND
+				PACKAGE.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+				CONST.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
 				CONST.RDB$PACKAGE_NAME EQ name.package.c_str() AND
 				CONST.RDB$CONSTANT_NAME EQ name.object.c_str() AND
 				FLD.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME AND
 				FLD.RDB$FIELD_NAME EQ CONST.RDB$FIELD_SOURCE
 	{
 		m_id = CONST.RDB$CONSTANT_ID;
-
-		MetadataCache::oldVersion<Cached::Constant>(tdbb, m_id, CacheFlag::OLD_ALTER);
 
 		dyn_fld origDom, newDom;
 		DSC_make_descriptor(&origDom.dyn_dsc, FLD.RDB$FIELD_TYPE, FLD.RDB$FIELD_SCALE,
@@ -798,12 +811,18 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 			newDom.dyn_sub_type = m_type->subType;
 
 		// Gen the new constant value as blr
-		Constant::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
+		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
 		// And write
 		blb* blob = blb::create(tdbb, transaction, &blobId);
 		blob->BLB_put_segment(tdbb, dsqlScratch->getBlrData().begin(), dsqlScratch->getBlrData().getCount());
 		blob->BLB_close(tdbb);
+
+		{
+			fb_assert(package);
+			// Do not cache blob id because the blob is not materialized
+			package->addConstant(tdbb, m_id, name, m_isPrivate, m_type);
+		}
 
 		MODIFY CONST USING
 			CONST.RDB$CONSTANT_BLR.NULL = FALSE;
@@ -976,7 +995,7 @@ void CreateAlterPackageNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlS
 		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(name.schema.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.schema.c_str()));
 		nameDesc.makeText(name.object.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.object.c_str()));
-		DFW_post_work(transaction, dfw_modify_package_header, &nameDesc, &schemaDesc, 0);
+		DFW_post_work(transaction, dfw_modify_package_header, &nameDesc, &schemaDesc, id);
 	}
 	else
 		executeCreate(tdbb, dsqlScratch, transaction);
@@ -1001,39 +1020,66 @@ void CreateAlterPackageNode::executeCreate(thread_db* tdbb, DsqlCompilerScratch*
 	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_s_pkg, DYN_REQUESTS);
 
-	STORE (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
-		PKG IN RDB$PACKAGES USING
+	Cached::Package* package = nullptr;
+	ULONG faults = 0;
+	while (true)
 	{
-		PKG.RDB$SCHEMA_NAME.NULL = FALSE;
-		strcpy(PKG.RDB$SCHEMA_NAME, name.schema.c_str());
-
-		PKG.RDB$PACKAGE_NAME.NULL = FALSE;
-		strcpy(PKG.RDB$PACKAGE_NAME, name.object.c_str());
-
-		PKG.RDB$SYSTEM_FLAG.NULL = FALSE;
-		PKG.RDB$SYSTEM_FLAG = 0;
-
-		PKG.RDB$OWNER_NAME.NULL = FALSE;
-		strcpy(PKG.RDB$OWNER_NAME, ownerName.c_str());
-
-		PKG.RDB$PACKAGE_HEADER_SOURCE.NULL = FALSE;
-		attachment->storeMetaDataBlob(tdbb, transaction, &PKG.RDB$PACKAGE_HEADER_SOURCE, source);
-
-		if (ssDefiner.has_value())
+		try
 		{
-			PKG.RDB$SQL_SECURITY.NULL = FALSE;
-			PKG.RDB$SQL_SECURITY = ssDefiner.value() == SqlSecurity::SS_DEFINER ? FB_TRUE : FB_FALSE;
+			id = DYN_UTIL_gen_unique_id(tdbb, drq_g_nxt_package_id, PACKAGES_GENERATOR);
+			id %= (MAX_SSHORT + 1);
+			if (!id)
+				continue;
+
+			STORE (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
+				PKG IN RDB$PACKAGES USING
+			{
+				PKG.RDB$SCHEMA_NAME.NULL = FALSE;
+				strcpy(PKG.RDB$SCHEMA_NAME, name.schema.c_str());
+
+				PKG.RDB$PACKAGE_NAME.NULL = FALSE;
+				strcpy(PKG.RDB$PACKAGE_NAME, name.object.c_str());
+
+				PKG.RDB$SYSTEM_FLAG.NULL = FALSE;
+				PKG.RDB$SYSTEM_FLAG = 0;
+
+				PKG.RDB$OWNER_NAME.NULL = FALSE;
+				strcpy(PKG.RDB$OWNER_NAME, ownerName.c_str());
+
+				PKG.RDB$PACKAGE_HEADER_SOURCE.NULL = FALSE;
+				attachment->storeMetaDataBlob(tdbb, transaction, &PKG.RDB$PACKAGE_HEADER_SOURCE, source);
+
+				if (ssDefiner.has_value())
+				{
+					PKG.RDB$SQL_SECURITY.NULL = FALSE;
+					PKG.RDB$SQL_SECURITY = ssDefiner.value() == SqlSecurity::SS_DEFINER ? FB_TRUE : FB_FALSE;
+				}
+				else
+					PKG.RDB$SQL_SECURITY.NULL = TRUE;
+
+				PKG.RDB$PACKAGE_ID = id;
+			}
+			END_STORE
+			break;
 		}
-		else
-			PKG.RDB$SQL_SECURITY.NULL = TRUE;
+		catch (const status_exception& ex)
+		{
+			if (ex.value()[1] != isc_unique_key_violation)
+				throw;
+
+			if (++faults > MAX_SSHORT)
+				throw;
+
+			fb_utils::init_status(tdbb->tdbb_status_vector);
+		}
 	}
-	END_STORE
 
 	storePrivileges(tdbb, transaction, name, obj_package_header, EXEC_PRIVILEGES);
 
 	owner = ownerName;
 
-	executeItems(tdbb, dsqlScratch, transaction);
+	package = MetadataCache::newVersion<Cached::Package>(tdbb, id);
+	executeItems(tdbb, dsqlScratch, transaction, package->getVersioned(tdbb, CacheFlag::AUTOCREATE));
 
 	executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_AFTER, DDL_TRIGGER_CREATE_PACKAGE, name, {});
 }
@@ -1054,18 +1100,18 @@ bool CreateAlterPackageNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* 
 		WITH PKG.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
 			 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
 	{
+		id = PKG.RDB$PACKAGE_ID;
 		modified = true;
+		MetadataCache::oldVersion<Cached::Package>(tdbb, id, CacheFlag::OLD_ALTER);
 
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_BEFORE, DDL_TRIGGER_ALTER_PACKAGE, name, {});
 
 		PackageItemsHolder existingItems(pool);
-		existingItems.collectPackagedItems(tdbb, transaction, name, false, false);
+		existingItems.collectPackagedItems(tdbb, transaction, name, false, true);
 
 		dropMissingItems<DropFunctionNode>(tdbb, dsqlScratch, name, existingItems.functions, functionNames);
 		dropMissingItems<DropProcedureNode>(tdbb, dsqlScratch, name, existingItems.procedures, procedureNames);
-
-		// To admit type/value change, all the constants should be recreated
-		Constant::dropAllFromPackage(tdbb, transaction, name, false);
+		dropMissingItems<DropConstantNode>(tdbb, dsqlScratch, name, existingItems.constants, constantNames);
 
 		MODIFY PKG
 			PKG.RDB$PACKAGE_HEADER_SOURCE.NULL = FALSE;
@@ -1089,13 +1135,14 @@ bool CreateAlterPackageNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* 
 		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(name.schema.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.schema.c_str()));
 		nameDesc.makeText(name.object.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.object.c_str()));
-		DFW_post_work(transaction, dfw_drop_package_body, &nameDesc, &schemaDesc, 0);
+		DFW_post_work(transaction, dfw_drop_package_body, &nameDesc, &schemaDesc, id);
 	}
 	END_FOR
 
 	if (modified)
 	{
-		executeItems(tdbb, dsqlScratch, transaction);
+		auto package = MetadataCache::newVersion<Cached::Package>(tdbb, id);
+		executeItems(tdbb, dsqlScratch, transaction, package->getVersioned(tdbb, CacheFlag::AUTOCREATE));
 
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_AFTER, DDL_TRIGGER_ALTER_PACKAGE, name, {});
 	}
@@ -1141,7 +1188,7 @@ bool CreateAlterPackageNode::executeAlterIndividualParameters(thread_db* tdbb, D
 }
 
 void CreateAlterPackageNode::executeItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-	jrd_tra* transaction)
+	jrd_tra* transaction, Package* package)
 {
 	for (unsigned i = 0; i < items->getCount(); ++i)
 	{
@@ -1157,6 +1204,7 @@ void CreateAlterPackageNode::executeItems(thread_db* tdbb, DsqlCompilerScratch* 
 				(*items)[i].procedure->executeDdl(tdbb, (*items)[i].dsqlScratch, transaction, true);
 				break;
 			case PackageItemType::CONSTANT:
+				(*items)[i].constant->package = package;
 				(*items)[i].constant->executeDdl(tdbb, (*items)[i].dsqlScratch, transaction, true);
 				break;
 		}
@@ -1196,12 +1244,15 @@ void DropPackageNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_e_pkg, DYN_REQUESTS);
 
+	MetaId id{};
 	FOR (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
 		PKG IN RDB$PACKAGES
 		WITH PKG.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
 			 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
 	{
 		found = true;
+		id = PKG.RDB$PACKAGE_ID;
+		MetadataCache::getVersioned<Cached::Package>(tdbb, id, CacheFlag::OLD_DROP);
 
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_BEFORE, DDL_TRIGGER_DROP_PACKAGE, name, {});
 
@@ -1213,7 +1264,7 @@ void DropPackageNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(name.schema.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.schema.c_str()));
 		nameDesc.makeText(name.object.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.object.c_str()));
-		DFW_post_work(transaction, dfw_drop_package_header, &nameDesc, &schemaDesc, 0);
+		DFW_post_work(transaction, dfw_drop_package_header, &nameDesc, &schemaDesc, id);
 	}
 	END_FOR
 
@@ -1245,7 +1296,10 @@ void DropPackageNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	END_FOR
 
 	if (found)
+	{
+		MetadataCache::erase<Cached::Package>(tdbb, id);
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_AFTER, DDL_TRIGGER_DROP_PACKAGE, name, {});
+	}
 
 	savePoint.release();	// everything is ok
 }
@@ -1333,6 +1387,10 @@ DdlNode* CreatePackageBodyNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 					constant->name.schema = name.schema;
 					constant->name.package = name.object;
 					constant->create = true;
+
+					if (arrays[i] == items)
+						constant->alter = true;
+
 					constant->makePrivate();
 					break;
 				}
@@ -1382,6 +1440,7 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 	AutoCacheRequest requestHandle(tdbb, drq_m_pkg_body, DYN_REQUESTS);
 	bool modified = false;
 
+	Package* package = nullptr;
 	FOR (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
 		PKG IN RDB$PACKAGES
 		WITH PKG.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
@@ -1397,6 +1456,7 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 				Arg::Gds(isc_dyn_package_body_exists) << name.toQuotedString());
 		}
 
+		package = MetadataCache::newVersion<Cached::Package>(tdbb, PKG.RDB$PACKAGE_ID)->getVersioned(tdbb, CacheFlag::AUTOCREATE);
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_BEFORE, DDL_TRIGGER_CREATE_PACKAGE_BODY, name, {});
 
 		MODIFY PKG
@@ -1488,6 +1548,8 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 					headerItems.constants.checkDuplicate<PackageItemType::CONSTANT>(constant->name);
 					existingItems.constants.checkDuplicate<PackageItemType::CONSTANT>(constant->name);
 
+					fb_assert(package);
+					constant->package = package;
 					constant->executeDdl(tdbb, elem.dsqlScratch, transaction, true);
 					break;
 				}
@@ -1499,7 +1561,12 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 	newItems.collectPackagedItems(tdbb, transaction, name, true, false);
 	existingItems.checkDefineMatch(pool, name, newItems);
 
-
+	{
+		dsc schemaDesc, nameDesc;
+		schemaDesc.makeText(name.schema.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.schema.c_str()));
+		nameDesc.makeText(name.object.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.object.c_str()));
+			DFW_post_work(transaction, dfw_create_package, &nameDesc, &schemaDesc, package->getId());
+	}
 	executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_AFTER, DDL_TRIGGER_CREATE_PACKAGE_BODY, name, {});
 
 	savePoint.release();	// everything is ok
@@ -1539,12 +1606,14 @@ void DropPackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScra
 	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_m_pkg_body2, DYN_REQUESTS);
 
+	MetaId id{};
 	FOR (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
 		PKG IN RDB$PACKAGES
 		WITH PKG.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
 			 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
 	{
 		found = true;
+		id = PKG.RDB$PACKAGE_ID;
 
 		executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_BEFORE, DDL_TRIGGER_DROP_PACKAGE_BODY, name, {});
 
@@ -1555,7 +1624,7 @@ void DropPackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScra
 			dsc schemaDesc, nameDesc;
 			schemaDesc.makeText(name.schema.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.schema.c_str()));
 			nameDesc.makeText(name.object.length(), ttype_metadata, (UCHAR*) const_cast<char*>(name.object.c_str()));
-			DFW_post_work(transaction, dfw_drop_package_body, &nameDesc, &schemaDesc, 0);
+			DFW_post_work(transaction, dfw_drop_package_body, &nameDesc, &schemaDesc, id);
 		END_MODIFY
 	}
 	END_FOR
@@ -1622,7 +1691,20 @@ void DropPackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScra
 	}
 	END_FOR
 
-	Constant::dropAllFromPackage(tdbb, transaction, name, true);
+	// Erase body constants
+	static const CachedRequestId eraseRequestId;
+	AutoCacheRequest eraseConstantRequest(tdbb, eraseRequestId);
+	FOR (REQUEST_HANDLE eraseConstantRequest TRANSACTION_HANDLE transaction)
+			CONST IN RDB$CONSTANTS
+			WITH CONST.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+				CONST.RDB$PACKAGE_NAME EQ name.object.c_str() AND
+				CONST.RDB$PRIVATE_FLAG EQ true
+	{
+		ERASE CONST;
+	}
+	END_FOR
+
+	MetadataCache::newVersion<Cached::Package>(tdbb, id);
 
 	executeDdlTrigger(tdbb, dsqlScratch, transaction, DTW_AFTER, DDL_TRIGGER_DROP_PACKAGE_BODY, name, {});
 

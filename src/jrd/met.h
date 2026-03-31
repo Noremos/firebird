@@ -238,7 +238,7 @@ public:
 		  mdc_procedures(getPool()),
 		  mdc_functions(getPool()),
 		  mdc_charsets(getPool()),
-		  mdc_constants(getPool()),
+		  mdc_packages(getPool()),
 		  mdc_cleanup_queue(pool)
 	{
 		memset(mdc_triggers, 0, sizeof(mdc_triggers));
@@ -502,12 +502,12 @@ private:
 	};
 
 	template <typename Dummy>
-	class Vector<Cached::Constant, Dummy>
+	class Vector<Cached::Package, Dummy>
 	{
 	public:
-		static CacheVector<Cached::Constant>& get(MetadataCache* mdc)
+		static CacheVector<Cached::Package>& get(MetadataCache* mdc)
 		{
-			return mdc->mdc_constants;
+			return mdc->mdc_packages;
 		}
 	};
 
@@ -616,7 +616,7 @@ private:
 	CacheVector<Cached::Procedure>		mdc_procedures;
 	CacheVector<Cached::Function>		mdc_functions;	// User defined functions
 	CacheVector<Cached::CharSet>		mdc_charsets;	// intl character set descriptions
-	CacheVector<Cached::Constant>		mdc_constants;	// Package constants
+	CacheVector<Cached::Package>		mdc_packages;	// Package Constants
 	TriggersSet							mdc_triggers[DB_TRIGGERS_COUNT];
 	// Two numbers are required because commit into cache is not atomic event.
 	// Front value is incremented before commit, back - after commit.

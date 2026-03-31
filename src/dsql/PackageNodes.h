@@ -133,7 +133,7 @@ public:
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) final;
 
 	static bool constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
-		const QualifiedName& name, bool* isPrivate = nullptr);
+		QualifiedName name, bool* isPrivate = nullptr);
 
 	// Compute descriptor for value expression.
 	void getDesc(thread_db*, CompilerScratch*, dsc*) final;
@@ -148,7 +148,8 @@ public:
 	}
 
 private:
-	CachedResource<Constant, ConstantPermanent> m_constant;
+	ConstantValue* m_prefetchedConstant = nullptr;
+	CachedResource<Package, PackagePermanent> m_package;
 	const QualifiedName m_fullName;
 
 	const UCHAR m_itemType;
@@ -202,6 +203,8 @@ public:
 	QualifiedName name;
 	bool create = false;
 	bool alter = false;
+
+	Package* package = nullptr;
 
 private:
 	NestConst<dsql_fld> m_type;
@@ -293,7 +296,7 @@ private:
 	void executeCreate(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
 	bool executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
 	bool executeAlterIndividualParameters(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
-	void executeItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
+	void executeItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction, Package* package);
 
 public:
 	QualifiedName name;
@@ -306,6 +309,7 @@ public:
 	ItemsNameArray procedureNames;
 	ItemsNameArray constantNames;
 	std::optional<SqlSecurity> ssDefiner;
+	MetaId id;
 
 private:
 	MetaName owner;

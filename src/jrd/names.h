@@ -256,6 +256,7 @@ NAME("RDB$ENGINE_NAME", nam_engine_name)
 NAME("RDB$LINGER", nam_linger)
 
 NAME("RDB$PACKAGES", nam_packages)
+NAME("RDB$PACKAGE_ID", nam_pkg_id)
 NAME("RDB$PACKAGE_NAME", nam_pkg_name)
 NAME("RDB$PACKAGE_HEADER_SOURCE", nam_pkg_header_source)
 NAME("RDB$PACKAGE_BODY_SOURCE", nam_pkg_body_source)

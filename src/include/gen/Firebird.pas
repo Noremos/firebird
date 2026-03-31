@@ -5959,8 +5959,8 @@ const
 	 isc_const_name = 335545322;
 	 isc_private_constant = 335545323;
 	 isc_package_alias_help = 335545324;
-	 isc_bad_constant_blr_error = 335545325;
-	 isc_bad_constant_type_error = 335545326;
+	 isc_bad_constant_blr = 335545325;
+	 isc_bad_constant_desc = 335545326;
 	 isc_bad_constant_name = 335545327;
 	 isc_bad_constant_type = 335545328;
 	 isc_gfix_db_name = 335740929;
