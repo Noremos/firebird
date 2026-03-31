@@ -803,6 +803,8 @@ inline void clearRecordStack(RecordStack& stack)
 		// records from undo log must not be deleted
 		if (!r->isTempActive())
 			delete r;
+		else
+			r->releaseTempActive();
 	}
 }
 
@@ -7241,6 +7243,9 @@ static bool set_security_class(thread_db* tdbb, Record* record, USHORT field_id)
  *
  **************************************/
 	dsc desc1;
+
+	if (tdbb->tdbb_flags & TDBB_no_security_class)
+		return false;
 
 	if (!EVL_field(0, record, field_id, &desc1))
 	{

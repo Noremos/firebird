@@ -100,6 +100,7 @@ static const UCHAR nonnull_validation_blr[] =
 	blr_eoc
 };
 
+static void checkDeferredDdlInReadOnlyReplica(thread_db* tdbb);
 static void checkForeignKeyTempScope(thread_db* tdbb, jrd_tra* transaction,
 	const QualifiedName&	childRelName, const QualifiedName& masterIndexName);
 static void checkLttNotInUse(thread_db* tdbb, jrd_tra* transaction, const LocalTemporaryTable* ltt);
@@ -199,6 +200,16 @@ void ExecInSecurityDb::executeInSecurityDb(jrd_tra* localTransaction)
 
 //----------------------
 
+
+// Check if we are trying to execute prohibited DDL in read-only replica and raise an error if so.
+static void checkDeferredDdlInReadOnlyReplica(thread_db* tdbb)
+{
+	if (tdbb->getDatabase()->isReplica(REPLICA_READ_ONLY) &&
+		!(tdbb->tdbb_flags & TDBB_replicator))
+	{
+		ERRD_post(Arg::Gds(isc_read_only_trans));
+	}
+}
 
 // Check temporary table reference rules between given child relation and master
 // relation (owner of given PK/UK index).
@@ -1102,8 +1113,16 @@ void DdlNode::storeGlobalField(thread_db* tdbb, jrd_tra* transaction, QualifiedN
 			Arg::Gds(isc_dsql_max_arr_dim_exceeded));
 	}
 
+	bool implicitDomain = false;
+
 	if (name.object.isEmpty())
+	{
 		DYN_UTIL_generate_field_name(tdbb, name);
+		implicitDomain = true;
+	}
+
+	// Avoid the security class being assigned for implicit domains
+	AutoSetRestoreFlag<ULONG> noSecurityClass(&tdbb->tdbb_flags, implicitDomain ? TDBB_no_security_class : 0, true);
 
 	AutoCacheRequest requestHandle(tdbb, drq_s_fld_src, DYN_REQUESTS);
 
@@ -1189,7 +1208,8 @@ void DdlNode::storeGlobalField(thread_db* tdbb, jrd_tra* transaction, QualifiedN
 		}
 	}
 
-	storePrivileges(tdbb, transaction, name, obj_field, USAGE_PRIVILEGES);
+	if (!implicitDomain)
+		storePrivileges(tdbb, transaction, name, obj_field, USAGE_PRIVILEGES);
 }
 
 
@@ -1915,7 +1935,7 @@ void CreateAlterFunctionNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsql
 	}
 	else if (alter)
 	{
-		if (executeAlter(tdbb, dsqlScratch, transaction, false, true))
+		if (executeAlter(tdbb, dsqlScratch, transaction, false, false, true))
 			altered = true;
 		else
 		{
@@ -1930,26 +1950,22 @@ void CreateAlterFunctionNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsql
 
 	fb_assert(id);
 	auto* permanent = MetadataCache::newVersion<Cached::Function>(tdbb, id);
+
 	try
 	{
 		auto* prc = permanent ? permanent->getVersioned(tdbb, CacheFlag::NOCOMMIT | CacheFlag::MINISCAN) : nullptr;
 		{
 			bool dummy = false;
-			AutoSetRestore compiling(prc ? &(prc->compiling) : &dummy, true);
+			AutoSetRestore compiling(prc ? &prc->compiling : &dummy, true);
 
 			compile(tdbb, dsqlScratch);
 		}
 
-		{ // scope
-			// avoid modify routine dfw during second pass on CREATE
-			AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, altered ? 0 : TDBB_dont_post_dfw, true);
-
-			// second pass
-			if (alterIndividualParameters)
-				executeAlterIndividualParameters(tdbb, dsqlScratch, transaction, true, false);
-			else
-				executeAlter(tdbb, dsqlScratch, transaction, true, false);
-		}
+		// second pass
+		if (alterIndividualParameters)
+			executeAlterIndividualParameters(tdbb, dsqlScratch, transaction, true, false);
+		else
+			executeAlter(tdbb, dsqlScratch, transaction, !altered, true, false);
 
 		if (name.package.isEmpty())
 		{
@@ -2049,18 +2065,15 @@ bool CreateAlterFunctionNode::executeCreate(thread_db* tdbb, DsqlCompilerScratch
 	if (name.package.isEmpty())
 		storePrivileges(tdbb, transaction, name, obj_udf, EXEC_PRIVILEGES);
 
-	// avoid modify routine dfw when execute CREATE
-	AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, TDBB_dont_post_dfw, true);
-
-	executeAlter(tdbb, dsqlScratch, transaction, false, false);
+	executeAlter(tdbb, dsqlScratch, transaction, true, false, false);
 
 	return true;
 }
 
 bool CreateAlterFunctionNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-	jrd_tra* transaction, bool secondPass, bool runTriggers)
+	jrd_tra* transaction, bool create, bool secondPass, bool runTriggers)
 {
-	Attachment* const attachment = transaction->getAttachment();
+	const auto attachment = transaction->getAttachment();
 
 	bool modified = false;
 	unsigned returnPos = 0;
@@ -2089,6 +2102,9 @@ bool CreateAlterFunctionNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch*
 
 			MetadataCache::oldVersion<Cached::Function>(tdbb, id, CacheFlag::OLD_ALTER);
 		}
+
+		// Avoid modify routine dfw when execute CREATE
+		AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, create ? TDBB_dont_post_dfw : 0, true);
 
 		MODIFY FUN
 			if (secondPass)
@@ -2250,14 +2266,16 @@ bool CreateAlterFunctionNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch*
 
 	if (!secondPass && modified)
 	{
-		// Get all comments and defaults from the old parameter list.
+		// Get all comments and defaults from the old parameter list
+
 		CollectedParameterMap collectedParameters;
 		collectParameters(tdbb, transaction, collectedParameters);
 
-		// delete all old arguments
+		// Delete all old arguments ...
+
 		DropFunctionNode::dropArguments(tdbb, transaction, name);
 
-		// and insert the new ones
+		// ... and insert the new ones
 
 		if (returnType && returnType->type)
 			storeArgument(tdbb, dsqlScratch, transaction, returnPos, true, returnType, NULL);
@@ -2281,7 +2299,7 @@ bool CreateAlterFunctionNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch*
 bool CreateAlterFunctionNode::executeAlterIndividualParameters(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	jrd_tra* transaction, bool secondPass, bool runTriggers)
 {
-	Attachment* const attachment = transaction->getAttachment();
+	const auto attachment = transaction->getAttachment();
 
 	bool modified = false;
 
@@ -2989,7 +3007,7 @@ void CreateAlterProcedureNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsq
 	}
 	else if (alter)
 	{
-		if (executeAlter(tdbb, dsqlScratch, transaction, false, true))
+		if (executeAlter(tdbb, dsqlScratch, transaction, false, false, true))
 			altered = true;
 		else
 		{
@@ -3004,26 +3022,22 @@ void CreateAlterProcedureNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsq
 
 	fb_assert(id);
 	auto* permanent = MetadataCache::newVersion<Cached::Procedure>(tdbb, id);
+
 	try
 	{
 		auto* prc = permanent ? permanent->getVersioned(tdbb, CacheFlag::NOCOMMIT | CacheFlag::MINISCAN) : nullptr;
 		{
 			bool dummy = false;
-			AutoSetRestore compiling(prc ? &(prc->compiling) : &dummy, true);
+			AutoSetRestore compiling(prc ? &prc->compiling : &dummy, true);
 
 			compile(tdbb, dsqlScratch);
 		}
 
-		{ // scope
-			// avoid modify routine dfw during second pass on CREATE
-			AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, altered ? 0 : TDBB_dont_post_dfw, true);
-
-			// second pass
-			if (alterIndividualParameters)
-				executeAlterIndividualParameters(tdbb, dsqlScratch, transaction, true, false);
-			else
-				executeAlter(tdbb, dsqlScratch, transaction, true, false);
-		}
+		// second pass
+		if (alterIndividualParameters)
+			executeAlterIndividualParameters(tdbb, dsqlScratch, transaction, true, false);
+		else
+			executeAlter(tdbb, dsqlScratch, transaction, !altered, true, false);
 
 		if (name.package.isEmpty())
 		{
@@ -3116,18 +3130,16 @@ bool CreateAlterProcedureNode::executeCreate(thread_db* tdbb, DsqlCompilerScratc
 	if (name.package.isEmpty())
 		storePrivileges(tdbb, transaction, name, obj_procedure, EXEC_PRIVILEGES);
 
-	// avoid modify routine dfw when execute CREATE
-	AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, TDBB_dont_post_dfw, true);
-
-	executeAlter(tdbb, dsqlScratch, transaction, false, false);
+	executeAlter(tdbb, dsqlScratch, transaction, true, false, false);
 
 	return true;
 }
 
 bool CreateAlterProcedureNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-	jrd_tra* transaction, bool secondPass, bool runTriggers)
+	jrd_tra* transaction, bool create, bool secondPass, bool runTriggers)
 {
-	Attachment* const attachment = transaction->getAttachment();
+	const auto attachment = transaction->getAttachment();
+
 	AutoCacheRequest requestHandle(tdbb, drq_m_prcs2, DYN_REQUESTS);
 	bool modified = false;
 
@@ -3155,6 +3167,9 @@ bool CreateAlterProcedureNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch
 
 			MetadataCache::oldVersion<Cached::Procedure>(tdbb, id, CacheFlag::OLD_ALTER);
 		}
+
+		// Avoid modify routine dfw when execute CREATE
+		AutoSetRestoreFlag<ULONG> noDfw(&tdbb->tdbb_flags, create ? TDBB_dont_post_dfw : 0, true);
 
 		MODIFY P
 			if (secondPass)
@@ -3242,14 +3257,16 @@ bool CreateAlterProcedureNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch
 
 	if (!secondPass && modified)
 	{
-		// Get all comments and defaults from the old parameter list.
+		// Get all comments and defaults from the old parameter list
+
 		CollectedParameterMap collectedParameters;
 		collectParameters(tdbb, transaction, collectedParameters);
 
-		// Delete all old input and output parameters.
+		// Delete all old input and output parameters ...
+
 		DropProcedureNode::dropParameters(tdbb, transaction, name);
 
-		// And insert the new ones.
+		// ... and insert the new ones
 
 		for (FB_SIZE_T i = 0; i < parameters.getCount(); ++i)
 		{
@@ -3329,7 +3346,7 @@ bool CreateAlterProcedureNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch
 bool CreateAlterProcedureNode::executeAlterIndividualParameters(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	jrd_tra* transaction, bool secondPass, bool runTriggers)
 {
-	Attachment* const attachment = transaction->getAttachment();
+	const auto attachment = transaction->getAttachment();
 
 	bool modified = false;
 
@@ -4909,6 +4926,7 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 		case blr_dec64:
 		case blr_dec128:
 		case blr_int128:
+		case blr_bool:
 			// Cannot convert column %s from character to non-character data.
 			errorCode = isc_dyn_dtype_conv_invalid;
 			break;
@@ -5209,7 +5227,6 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 		case blr_bool:
 			break;
 
-		/*** ASF: I'm not yet sure about this, and it is not working internally.
 		// If the original field is a boolean field and the new field is a character field,
 		// is there enough space in the new field?
 		case blr_text:
@@ -5221,7 +5238,6 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 				errorCode = isc_dyn_char_fld_too_small;
 			}
 			break;
-		***/
 
 		default:
 			// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
@@ -9242,6 +9258,7 @@ void CreateRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScrat
 
 	if (tempFlag == REL_temp_ltt)
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		defineLocalTempTable(tdbb, dsqlScratch, transaction);
 
 		dsqlScratch->relation->rel_flags &= ~REL_creating;
@@ -9628,6 +9645,7 @@ void AlterRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 	// Handle Local Temporary Tables differently
 	if (relation->rel_flags & REL_ltt_created)
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		alterLocalTempTable(tdbb, dsqlScratch, transaction);
 
 		// Update DSQL cache
@@ -9635,6 +9653,8 @@ void AlterRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 
 		return;
 	}
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	bool beforeTriggerWasExecuted = false;
 
@@ -10909,6 +10929,12 @@ void DropRelationNode::deleteGlobalField(thread_db* tdbb, jrd_tra* transaction,
 				ARG.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME)
 	{
 		DropDomainNode::deleteDimensionRecords(tdbb, transaction, globalName);
+
+		if (!FLD.RDB$SECURITY_CLASS.NULL)
+			deleteSecurityClass(tdbb, transaction, FLD.RDB$SECURITY_CLASS);
+
+		deletePrivilegesByRelName(tdbb, transaction, globalName, obj_field);
+
 		ERASE FLD;
 	}
 	END_FOR
@@ -10943,6 +10969,8 @@ void DropRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch
 
 	if (const auto lttIt = attachment->att_local_temporary_tables.get(name))
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
+
 		if (view)
 		{
 			status_exception::raise(
@@ -10979,6 +11007,8 @@ void DropRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch
 	auto* rel = MetadataCache::getVersioned<Cached::Relation>(tdbb, name, CacheFlag::AUTOCREATE);
 	if (!rel && silent)
 		return;
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	if (tdbb->getDatabase()->readOnly())
 		ERRD_post(Arg::Gds(isc_read_only_database));
@@ -12752,8 +12782,7 @@ MetaId StoreIndexNode::createExpression(thread_db* tdbb, Cached::Relation* rel, 
 		// Actually create the index
 
 		// Protect relation from modification to create consistent index
-		ProtectRelations protectRelation(tdbb, transaction);
-		protectRelation.addRelation(rel);
+		ProtectRelations protectRelation(tdbb, transaction, rel);
 
 		SelectivityList selectivity(*tdbb->getDefaultPool());
 
@@ -13209,10 +13238,13 @@ void CreateIndexNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	// Check if target relation is a Local Temporary Table
 	if (const auto lttPtr = attachment->att_local_temporary_tables.get(relation->dsqlName))
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		defineLocalTempIndex(tdbb, dsqlScratch, transaction, *lttPtr);
 		savePoint.release();	// everything is ok
 		return;
 	}
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	if (tdbb->getDatabase()->readOnly())
 		ERRD_post(Arg::Gds(isc_read_only_database));
@@ -13442,10 +13474,13 @@ void AlterIndexNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, 
 
 	if (MET_get_ltt_index(transaction->getAttachment(), indexName, &ltt, &lttIndex))
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		alterLocalTempIndex(tdbb, dsqlScratch, transaction, ltt, lttIndex);
 		savePoint.release();	// everything is ok
 		return;
 	}
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	if (tdbb->getDatabase()->readOnly())
 		ERRD_post(Arg::Gds(isc_read_only_database));
@@ -13641,10 +13676,13 @@ void SetStatisticsNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 
 	if (MET_get_ltt_index(transaction->getAttachment(), indexName, &ltt, &lttIndex))
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		setStatisticsLocalTempIndex(tdbb, dsqlScratch, transaction, ltt, lttIndex);
 		savePoint.release();	// everything is ok
 		return;
 	}
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	AutoCacheRequest request(tdbb, drq_m_set_statistics, DYN_REQUESTS);
 	bool found = false;
@@ -13756,10 +13794,13 @@ void DropIndexNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, j
 
 	if (MET_get_ltt_index(transaction->getAttachment(), indexName, &ltt, &lttIndex))
 	{
+		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_ACTUAL_LTT_DDL;
 		dropLocalTempIndex(tdbb, dsqlScratch, transaction, ltt, lttIndex);
 		savePoint.release();	// everything is ok
 		return;
 	}
+
+	checkDeferredDdlInReadOnlyReplica(tdbb);
 
 	if (tdbb->getDatabase()->readOnly())
 		ERRD_post(Arg::Gds(isc_read_only_database));
@@ -13997,62 +14038,89 @@ void DropIndexNode::clearId(thread_db* tdbb, MetaId relId, MetaId indexId)
 	auto rel = MetadataCache::getPerm<Cached::Relation>(tdbb, relId, 0);
 
 	// cleanup NOT related to current transaction
-	auto* transaction = attachment->getSysTransaction();
-	AutoSetRestore2<jrd_tra*, thread_db> autoTrans(tdbb, &thread_db::getTransaction, &thread_db::setTransaction,
-		transaction);
+	// cleanup can NOT be done using system transaction (due to backout logic in erase)
+	// start separate transaction for cleanup
+	auto* transaction = TRA_start(tdbb, 0u, DEFAULT_LOCK_TIMEOUT);
 
-	AutoCacheRequest handle(tdbb, irq_index_id_erase, IRQ_REQUESTS);
-	FOR(REQUEST_HANDLE handle TRANSACTION_HANDLE transaction)
-		IND IN RDB$INDICES
-		CROSS REL IN RDB$RELATIONS
-			OVER RDB$RELATION_NAME, RDB$SCHEMA_NAME
-		WITH IND.RDB$INDEX_ID EQ indexId + 1
-			AND REL.RDB$RELATION_ID EQ relId
+	try
 	{
-		indexName = QualifiedName(IND.RDB$INDEX_NAME, IND.RDB$SCHEMA_NAME);
-		fb_assert (!indexName.isEmpty());
+		AutoSetRestore2<jrd_tra*, thread_db> autoTrans(tdbb, &thread_db::getTransaction, &thread_db::setTransaction,
+			transaction);
 
-		if (!IND.RDB$FOREIGN_KEY.NULL)
-			partnerIdxName = QualifiedName(IND.RDB$FOREIGN_KEY, IND.RDB$FOREIGN_KEY_SCHEMA_NAME);
-
-		switch (MetadataCache::getIndexStatus(IND.RDB$INDEX_INACTIVE.NULL, IND.RDB$INDEX_INACTIVE))
+		AutoCacheRequest handle(tdbb, irq_index_id_erase, IRQ_REQUESTS);
+		FOR(REQUEST_HANDLE handle TRANSACTION_HANDLE transaction)
+			IND IN RDB$INDICES
+			CROSS REL IN RDB$RELATIONS
+				OVER RDB$RELATION_NAME, RDB$SCHEMA_NAME
+			WITH IND.RDB$INDEX_ID EQ indexId + 1
+				AND REL.RDB$RELATION_ID EQ relId
 		{
-		case MET_index_active:				// handle table creation error
-		case MET_index_deferred_drop:		// drop index
-			ERASE IND;
-			deleteSegmentRecords(tdbb, transaction, indexName);
-			break;
+			indexName = QualifiedName(IND.RDB$INDEX_NAME, IND.RDB$SCHEMA_NAME);
+			fb_assert (!indexName.isEmpty());
 
-		case MET_index_inactive:			// alter index inactive
-			MODIFY IND
-				IND.RDB$INDEX_ID = 0;
-				IND.RDB$INDEX_ID.NULL = TRUE;
-			END_MODIFY
-			break;
+			if (!IND.RDB$FOREIGN_KEY.NULL)
+				partnerIdxName = QualifiedName(IND.RDB$FOREIGN_KEY, IND.RDB$FOREIGN_KEY_SCHEMA_NAME);
 
-		default:
-			fb_assert(false);
+			switch (MetadataCache::getIndexStatus(IND.RDB$INDEX_INACTIVE.NULL, IND.RDB$INDEX_INACTIVE))
+			{
+			case MET_index_active:				// handle table creation error
+			case MET_index_deferred_drop:		// drop index
+				ERASE IND;
+				deleteSegmentRecords(tdbb, transaction, indexName);
+				break;
+
+			case MET_index_inactive:			// alter index inactive
+				MODIFY IND
+					IND.RDB$INDEX_ID = 0;
+					IND.RDB$INDEX_ID.NULL = TRUE;
+				END_MODIFY
+				break;
+
+			default:
+				fb_assert(false);
+			}
 		}
-	}
-	END_FOR
+		END_FOR
 
-	if (indexName.hasData())
-	{
-		MET_delete_dependencies(tdbb, indexName, obj_index_expression);
-		MET_delete_dependencies(tdbb, indexName, obj_index_condition);
-	}
-
-	if (partnerIdxName.hasData())
-	{
-		auto partner = getRelByIndex(tdbb, partnerIdxName, transaction);
-
-		if (rel && partner)
+		if (indexName.hasData())
 		{
-			rel->checkPartners(tdbb);
-
-			if (rel != partner)
-				partner->checkPartners(tdbb);
+			MET_delete_dependencies(tdbb, indexName, obj_index_expression);
+			MET_delete_dependencies(tdbb, indexName, obj_index_condition);
 		}
+
+		if (partnerIdxName.hasData())
+		{
+			auto partner = getRelByIndex(tdbb, partnerIdxName, transaction);
+
+			if (rel && partner)
+			{
+				rel->checkPartners(tdbb);
+
+				if (rel != partner)
+					partner->checkPartners(tdbb);
+			}
+		}
+
+		auto* tra = transaction;
+		transaction = nullptr;
+		TRA_commit(tdbb, tra, false);
+	}
+	catch(const Exception& ex)
+	{
+		iscLogException("DropIndexNode::clearId() failed", ex);
+
+		try
+		{
+			if (transaction)
+				TRA_rollback(tdbb, transaction, false, true);
+		}
+		catch(const Exception& ex)
+		{
+			iscLogException("Rollback in DropIndexNode::clearId() failed", ex);
+		}
+
+		// Under no circumstances affect status of user's call to engine
+		tdbb->tdbb_status_vector->init();
 	}
 }
 

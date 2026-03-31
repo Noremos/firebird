@@ -1219,6 +1219,40 @@ double Optimizer::getDependentSelectivity()
 
 
 //
+// Estimate overall selectivity for a list of conjuncts.
+// Booleans are usually inter-dependent in practice and simple multiplication results to a very low selectivity value,
+// thus causing the stream cardinality being under-estimated. To avoid this, apply exponential backoff adjustment.
+// See also explanation in the middle of Retrieval::makeInversion().
+//
+
+double Optimizer::estimateSelectivity(const BooleanList& filters, double cardinality, unsigned priorConjuncts)
+{
+	// Get selectivities and order them
+	SortedArray<double, InlineStorage<double, OPT_STATIC_ITEMS> > selectivities;
+
+	for (const auto filter : filters)
+		selectivities.add(getSelectivity(filter));
+
+	auto selectivity = MAXIMUM_SELECTIVITY;
+
+	if (selectivities.hasData() && !priorConjuncts && cardinality)
+	{
+		// If the table is small enough, the hardcoded selectivity factors are causing
+		// too small resulting selectivity. Adjust the initial value to protect from this case.
+		const auto minSelectivity = MAXIMUM_SELECTIVITY / cardinality;
+		if (selectivities.front() < minSelectivity)
+			selectivity *= minSelectivity / selectivities.front();
+	}
+
+	// Apply exponential backoff
+	for (auto factor : selectivities)
+		selectivity *= applyBackoff(factor, priorConjuncts++);
+
+	return selectivity;
+}
+
+
+//
 // Prepare relation and its indices for optimization
 //
 
@@ -1249,7 +1283,7 @@ void Optimizer::compileRelation(StreamType stream)
 	{
 		const auto relPages = relation()->getPages(tdbb);
 		IndexDescList idxList;
-		BTR_all(tdbb, relation(), idxList, relPages);
+		BTR_all(tdbb, relation(), idxList, relPages, csb->csb_g_flags & csb_internal);
 
 		MetaId n = idxList.getCount();
 		while (n--)
@@ -1285,7 +1319,7 @@ void Optimizer::compileRelation(StreamType stream)
 			if (updated)
 			{
 				idxList.clear();
-				BTR_all(tdbb, relation(), idxList, relPages);
+				BTR_all(tdbb, relation(), idxList, relPages, csb->csb_g_flags & csb_internal);
 			}
 		}
 
@@ -1575,7 +1609,7 @@ void Optimizer::generateAggregateSort(AggNode* aggNode)
 	fb_assert(prevKey);
 	ULONG length = prevKey ? ROUNDUP(prevKey->getSkdOffset() + prevKey->getSkdLength(), sizeof(SLONG)) : 0;
 
-	aggNode->arg->getDesc(tdbb, csb, desc);
+	aggNode->makeSortDesc(tdbb, csb, desc);
 
 	if (desc->dsc_dtype >= dtype_aligned)
 		length = FB_ALIGN(length, type_alignments[desc->dsc_dtype]);
@@ -2553,6 +2587,9 @@ bool Optimizer::joinDependentStreams(StreamList& joinStreams, RiverList& rivers,
 
 			// Make rivers from the dependent streams
 			generateInnerJoin(dependentStreams, rivers, sort, rse->rse_plan);
+
+			for (const auto depStream : dependentStreams)
+				csb->csb_rpt[depStream].activate();
 		}
 		else
 		{
@@ -2905,7 +2942,7 @@ bool Optimizer::generateEquiJoin(RiverList& rivers, JoinType joinType)
 //	then form streams into rivers (combinations of streams)
 //
 
-void Optimizer::generateInnerJoin(StreamList& streams,
+void Optimizer::generateInnerJoin(const StreamList& streams,
 								  RiverList& rivers,
 								  SortNode** sortClause,
 								  const PlanNode* planClause)
@@ -2927,16 +2964,6 @@ void Optimizer::generateInnerJoin(StreamList& streams,
 	{
 		const auto river = innerJoin.formRiver();
 		rivers.add(river);
-
-		// Remove already consumed streams from the source stream list
-		for (const auto stream : river->getStreams())
-		{
-			FB_SIZE_T pos;
-			if (streams.find(stream, pos))
-				streams.remove(pos);
-			else
-				fb_assert(false);
-		}
 	}
 }
 
@@ -2970,6 +2997,7 @@ RecordSource* Optimizer::generateRetrieval(StreamType stream,
 	BoolExprNode* condition = nullptr;
 	Array<DbKeyRangeNode*> dbkeyRanges;
 	double scanSelectivity = MAXIMUM_SELECTIVITY;
+	double filterSelectivity = MAXIMUM_SELECTIVITY;
 
 	if (relation()->getExtFile())
 	{
@@ -3020,14 +3048,14 @@ RecordSource* Optimizer::generateRetrieval(StreamType stream,
 		// Persistent table
 		Retrieval retrieval(tdbb, this, stream, outerFlag, innerFlag,
 							(sortClause ? *sortClause : nullptr), false);
-		const auto candidate = retrieval.getInversion();
 
-		if (candidate)
+		if (const auto candidate = retrieval.getInversion())
 		{
 			inversion = candidate->inversion;
 			condition = candidate->condition;
 			dbkeyRanges.assign(candidate->dbkeyRanges);
 			scanSelectivity = candidate->matchSelectivity;
+			filterSelectivity = candidate->filterSelectivity;
 
 			// Just for safety sake, this condition must be already checked
 			// inside OptimizerRetrieval::matchOnIndexes()
@@ -3066,8 +3094,8 @@ RecordSource* Optimizer::generateRetrieval(StreamType stream,
 	// booleans.  When one is found, roll it into a final boolean and mark
 	// it used. If a computable boolean didn't match against an index then
 	// mark the stream to denote unmatched booleans.
+	BooleanList filters;
 	BoolExprNode* boolean = nullptr;
-	double filterSelectivity = MAXIMUM_SELECTIVITY;
 
 	for (auto iter = getConjuncts(outerFlag, innerFlag); iter.hasData(); ++iter)
 	{
@@ -3093,12 +3121,16 @@ RecordSource* Optimizer::generateRetrieval(StreamType stream,
 				}
 
 				if (!(iter & (CONJUNCT_MATCHED | CONJUNCT_JOINED)))
-					filterSelectivity *= getSelectivity(*iter);
+					filters.add(*iter);
 			}
 		}
 	}
 
-	if (!rsb)
+	if (rsb)
+	{
+		filterSelectivity = Optimizer::estimateSelectivity(filters, rsb->getCardinality());
+	}
+	else
 	{
 		if (inversion && condition)
 		{
@@ -3134,9 +3166,13 @@ RecordSource* Optimizer::generateRetrieval(StreamType stream,
 
 RecordSource* Optimizer::applyBoolean(RecordSource* rsb, ConjunctIterator& iter)
 {
-	double selectivity = MAXIMUM_SELECTIVITY;
-	if (const auto boolean = composeBoolean(iter, &selectivity))
+	BooleanList filters;
+
+	if (const auto boolean = composeBoolean(iter, filters))
+	{
+		const auto selectivity = estimateSelectivity(filters, rsb->getCardinality());
 		rsb = FB_NEW_POOL(getPool()) FilteredStream(csb, rsb, boolean, selectivity);
+	}
 
 	return rsb;
 }
@@ -3167,8 +3203,8 @@ RecordSource* Optimizer::applyLocalBoolean(RecordSource* rsb,
 
 RecordSource* Optimizer::applyResidualBoolean(RecordSource* rsb)
 {
+	BooleanList filters;
 	BoolExprNode* boolean = nullptr;
-	double selectivity = MAXIMUM_SELECTIVITY;
 
 	for (auto iter = getBaseConjuncts(); iter.hasData(); ++iter)
 	{
@@ -3178,15 +3214,17 @@ RecordSource* Optimizer::applyResidualBoolean(RecordSource* rsb)
 			iter |= CONJUNCT_USED;
 
 			if (!(iter & (CONJUNCT_MATCHED | CONJUNCT_JOINED)))
-				selectivity *= getSelectivity(*iter);
+				filters.add(*iter);
 		}
 	}
+
+	const auto selectivity = estimateSelectivity(filters, rsb->getCardinality());
 
 	return boolean ? FB_NEW_POOL(getPool()) FilteredStream(csb, rsb, boolean, selectivity) : rsb;
 }
 
 
-BoolExprNode* Optimizer::composeBoolean(ConjunctIterator& iter, double* selectivity)
+BoolExprNode* Optimizer::composeBoolean(ConjunctIterator& iter, BooleanList& filters)
 {
 	BoolExprNode* boolean = nullptr;
 
@@ -3199,8 +3237,8 @@ BoolExprNode* Optimizer::composeBoolean(ConjunctIterator& iter, double* selectiv
 			compose(getPool(), &boolean, iter);
 			iter |= CONJUNCT_USED;
 
-			if (!(iter & (CONJUNCT_MATCHED | CONJUNCT_JOINED)) && selectivity)
-				*selectivity *= getSelectivity(*iter);
+			if (!(iter & (CONJUNCT_MATCHED | CONJUNCT_JOINED)))
+				filters.add(*iter);
 		}
 	}
 

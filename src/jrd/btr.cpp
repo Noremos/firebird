@@ -937,7 +937,7 @@ void IndexScanListIterator::makeKeys(thread_db* tdbb, temporary_key* lower, temp
 }
 
 
-void BTR_all(thread_db* tdbb, Cached::Relation* relation, IndexDescList& idxList, RelationPages* relPages)
+void BTR_all(thread_db* tdbb, Cached::Relation* relation, IndexDescList& idxList, RelationPages* relPages, bool sysRq)
 {
 /**************************************
  *
@@ -1002,8 +1002,11 @@ void BTR_all(thread_db* tdbb, Cached::Relation* relation, IndexDescList& idxList
 			continue;
 
 		index_desc idx;
-		if (BTR_description(tdbb, relation, root, &idx, id, false))
+		if (BTR_description(tdbb, relation, root, &idx, id,
+			BTR_DESCRIBE_NO_THROW | (sysRq ? BTR_DESCRIBE_SYSTEM_RQ : 0)))
+		{
 			idxList.add(idx);
+		}
 	}
 }
 
@@ -1259,7 +1262,6 @@ bool BTR_activate_index(thread_db* tdbb, Cached::Relation* relation, MetaId id)
 
 		jrd_tra* tra = tdbb->getTransaction();
 		fb_assert(tra);
-		TraNumber descTrans = irt_desc->getTransaction();
 
 		if (tra)
 		{
@@ -1320,7 +1322,7 @@ bool BTR_activate_index(thread_db* tdbb, Cached::Relation* relation, MetaId id)
 
 
 bool BTR_description(thread_db* tdbb, Cached::Relation* relation, const index_root_page* root, index_desc* idx,
-					 MetaId id, bool raise)
+					 MetaId id, USHORT flags)
 {
 /**************************************
  *
@@ -1334,6 +1336,7 @@ bool BTR_description(thread_db* tdbb, Cached::Relation* relation, const index_ro
  *
  **************************************/
 	SET_TDBB(tdbb);
+	bool sysRq = flags & BTR_DESCRIBE_SYSTEM_RQ;
 
 	if (id >= root->irt_count)
 		return false;
@@ -1342,6 +1345,10 @@ bool BTR_description(thread_db* tdbb, Cached::Relation* relation, const index_ro
 
 	const ULONG rootPage = irt_desc->getRoot();
 	if (!rootPage)
+		return false;
+
+	// Avoid use of user index under construction in internal requests
+	if ((flags & BTR_DESCRIBE_SYSTEM_RQ) && (irt_desc->irt_state != Ods::irt_normal))
 		return false;
 
 	idx->idx_id = id;
@@ -1374,7 +1381,9 @@ bool BTR_description(thread_db* tdbb, Cached::Relation* relation, const index_ro
 	ISC_STATUS error = 0;
 	if (idx->idx_flags & (idx_expression | idx_condition))
 	{
-		MET_lookup_index_code(tdbb, relation, idx);
+		auto* idp = relation->ensureIndex(tdbb, idx->idx_id);
+		if (idp)
+			idp->lookupIndexCode(tdbb, relation, idx, irt_desc);
 
 		if (idx->idx_flags & idx_expression && !idx->idx_expression_node)
 		{
@@ -1396,7 +1405,7 @@ bool BTR_description(thread_db* tdbb, Cached::Relation* relation, const index_ro
 
 	if (error)
 	{
-		if (!raise)
+		if (flags & BTR_DESCRIBE_NO_THROW)
 			return false;
 
 		QualifiedName indexName;

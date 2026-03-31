@@ -148,7 +148,7 @@ struct CallerName
 typedef Firebird::GenericMap<Firebird::Pair<Firebird::NonPooled<SINT64, ULONG> > > ReplBlobMap;
 typedef Firebird::GenericMap<Firebird::Pair<Firebird::NonPooled<SLONG, blb*> > > BlobUtilMap;
 
-inline constexpr int DEFAULT_LOCK_TIMEOUT = -1; // infinite
+inline constexpr SSHORT DEFAULT_LOCK_TIMEOUT = -1; // infinite
 inline constexpr const char* TRA_BLOB_SPACE = "fb_blob_";
 inline constexpr const char* TRA_UNDO_SPACE = "fb_undo_";
 inline constexpr ULONG MAX_TEMP_BLOBS = 1000;
@@ -278,7 +278,7 @@ public:
 	ReplBlobMap tra_repl_blobs;			// map of blob IDs replicated in this transaction
 	BlobUtilMap tra_blob_util_map;		// map of blob IDs for RDB$BLOB_UTIL package
 	ArrayField*	tra_arrays;				// Linked list of active arrays
-	Lock*		tra_lock;				// lock for transaction
+	Lock*		tra_lock;				// lock for transaction - may be NULL for special transactions
 	Lock*		tra_alter_db_lock;		// lock for ALTER DATABASE statement(s)
 	vec<Lock*>*			tra_relation_locks;	// locks for relations
 	TransactionBitmap*	tra_commit_sub_trans;	// committed sub-transactions
