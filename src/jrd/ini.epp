@@ -1967,6 +1967,7 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 	AutoRequest functionHandle, functionReturnHandle, functionArgumentHandle;
 	const SLONG procGen = lookupGenerator(PROCEDURES_GENERATOR);
 	const SLONG funcGen = lookupGenerator(FUNCTIONS_GENERATOR);
+	const SLONG packageGen = lookupGenerator(PACKAGES_GENERATOR);
 
 	for (const auto& systemPackage : SystemPackage::get())
 	{
@@ -1989,6 +1990,8 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 
 			PKG.RDB$SYSTEM_FLAG = RDB_system;
 			PKG.RDB$VALID_BODY_FLAG = TRUE;
+
+			PKG.RDB$PACKAGE_ID = DPM_gen_id(tdbb, packageGen, false, 1);
 		}
 		END_STORE
 
