@@ -179,6 +179,7 @@ enum irq_type_t
 	irq_index_id_erase,		// cleanup index ID
 	irq_get_index_by_name,	// find appropriate index
 	irq_l_index_cnstrt,     // lookup index for constraint
+
 	irq_MAX
 };
 
