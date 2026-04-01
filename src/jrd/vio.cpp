@@ -3758,16 +3758,13 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 			break;
 
 		case rel_constants:
-			if (!check_nullify_source(tdbb, org_rpb, new_rpb, f_const_source))
-				protect_system_table_delupd(tdbb, relation, "UPDATE");
+			protect_system_table_delupd(tdbb, relation, "UPDATE");
 
 			EVL_field(0, org_rpb->rpb_record, f_const_name, &desc1);
 			EVL_field(0, org_rpb->rpb_record, f_const_package_schema, &schemaDesc);
 
-			if (EVL_field(0, org_rpb->rpb_record, f_const_package, &desc2))
-				MOV_get_metaname(tdbb, &desc2, object_name.package);
-
-			protect_system_table_delupd(tdbb, relation, "UPDATE");
+			EVL_field(0, org_rpb->rpb_record, f_const_package, &desc2);
+			MOV_get_metaname(tdbb, &desc2, object_name.package);
 
 			{ // Send dfw
 				EVL_field(0, org_rpb->rpb_record, f_const_id, &desc2);

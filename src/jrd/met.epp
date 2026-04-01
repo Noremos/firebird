@@ -571,7 +571,7 @@ Cached::Relation* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const
  *      Find all relations affected and schedule a format update.
  *      Find all procedures and triggers and schedule a BLR validate.
  *      Find all functions and schedule a BLR validate.
- *      Find all constants.
+ *      Find all package constants.
  *
  **************************************/
 	SET_TDBB(tdbb);
