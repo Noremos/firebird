@@ -1042,6 +1042,13 @@ grant0($node)
 			$node->grantAdminOption = $7;
 			$node->grantor = $8;
 		}
+	| usage_privilege(NOTRIAL(&$node->privileges)) ON PACKAGE symbol_package_name
+			TO non_role_grantee_list(NOTRIAL(&$node->users)) grant_option granted_by
+		{
+			$node->object = newNode<GranteeClause>(obj_package_header, *$4);
+			$node->grantAdminOption = $7;
+			$node->grantor = $8;
+		}
 	/***
 	| usage_privilege(NOTRIAL(&$node->privileges)) ON DOMAIN symbol_domain_name
 			TO non_role_grantee_list(NOTRIAL(&$node->users)) grant_option granted_by
@@ -1333,6 +1340,13 @@ revoke0($node)
 			FROM non_role_grantee_list(NOTRIAL(&$node->users)) granted_by
 		{
 			$node->object = newNode<GranteeClause>(obj_schema, QualifiedName(*$5));
+			$node->grantAdminOption = $1;
+			$node->grantor = $8;
+		}
+	| rev_grant_option usage_privilege(NOTRIAL(&$node->privileges)) ON PACKAGE symbol_package_name
+			FROM non_role_grantee_list(NOTRIAL(&$node->users)) granted_by
+		{
+			$node->object = newNode<GranteeClause>(obj_package_header, QualifiedName(*$5));
 			$node->grantAdminOption = $1;
 			$node->grantor = $8;
 		}
@@ -4806,6 +4820,7 @@ keyword_or_column
 	| TRUNCATE
 	| WITHIN
 	;
+
 
 col_opt
 	: ALTER

@@ -15656,6 +15656,21 @@ static bool checkObjectExist(thread_db* tdbb, jrd_tra* transaction, const Qualif
 			END_FOR
 			break;
 		}
+		case obj_package_constant:
+		{
+			static const CachedRequestId requestId;
+			AutoCacheRequest request(tdbb, requestId);
+			FOR(REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
+				X IN RDB$CONSTANTS
+				WITH X.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+					 X.RDB$PACKAGE_NAME EQ name.package.c_str() AND
+					 X.RDB$CONSTANT_NAME EQ name.object.c_str()
+			{
+				rc = true;
+			}
+			END_FOR
+			break;
+		}
 	}
 
 	return rc;
@@ -15867,6 +15882,11 @@ void GrantRevokeNode::grantRevoke(thread_db* tdbb, jrd_tra* transaction, const G
 			if (!checkObjectExist(tdbb, transaction, QualifiedName(objName.schema), obj_schema))
 				status_exception::raise(Arg::Gds(isc_dyn_schema_not_found) << objName.toQuotedString());
 
+		case obj_package_constant:
+			if (!checkObjectExist(tdbb, transaction, objName, objType))
+				status_exception::raise(Arg::PrivateDyn(303) << objName.toQuotedString());	// Package @1 does not exist
+			break;
+
 		default:
 			fb_assert(object == NULL || isDdlObject(objType));
 	}
@@ -16074,6 +16094,7 @@ void GrantRevokeNode::grantRevoke(thread_db* tdbb, jrd_tra* transaction, const G
 					case obj_generator:
 					case obj_package_header:
 					case obj_schema:
+					case obj_package_constant:
 					{
 						checkGrantorCanGrantObject(tdbb, transaction, currentUser.c_str(), priv, objName, objType);
 						break;
@@ -17091,6 +17112,9 @@ static ISC_STATUS getErrorCodeByObjectType(int obj_type)
 	case obj_package_header:
 	case obj_package_body:
 		err_code = isc_package_name;
+		break;
+	case obj_package_constant:
+		err_code = isc_const_name;
 		break;
 	default:
 		fb_assert(false);

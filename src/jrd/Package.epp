@@ -387,7 +387,8 @@ ScanResult Package::reload(thread_db* tdbb, ObjectBase::Flag fl)
 	FOR(REQUEST_HANDLE requestConst TRANSACTION_HANDLE metaTransaction)
 		PKG IN RDB$PACKAGES CROSS CONST IN RDB$CONSTANTS
 		WITH PKG.RDB$PACKAGE_ID EQ getId() AND
-			PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME
+			PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME AND
+			PKG.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME
 	{
 		addConstant(tdbb, CONST.RDB$CONSTANT_ID,
 			QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME),
@@ -414,24 +415,43 @@ ScanResult Package::scan(thread_db* tdbb, ObjectBase::Flag flags)
 
 	MemoryPool& pool = getPermanent()->getPool();
 
-	static const CachedRequestId requestId;
-	AutoCacheRequest requestConst(tdbb, requestId);
+	{ // Security
+		static const CachedRequestId requestId;
+		AutoCacheRequest requestConst(tdbb, requestId);
 
-	FOR(REQUEST_HANDLE requestConst TRANSACTION_HANDLE metaTransaction)
-		PKG IN RDB$PACKAGES CROSS CONST IN RDB$CONSTANTS
-		WITH PKG.RDB$PACKAGE_ID EQ getPermanent()->id AND
-			PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME
-	{
-		addConstant(tdbb, CONST.RDB$CONSTANT_ID,
-			QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME),
-			CONST.RDB$PRIVATE_FLAG,
-			CONST.RDB$CONSTANT_BLR,
-			skipMakeValue);
-
-		if (skipMakeValue)
-			this->m_callReload = true; // Call makeValue in reload
+		FOR(REQUEST_HANDLE requestConst TRANSACTION_HANDLE metaTransaction)
+			PKG IN RDB$PACKAGES CROSS SCH IN RDB$SCHEMAS
+			WITH PKG.RDB$SCHEMA_NAME EQ SCH.RDB$SCHEMA_NAME AND
+				PKG.RDB$PACKAGE_ID EQ getId() AND
+				PKG.RDB$SECURITY_CLASS NOT MISSING
+		{
+			getPermanent()->securityName.object = PKG.RDB$SECURITY_CLASS;
+			getPermanent()->securityName.schema = SCH.RDB$SECURITY_CLASS;
+		}
+		END_FOR
 	}
-	END_FOR
+
+	{ // Constants
+		static const CachedRequestId requestId;
+		AutoCacheRequest requestConst(tdbb, requestId);
+
+		FOR(REQUEST_HANDLE requestConst TRANSACTION_HANDLE metaTransaction)
+			PKG IN RDB$PACKAGES CROSS CONST IN RDB$CONSTANTS
+			WITH PKG.RDB$PACKAGE_ID EQ getId() AND
+				PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME AND
+				PKG.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME
+		{
+			addConstant(tdbb, CONST.RDB$CONSTANT_ID,
+				QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME),
+				CONST.RDB$PRIVATE_FLAG,
+				CONST.RDB$CONSTANT_BLR,
+				skipMakeValue);
+
+			if (skipMakeValue)
+				this->m_callReload = true; // Call makeValue in reload
+		}
+		END_FOR
+	}
 
 	return this->m_callReload ? ScanResult::REPEAT : ScanResult::COMPLETE;
 }

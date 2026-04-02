@@ -136,8 +136,9 @@ public:
 	bool hasData() const { return name.hasData(); }
 
 public:
-	MetaId id;							// routine ID
-	QualifiedName name;					// routine name
+	MetaId id;
+	QualifiedName name;
+	QualifiedName securityName;
 };
 
 class Package final : public Firebird::PermanentStorage, public ObjectBase

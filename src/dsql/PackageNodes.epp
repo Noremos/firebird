@@ -504,6 +504,29 @@ ValueExprNode* PackageReferenceNode::copy(thread_db* tdbb, NodeCopier& copier) c
 	return node;
 }
 
+ValueExprNode* PackageReferenceNode::pass1(thread_db* tdbb, CompilerScratch* csb)
+{
+	ValueExprNode::pass1(tdbb, csb);
+
+	auto& security = m_package()->securityName;
+
+	CMP_post_access(tdbb, csb, security.schema, 0, SCL_usage, obj_schemas, QualifiedName(m_fullName.schema));
+
+	switch (m_itemType)
+	{
+	case blr_pkg_ref_item_const:
+	{
+		CMP_post_access(tdbb, csb, security.object, 0, SCL_usage, obj_packages, m_fullName.getSchemaAndPackage());
+		break;
+	}
+	default:
+		fb_assert(false);
+		return nullptr;
+	}
+
+	return this;
+}
+
 ValueExprNode* PackageReferenceNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 {
 	ValueExprNode::pass2(tdbb, csb);

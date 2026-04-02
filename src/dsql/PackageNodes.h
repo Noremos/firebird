@@ -139,6 +139,7 @@ public:
 	void getDesc(thread_db*, CompilerScratch*, dsc*) final;
 
 	ValueExprNode* copy(thread_db*, NodeCopier&) const final;
+	ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) final;
 	ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb) final;
 	dsc* execute(thread_db*, Request*) const final;
 
