@@ -409,7 +409,7 @@ static bool end_backup(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool check_not_null(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool store_view_context_type(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool user_management(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
-static bool create_package(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction);
+static bool createPackage(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction);
 static bool drop_package_header(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool modify_package_header(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
 static bool drop_package_body(thread_db*, SSHORT, DeferredWork*, jrd_tra*);
@@ -1241,7 +1241,7 @@ static inline constexpr deferred_task task_table[] =
 	{ dfw_set_statistics, set_statistics },
 	{ dfw_modify_package_constant, modifyConstant },
 	{ dfw_delete_package_constant, deleteConstant },
-	{ dfw_create_package, create_package },
+	{ dfw_create_package, createPackage },
 
 	{ dfw_null, NULL }
 };
@@ -2286,7 +2286,7 @@ static bool user_management(thread_db* /*tdbb*/, SSHORT phase, DeferredWork* wor
 	return false;
 }
 
-static bool create_package(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction)
+static bool createPackage(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction)
 {
 	fb_assert(work->dfw_id != 0);
 

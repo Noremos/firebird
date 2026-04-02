@@ -3452,7 +3452,7 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 					{ // Send dfw
 						EVL_field(0, org_rpb->rpb_record, f_pkg_id, &desc2);
 						const USHORT id = MOV_get_long(tdbb, &desc2, 0);
-						DFW_post_work(transaction, dfw_modify_package_header, &desc1, &schemaDesc, id, object_name.package);
+						DFW_post_work(transaction, dfw_modify_package_header, &desc1, &schemaDesc, id);
 					}
 				}
 			}
@@ -4400,7 +4400,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			object_id = set_metadata_id(tdbb, rpb->rpb_record,
 										f_pkg_id, drq_g_nxt_package_id, PACKAGES_GENERATOR);
 
-			work = DFW_post_work(transaction, dfw_create_package, &desc, &schemaDesc, object_id, object_name.package);
+			DFW_post_work(transaction, dfw_create_package, &desc, &schemaDesc, object_id);
 			break;
 
 		case rel_procedures:
