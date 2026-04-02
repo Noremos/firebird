@@ -154,8 +154,8 @@ inline constexpr int GEN_SECCLASS_PREFIX_LEN			= 4;
 
 inline constexpr const char* PROCEDURES_GENERATOR = "RDB$PROCEDURES";
 inline constexpr const char* FUNCTIONS_GENERATOR = "RDB$FUNCTIONS";
-inline constexpr const char* const CONSTANTS_GENERATOR = "RDB$CONSTANTS";
-inline constexpr const char* const PACKAGES_GENERATOR = "RDB$PACKAGES";
+inline constexpr const char* CONSTANTS_GENERATOR = "RDB$CONSTANTS";
+inline constexpr const char* PACKAGES_GENERATOR = "RDB$PACKAGES";
 
 // Automatically created check constraints for unnamed PRIMARY and UNIQUE declarations.
 inline constexpr const char* IMPLICIT_INTEGRITY_PREFIX = "INTEG_";

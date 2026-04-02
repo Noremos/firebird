@@ -527,17 +527,17 @@ static inline constexpr struct ini_idx_t indices[] =
 	}},
 	// define index RDB$INDEX_98 for RDB$CONSTANTS unique RDB$SCHEMA_NAME, RDB$PACKAGE_NAME, RDB$CONSTANT_NAME;
 	INDEX(98, rel_constants, idx_unique, 3, ODS_14_0)
-		SEGMENT(f_const_package_schema, idx_metadata),	// table schema name
-		SEGMENT(f_const_package, idx_metadata),	// package name
-		SEGMENT(f_const_name, idx_metadata)		// constant name
+		SEGMENT(f_const_package_schema, idx_metadata),	// package schema name
+		SEGMENT(f_const_package, idx_metadata),			// package name
+		SEGMENT(f_const_name, idx_metadata)				// constant name
 	}},
 	// define index RDB$INDEX_99 for RDB$CONSTANTS unique RDB$CONSTANT_ID;
 	INDEX(99, rel_constants, idx_unique, 1, ODS_14_0)
 		SEGMENT(f_const_id, idx_numeric)			// constant id
 	}},
-	// define index RDB$INDEX_99 for RDB$CONSTANTS unique RDB$CONSTANT_ID;
+	// define index RDB$INDEX_99 for RDB$PACKAGES unique RDB$PACKAGE_ID;
 	INDEX(100, rel_packages, idx_unique, 1, ODS_14_0)
-		SEGMENT(f_pkg_id, idx_numeric)			// constant id
+		SEGMENT(f_pkg_id, idx_numeric)				// constant id
 	}}
 };
 
