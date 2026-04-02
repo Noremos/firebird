@@ -680,7 +680,7 @@ RELATION(nam_packages, rel_packages, ODS_12_0, rel_persistent)
 	FIELD(f_pkg_desc, nam_description, fld_description, 1, ODS_12_0)
 	FIELD(f_pkg_sql_security, nam_sql_security, fld_b_sql_security, 1, ODS_13_0)
 	FIELD(f_pkg_schema, nam_sch_name, fld_sch_name, 1, ODS_14_0)
-	FIELD(f_pkg_id, nam_pkg_id, fld_pkg_id, 1, ODS_14_0)
+	FIELD(f_pkg_id, nam_pkg_id, fld_pkg_id, 0, ODS_14_0)
 END_RELATION
 
 // Relation 43 (SEC$USERS)
@@ -850,6 +850,6 @@ RELATION(nam_constants, rel_constants, ODS_14_0, rel_persistent)
 	FIELD(f_const_private_flag, nam_private_flag, fld_flag_nullable, 0, ODS_14_0)
 	FIELD(f_const_blr, nam_const_blr, fld_const_blr, 0, ODS_14_0)
 	FIELD(f_const_source, nam_const_source, fld_source, 1, ODS_14_0)
-	FIELD(f_const_package_schema, nam_sch_name, fld_sch_name, 1, ODS_14_0)
+	FIELD(f_const_package_schema, nam_sch_name, fld_sch_name, 0, ODS_14_0)
 	FIELD(f_const_description, nam_description, fld_description, 1, ODS_14_0)
 END_RELATION
