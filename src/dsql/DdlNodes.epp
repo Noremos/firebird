@@ -9479,6 +9479,13 @@ void CreateRelationNode::defineLocalTempTable(thread_db* tdbb, DsqlCompilerScrat
 	if (externalFile)
 		status_exception::raise(Arg::Gds(isc_random) << "External file is not allowed for local temporary tables");
 
+	if (attachment->att_local_temporary_tables.count() >= MAX_LTT_COUNT)
+	{
+		ERR_post(Arg::Gds(isc_imp_exc) <<
+				 Arg::Gds(isc_random) <<
+				 Arg::Str("Too many local temporary tables exist already"));
+	}
+
 	const auto ltt = FB_NEW_POOL(attPool) LocalTemporaryTable(attPool, name);
 	ltt->relationType = tempRowsFlag.value_or(REL_temp_tran) == REL_temp_tran ? rel_temp_delete : rel_temp_preserve;
 
@@ -9550,25 +9557,21 @@ void CreateRelationNode::defineLocalTempTable(thread_db* tdbb, DsqlCompilerScrat
 	// Assign LTT relation ID
 
 	if (!attachment->att_next_ltt_id.has_value())
-		attachment->att_next_ltt_id = MIN_LTT_ID;
-	else
-	{
-		if (attachment->att_next_ltt_id.value() >= MAX_LTT_ID)
-			attachment->att_next_ltt_id = MIN_LTT_ID;
-		else
-			++attachment->att_next_ltt_id.value();
-	}
+		attachment->att_next_ltt_id = MAX_LTT_ID;
 
-	const USHORT initialLttIdProbe = attachment->att_next_ltt_id.value();
+	const auto startLttId = attachment->att_next_ltt_id.value();
 
-	while (MetadataCache::getVersioned<Cached::Relation>(tdbb, attachment->att_next_ltt_id.value(), CacheFlag::ERASED))
+	while (true)
 	{
 		if (attachment->att_next_ltt_id.value() >= MAX_LTT_ID)
 			attachment->att_next_ltt_id = MIN_LTT_ID;
 		else
 			++attachment->att_next_ltt_id.value();
 
-		if (attachment->att_next_ltt_id.value() == initialLttIdProbe)
+		if (!MetadataCache::getVersioned<Cached::Relation>(tdbb, attachment->att_next_ltt_id.value(), CacheFlag::ERASED))
+			break;
+
+		if (attachment->att_next_ltt_id.value() == startLttId)
 		{
 			ERR_post(Arg::Gds(isc_imp_exc) <<
 					 Arg::Gds(isc_random) <<
