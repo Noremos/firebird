@@ -4821,7 +4821,6 @@ keyword_or_column
 	| WITHIN
 	;
 
-
 col_opt
 	: ALTER
 	| ALTER COLUMN
