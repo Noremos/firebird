@@ -535,7 +535,7 @@ static inline constexpr struct ini_idx_t indices[] =
 	INDEX(99, rel_constants, idx_unique, 1, ODS_14_0)
 		SEGMENT(f_const_id, idx_numeric)			// constant id
 	}},
-	// define index RDB$INDEX_99 for RDB$PACKAGES unique RDB$PACKAGE_ID;
+	// define index RDB$INDEX_100 for RDB$PACKAGES unique RDB$PACKAGE_ID;
 	INDEX(100, rel_packages, idx_unique, 1, ODS_14_0)
 		SEGMENT(f_pkg_id, idx_numeric)				// constant id
 	}}

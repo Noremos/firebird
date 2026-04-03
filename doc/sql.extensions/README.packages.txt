@@ -120,8 +120,8 @@ Objectives:
         GRANT EXECUTE ON PACKAGE pk_secret TO ROLE role_secret;
 
       To use package constants in a select expression, a USAGE permission is requeued:
-        GRANT USAGE ON PACKAGE <package_name> to [<user|role>] <name> [<grant_option>] [<granted_by>];
-        REVOKE USAGE ON PACKAGE <package_name> FROM <user|role> <name> [<granted_by>];
+        GRANT USAGE ON PACKAGE [<schema>.]<package_name> to [<user|role>] <name> [<grant_option>] [<granted_by>];
+        REVOKE USAGE ON PACKAGE [<schema>.]<package_name> FROM <user|role> <name> [<granted_by>];
 
     - Introduce private scope to routines making them available only for internal usage in the
       defining package.
