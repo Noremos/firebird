@@ -6870,15 +6870,10 @@ static processing_state show_constant(const SCHAR* constantName)
 		WITH CONST.RDB$CONSTANT_NAME EQ constantName
 			SORTED BY CONST.RDB$CONSTANT_NAME
 	{
-		bool isPrivate = !CONST.RDB$PRIVATE_FLAG.NULL && CONST.RDB$PRIVATE_FLAG;
+		const bool isPrivate = !CONST.RDB$PRIVATE_FLAG.NULL && CONST.RDB$PRIVATE_FLAG;
 
-		if (!CONST.RDB$PACKAGE_NAME.NULL)
-		{
-			MetaString packageName(CONST.RDB$PACKAGE_NAME);
-			isqlGlob.printf("%s (%s %s)%-20s", constantName, packageName.c_str(), isPrivate ? "BODY" : "HEADER", " ");
-		}
-		else
-			isqlGlob.printf("%-20s", constantName);
+		MetaString packageName(CONST.RDB$PACKAGE_NAME);
+		isqlGlob.printf("%s (%s %s)%-20s", constantName, packageName.c_str(), isPrivate ? "BODY" : "HEADER", " ");
 
 		fb_utils::exact_name(CONST.RDB$FIELD_SOURCE);
 		fb_utils::exact_name(CONST.RDB$SCHEMA_NAME);

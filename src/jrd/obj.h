@@ -188,8 +188,6 @@ inline constexpr const char* getDdlSecurityName(ObjectType object_type) noexcept
 			return "SQL$TABLESPACES";
 		case obj_schemas:
 			return "SQL$SCHEMAS";
-		case obj_package_constant:
-			return "SQL$PACKAGE_CONSTANT";
 		default:
 			return "";
 	}

@@ -536,6 +536,6 @@
 #define blr_package_reference			(unsigned char) 236
 
 // Subcodes of blr_package_reference
-#define blr_pkg_ref_item_const			(unsigned char) 1
+#define blr_pkg_reference_to_constant			(unsigned char) 1
 
 #endif // FIREBIRD_IMPL_BLR_H

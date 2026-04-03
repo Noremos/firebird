@@ -82,7 +82,7 @@ public:
 			"CONSTANT",
 		};
 
-		 // Print just the object name because the full path is present n the parent error message
+		 // Print just the object name because the full path is present in the parent error message
 		Firebird::status_exception::raise(
 			Firebird::Arg::Gds(isc_no_meta_update) <<
 			Firebird::Arg::Gds(isc_dyn_duplicate_package_item) <<
@@ -121,7 +121,7 @@ class PackageReferenceNode final : public TypedNode<ValueExprNode, ExprNode::TYP
 {
 public:
 	PackageReferenceNode(Firebird::MemoryPool& pool, const QualifiedName& name,
-		const UCHAR itemType = blr_pkg_ref_item_const);
+		const UCHAR itemType = blr_pkg_reference_to_constant);
 
 	Firebird::string internalPrint(NodePrinter& printer) const final;
 
@@ -132,11 +132,10 @@ public:
 	void setParameterName(dsql_par* parameter) const final;
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) final;
 
-	// Search a package constant by a fully qualified name
+	// Search for a package constant by its fully qualified name
 	static bool constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
 		const QualifiedName& name, bool* isPrivate = nullptr);
 
-	// Compute descriptor for value expression.
 	void getDesc(thread_db*, CompilerScratch*, dsc*) final;
 
 	ValueExprNode* copy(thread_db*, NodeCopier&) const final;
@@ -189,7 +188,6 @@ private:
 	dsc* makeConstantValue(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, CompilerScratch*& nodeContext);
 	void executeCreate(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
 	bool executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
-
 
 protected:
 	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
@@ -259,7 +257,6 @@ public:
 
 		DsqlCompilerScratch* dsqlScratch;
 	};
-
 
 	using ItemsNameArray = ItemNames<Firebird::SortedArray<MetaName>, MetaName>;
 

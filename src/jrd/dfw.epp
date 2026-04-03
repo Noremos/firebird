@@ -1160,7 +1160,6 @@ namespace
 		fb_assert(!work->dfw_package.isEmpty());
 
 		SET_TDBB(tdbb);
-		Cached::Package* routine;
 
 		switch (phase)
 		{

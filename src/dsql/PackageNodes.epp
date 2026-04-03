@@ -378,7 +378,7 @@ ValueExprNode* PackageReferenceNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	bool isPrivate = false;
 	if (constantExists(tdbb, transaction, m_fullName, &isPrivate))
 	{
-		// External objects do not have access to private constants.
+		// External objects do not have access to private constants
 		if (isPrivate)
 		{
 			status_exception::raise(Arg::Gds(isc_private_constant) <<
@@ -402,7 +402,7 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 
 	switch (itemType)
 	{
-	case blr_pkg_ref_item_const:
+	case blr_pkg_reference_to_constant:
 	{
 		QualifiedName fullName;
 		csb->csb_blr_reader.getMetaName(fullName.object);
@@ -446,7 +446,7 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 void PackageReferenceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
 	dsqlScratch->appendUChar(blr_package_reference);
-	dsqlScratch->appendUChar(blr_pkg_ref_item_const);
+	dsqlScratch->appendUChar(blr_pkg_reference_to_constant);
 	dsqlScratch->appendMetaString(m_fullName.object.c_str());
 	dsqlScratch->appendMetaString(m_fullName.schema.c_str());
 	dsqlScratch->appendMetaString(m_fullName.package.c_str());
@@ -512,7 +512,7 @@ ValueExprNode* PackageReferenceNode::pass1(thread_db* tdbb, CompilerScratch* csb
 
 	switch (m_itemType)
 	{
-	case blr_pkg_ref_item_const:
+	case blr_pkg_reference_to_constant:
 	{
 		CMP_post_access(tdbb, csb, security.object, 0, SCL_usage, obj_packages, m_fullName.getSchemaAndPackage());
 		break;
@@ -529,7 +529,7 @@ ValueExprNode* PackageReferenceNode::pass2(thread_db* tdbb, CompilerScratch* csb
 {
 	ValueExprNode::pass2(tdbb, csb);
 
-	if (m_itemType == blr_pkg_ref_item_const)
+	if (m_itemType == blr_pkg_reference_to_constant)
 		m_impureOffset = csb->allocImpure<impure_value>();
 
 	return this;
@@ -540,7 +540,7 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 	impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
 	switch (m_itemType)
 	{
-	case blr_pkg_ref_item_const:
+	case blr_pkg_reference_to_constant:
 	{
 		Package* package = m_package(request->getResources());
 		package->checkReload(tdbb);
@@ -590,9 +590,7 @@ DdlNode* CreatePackageConstantNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 }
 
 void CreatePackageConstantNode::checkPermission(thread_db* tdbb, jrd_tra* transaction)
-{
-	// SCL_check_create_access(tdbb, obj_package_constant);
-}
+{ }
 
 void CreatePackageConstantNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
 {

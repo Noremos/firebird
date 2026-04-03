@@ -691,7 +691,7 @@ public:
 
 	// Check if expression returns deterministic result
 	// Determinate whether the node is volatile (or not) in the current execution context.
-	// A DBKEY is deterministic (it cannot change for an already fetched row)
+	// For example, a DBKEY is deterministic (it cannot change for an already fetched row)
 	// but it's not constant (and thus cannot be used as an initializer expression).
 	virtual bool deterministic(thread_db* tdbb) const;
 
