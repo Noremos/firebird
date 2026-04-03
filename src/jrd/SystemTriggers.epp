@@ -1807,7 +1807,8 @@ void SystemTriggers::executeAfterInsertTriggers(thread_db* tdbb, jrd_rel* relati
 			break;
 
 		case rel_packages:
-			populateCache<f_pkg_id, Cached::Package>(tdbb, record);
+			if (tdbb->getAttachment()->isGbak())
+				populateCache<f_pkg_id, Cached::Package>(tdbb, record);
 			break;
 	}
 }
