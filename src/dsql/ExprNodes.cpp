@@ -6471,21 +6471,26 @@ ValueExprNode* FieldNode::internalDsqlPass(DsqlCompilerScratch* dsqlScratch, Rec
 	dsql_ctx packageContext(dsqlScratch->getPool());
 	{ // Consatnts
 
-		const QualifiedName constantName(dsqlName,
-			dsqlQualifier.schema.hasData() ? dsqlQualifier.schema : (dsqlScratch->package.schema.hasData() ? dsqlScratch->package.schema : PUBLIC_SCHEMA),
+		QualifiedName constantName(dsqlName,
+			dsqlQualifier.schema.hasData() ? dsqlQualifier.schema : dsqlScratch->package.schema,
 			dsqlQualifier.object.hasData() ? dsqlQualifier.object : dsqlScratch->package.object);
 
-		if (PackageReferenceNode::constantExists(tdbb, dsqlScratch->getTransaction(), constantName))
+		if (constantName.package.hasData())
 		{
-			packageContext.ctx_relation = nullptr;
-			packageContext.ctx_procedure = nullptr;
-			// Alias is a package name, not a constant
-			packageContext.ctx_alias.push(QualifiedName(constantName.package, constantName.schema));
-			packageContext.ctx_flags |= CTX_package;
-			ambiguousCtxStack.push(&packageContext);
+			dsqlScratch->qualifyNewName(constantName);
 
-			MemoryPool& pool = dsqlScratch->getPool();
-			node = FB_NEW_POOL(pool) PackageReferenceNode(pool, constantName);
+			if (PackageReferenceNode::constantExists(tdbb, dsqlScratch->getTransaction(), constantName))
+			{
+				packageContext.ctx_relation = nullptr;
+				packageContext.ctx_procedure = nullptr;
+				// Alias is a package name, not a constant
+				packageContext.ctx_alias.push(QualifiedName(constantName.package, constantName.schema));
+				packageContext.ctx_flags |= CTX_package;
+				ambiguousCtxStack.push(&packageContext);
+
+				MemoryPool& pool = dsqlScratch->getPool();
+				node = FB_NEW_POOL(pool) PackageReferenceNode(pool, constantName);
+			}
 		}
 	}
 

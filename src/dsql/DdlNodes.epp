@@ -1500,8 +1500,7 @@ DdlNode* CommentOnNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 		case obj_package_constant:
 		{
 			QualifiedName constantName(subName, name.schema, name.object); // name is a package
-			if (constantName.schema.isEmpty())
-				constantName.schema = PUBLIC_SCHEMA;
+			dsqlScratch->qualifyNewName(constantName); // Search for a schema
 
 			if (!PackageReferenceNode::constantExists(tdbb, transaction, constantName))
 			{

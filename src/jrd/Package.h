@@ -217,8 +217,8 @@ public:
 		const bid blrBlobId,
 		const bool skipMakeValue = false);
 
-	ConstantValue* findConstant(thread_db* tdbb, const MetaId id);
-	ConstantValue* findConstant(thread_db* tdbb, QualifiedName name);
+	ConstantValue* findConstant(const MetaId id);
+	ConstantValue* findConstant(const QualifiedName& name);
 
 private:
 	virtual ~Package() = default;

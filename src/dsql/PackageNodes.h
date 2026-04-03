@@ -132,8 +132,9 @@ public:
 	void setParameterName(dsql_par* parameter) const final;
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) final;
 
+	// Search a package constant by a fully qualified name
 	static bool constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
-		QualifiedName name, bool* isPrivate = nullptr);
+		const QualifiedName& name, bool* isPrivate = nullptr);
 
 	// Compute descriptor for value expression.
 	void getDesc(thread_db*, CompilerScratch*, dsc*) final;

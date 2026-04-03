@@ -465,20 +465,18 @@ void PackageReferenceNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 }
 
 bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
-	QualifiedName fullName, bool* isPrivate)
+	const QualifiedName& fullName, bool* isPrivate)
 {
+	fb_assert(fullName.schema.hasData());
+
 	if (fullName.package.isEmpty() || fullName.object.isEmpty())
 		return false;
-
-	// Use default schema if one not specified
-	if (fullName.schema.isEmpty())
-		fullName.schema = PUBLIC_SCHEMA;
 
 	auto* package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
 	if (package == nullptr)
 		return false;
 
-	ConstantValue* value = package->findConstant(tdbb, fullName);
+	ConstantValue* value = package->findConstant(fullName);
 
 	if (value == nullptr)
 		return false;
@@ -547,7 +545,7 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 		Package* package = m_package(request->getResources());
 		package->checkReload(tdbb);
 
-		EVL_make_value(tdbb, &package->findConstant(tdbb, m_fullName)->makeValue(tdbb), outputImpure);
+		EVL_make_value(tdbb, &package->findConstant(m_fullName)->makeValue(tdbb), outputImpure);
 		return &outputImpure->vlu_desc;
 	}
 	default:
@@ -622,7 +620,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 
 	// Check uniqueness
 	fb_assert(package != nullptr);
-	if (package->findConstant(tdbb, name))
+	if (package->findConstant(name))
 	{
 		status_exception::raise(Arg::Gds(isc_dyn_dup_const) << name.toQuotedString());
 	}

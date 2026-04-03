@@ -507,7 +507,7 @@ ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
 	return value;
 }
 
-ConstantValue* Package::findConstant(thread_db* tdbb, const MetaId id)
+ConstantValue* Package::findConstant(const MetaId id)
 {
 	auto it = constants.idMap.get(id);
 
@@ -517,11 +517,8 @@ ConstantValue* Package::findConstant(thread_db* tdbb, const MetaId id)
 	return nullptr;
 }
 
-ConstantValue* Package::findConstant(thread_db* tdbb, QualifiedName name)
+ConstantValue* Package::findConstant(const QualifiedName& name)
 {
-	if (name.schema.isEmpty())
-		name.schema = PUBLIC_SCHEMA;
-
 	auto it = constants.nameMap.get(name);
 
 	if (it != nullptr)
