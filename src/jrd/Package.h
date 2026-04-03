@@ -64,7 +64,6 @@ public:
 	bool hash(thread_db* tdbb, Firebird::sha512& digest) const;
 
 	static dsc getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const QualifiedName& name);
-	static dsc getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const MetaId id);
 
 	static void genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 		ValueExprNode* constExpr, dsql_fld* type, const MetaName& schema);
