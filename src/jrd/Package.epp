@@ -335,6 +335,9 @@ dsc& ConstantValue::makeValue(thread_db* tdbb)
 
 ConstantValue& ConstantsCache::add(const MetaId constId, const QualifiedName& constName, const bool isPrivate)
 {
+	fb_assert(!idMap.exist(constId));
+	fb_assert(!nameMap.exist(constName));
+
 	const ULONG id = values.getCount();
 
 	auto& value = values.add();
@@ -509,6 +512,27 @@ ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
 		value.makeValue(tdbb);
 
 	return value;
+}
+
+ConstantValue& Package::updateConstant(thread_db* tdbb, const MetaId constId,
+	const bool isPrivate,
+	const TypeClause* type)
+{
+	dsc typeDesc;
+	DsqlDescMaker::fromField(&typeDesc, type);
+
+	auto* innerId = constants.idMap.get(constId);
+	fb_assert(innerId != nullptr);
+
+	auto& constant = constants.values[*innerId];
+	constant.blrBlobId = {};
+	constant.isPrivate = isPrivate;
+
+	delete constant.value.vlu_string;
+	constant.value = {};
+	constant.value.vlu_desc = typeDesc;
+
+	return constant;
 }
 
 ConstantValue* Package::findConstant(const MetaId id)

@@ -839,7 +839,7 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		{
 			fb_assert(package);
 			// Do not cache blob id because the blob is not materialized
-			package->addConstant(tdbb, m_id, name, m_isPrivate, m_type);
+			package->updateConstant(tdbb, m_id, m_isPrivate, m_type);
 		}
 
 		found = true;

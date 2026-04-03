@@ -216,6 +216,10 @@ public:
 		const bid blrBlobId,
 		const bool skipMakeValue = false);
 
+	ConstantValue& updateConstant(thread_db* tdbb, const MetaId constId,
+		const bool isPrivate,
+		const TypeClause* type);
+
 	ConstantValue* findConstant(const MetaId id);
 	ConstantValue* findConstant(const QualifiedName& name);
 
