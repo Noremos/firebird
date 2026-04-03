@@ -845,7 +845,7 @@ END_RELATION
 RELATION(nam_constants, rel_constants, ODS_14_0, rel_persistent)
 	FIELD(f_const_name, nam_const_name, fld_f_name, 0, ODS_14_0)
 	FIELD(f_const_id, nam_const_id, fld_const_id, 0, ODS_14_0)
-	FIELD(f_const_package, nam_pkg_name, fld_pkg_name, 0, ODS_14_0)
+	FIELD(f_const_package, nam_pkg_name, fld_pkg_name, 1, ODS_14_0)
 	FIELD(f_const_field, nam_f_source, fld_f_name, 0, ODS_14_0)
 	FIELD(f_const_private_flag, nam_private_flag, fld_flag_nullable, 0, ODS_14_0)
 	FIELD(f_const_blr, nam_const_blr, fld_const_blr, 0, ODS_14_0)
