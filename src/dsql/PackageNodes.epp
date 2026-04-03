@@ -613,10 +613,7 @@ void CreatePackageConstantNode::execute(thread_db* tdbb, DsqlCompilerScratch* ds
 
 void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
 {
-	FbLocalStatus status;
-
-	static const CachedRequestId requestId;
-	AutoCacheRequest storeConstantRequest(tdbb, requestId);
+	Attachment* attachment = transaction->getAttachment();
 
 	// Check uniqueness
 	fb_assert(package != nullptr);
@@ -633,6 +630,9 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 	storeGlobalField(tdbb, tdbb->getTransaction(), fieldName, m_type);
 	fb_assert(fieldName.schema == name.schema);
 	fb_assert(fieldName.package == name.package);
+
+	static const CachedRequestId requestId;
+	AutoCacheRequest storeConstantRequest(tdbb, requestId);
 
 	int faults = 0;
 	while (true)
@@ -665,9 +665,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 				ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
 				// Put the blr
-				blb* blob = blb::create(tdbb, transaction, &CONST.RDB$CONSTANT_BLR);
-				blob->BLB_put_segment(tdbb, dsqlScratch->getBlrData().begin(), dsqlScratch->getBlrData().getCount());
-				blob->BLB_close(tdbb);
+				attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
 
 				// Parent package
 				fb_assert(name.package.hasData());
@@ -708,14 +706,13 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 
 bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
 {
-	FbLocalStatus status;
+	Attachment* attachment = transaction->getAttachment();
 
 	static const CachedRequestId eraseRequestId;
 	AutoCacheRequest eraseDscRequest(tdbb, eraseRequestId);
 
 	static const CachedRequestId modifyRequestId;
 	AutoCacheRequest modifyConstantRequest(tdbb, modifyRequestId);
-	bid blobId;
 
 	bool found = false;
 
@@ -834,21 +831,16 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		// Gen the new constant value as blr
 		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
-		// And write
-		blb* blob = blb::create(tdbb, transaction, &blobId);
-		blob->BLB_put_segment(tdbb, dsqlScratch->getBlrData().begin(), dsqlScratch->getBlrData().getCount());
-		blob->BLB_close(tdbb);
+		MODIFY CONST USING
+			attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
+			CONST.RDB$CONSTANT_BLR.NULL = FALSE;
+		END_MODIFY
 
 		{
 			fb_assert(package);
 			// Do not cache blob id because the blob is not materialized
 			package->addConstant(tdbb, m_id, name, m_isPrivate, m_type);
 		}
-
-		MODIFY CONST USING
-			CONST.RDB$CONSTANT_BLR.NULL = FALSE;
-			CONST.RDB$CONSTANT_BLR = blobId;
-		END_MODIFY
 
 		found = true;
 	}
