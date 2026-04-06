@@ -417,8 +417,8 @@
     <None Include="..\..\..\src\jrd\ini.epp" />
     <None Include="..\..\..\src\jrd\met.epp" />
     <None Include="..\..\..\src\jrd\scl.epp" />
-    <None Include="..\..\..\src\jrd\Package.epp" />
     <None Include="..\..\..\src\jrd\SystemTriggers.epp" />
+    <None Include="..\..\..\src\jrd\Package.epp" />
     <None Include="..\..\..\src\utilities\gstat\dba.epp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
