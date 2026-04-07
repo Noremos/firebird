@@ -616,6 +616,12 @@ BOOST_AUTO_TEST_CASE(ParseShowTest)
 		"show constant")));
 	BOOST_TEST(std::holds_alternative<FrontendParser::ShowConstantsNode>(parseShow(
 		"show constants")));
+
+	BOOST_TEST((std::get<FrontendParser::ShowConstantsNode>(parseShow(
+		"show constants MY_PACKAGE.C1")).name == QualifiedMetaString("C1", "", "MY_PACKAGE")));
+
+	BOOST_TEST((std::get<FrontendParser::ShowConstantsNode>(parseShow(
+		"show constants SYSTEM.MY_PACKAGE.C1")).name == QualifiedMetaString("C1", "SYSTEM", "MY_PACKAGE")));
 }
 
 

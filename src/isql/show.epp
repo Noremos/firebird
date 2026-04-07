@@ -6825,15 +6825,18 @@ static processing_state show_constants(const std::optional<QualifiedMetaString>&
 	if (name.has_value())
 	{
 		// Seach for a constant with name
+		// If SCHEMA is not specifeid, search in all schemas
 
 		const QualifiedMetaString& constant = name.value();
 
 		FOR CONST IN RDB$CONSTANTS WITH
-			CONST.RDB$SCHEMA_NAME EQ constant.schema.c_str() AND
 			CONST.RDB$PACKAGE_NAME EQ constant.package.c_str() AND
 			CONST.RDB$CONSTANT_NAME EQ constant.object.c_str()
 			SORTED BY CONST.RDB$CONSTANT_NAME
 		{
+			if (constant.schema.hasData() && constant.schema != CONST.RDB$SCHEMA_NAME)
+				continue;
+
 			const bool isPrivate = !CONST.RDB$PRIVATE_FLAG.NULL && CONST.RDB$PRIVATE_FLAG;
 			const char* type = isPrivate ? "BODY" : "HEADER";
 

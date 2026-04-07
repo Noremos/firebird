@@ -650,13 +650,27 @@ FrontendParser::AnyShowNode FrontendParser::parseShow()
 			}
 			else if (const auto parsed = parseShowOptQualifiedName<ShowViewsNode>(text, TOKEN_VIEWS, 4))
 				return parsed.value();
-			else if (const auto parsed = parseShowOptQualifiedName<ShowConstantsNode>(text, TOKEN_CONSTANTS, 4))
-				return parsed.value();
 			else if (text.length() >= 9 && TOKEN_WIRE_STATISTICS.find(text) == 0 ||
 				text == TOKEN_WIRE_STATS)
 			{
 				if (parseEof())
 					return ShowWireStatsNode();
+			}
+			else if (text.length() >= 4 && TOKEN_CONSTANTS.find(text) == 0)
+			{
+				ShowConstantsNode node;
+				node.name = parseQualifiedName(true);
+				if (node.name->package.isEmpty())
+				{
+					// It is expecting to get package = <PACKAGE> and object =<CONSTANT>
+					// But it is getting package = <SCHEMA> and object = <CONSTANT>
+					// Fix the name
+					node.name->package = node.name->schema;
+					node.name->schema = "";
+				}
+
+				if (parseEof())
+					return node;
 			}
 
 			break;
