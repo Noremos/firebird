@@ -118,7 +118,7 @@ void Parser::parse()
 
 static bool hasVersionedMethods(const Interface& interface)
 {
-	auto& methods = interface.methods;
+	const auto& methods = interface.methods;
 	return methods.size() >= 2 && methods.front()->version != methods.back()->version;
 }
 

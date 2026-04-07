@@ -1391,6 +1391,7 @@ interface TraceSQLStatement : TraceStatement
 	TraceParams getInputs();
 	const string getTextUTF8();
 	const string getExplainedPlan();
+
 version: // 5.0 -> 6.0
 	PerformanceStats getPerfStats();
 }
@@ -1400,6 +1401,7 @@ interface TraceBLRStatement : TraceStatement
 	const uchar* getData();
 	uint getDataLength();
 	const string getText();
+
 version: // 5.0 -> 6.0
 	PerformanceStats getPerfStats();
 }
