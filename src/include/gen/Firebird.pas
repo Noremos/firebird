@@ -619,15 +619,16 @@ type
 	ITraceParams_getTextUTF8Ptr = function(this: ITraceParams; status: IStatus; idx: Cardinal): PAnsiChar; cdecl;
 	ITraceStatement_getStmtIDPtr = function(this: ITraceStatement): Int64; cdecl;
 	ITraceStatement_getPerfPtr = function(this: ITraceStatement): PerformanceInfoPtr; cdecl;
-	ITraceStatement_getPerfStatsPtr = function(this: ITraceStatement): IPerformanceStats; cdecl;
 	ITraceSQLStatement_getTextPtr = function(this: ITraceSQLStatement): PAnsiChar; cdecl;
 	ITraceSQLStatement_getPlanPtr = function(this: ITraceSQLStatement): PAnsiChar; cdecl;
 	ITraceSQLStatement_getInputsPtr = function(this: ITraceSQLStatement): ITraceParams; cdecl;
 	ITraceSQLStatement_getTextUTF8Ptr = function(this: ITraceSQLStatement): PAnsiChar; cdecl;
 	ITraceSQLStatement_getExplainedPlanPtr = function(this: ITraceSQLStatement): PAnsiChar; cdecl;
+	ITraceSQLStatement_getPerfStatsPtr = function(this: ITraceSQLStatement): IPerformanceStats; cdecl;
 	ITraceBLRStatement_getDataPtr = function(this: ITraceBLRStatement): BytePtr; cdecl;
 	ITraceBLRStatement_getDataLengthPtr = function(this: ITraceBLRStatement): Cardinal; cdecl;
 	ITraceBLRStatement_getTextPtr = function(this: ITraceBLRStatement): PAnsiChar; cdecl;
+	ITraceBLRStatement_getPerfStatsPtr = function(this: ITraceBLRStatement): IPerformanceStats; cdecl;
 	ITraceDYNRequest_getDataPtr = function(this: ITraceDYNRequest): BytePtr; cdecl;
 	ITraceDYNRequest_getDataLengthPtr = function(this: ITraceDYNRequest): Cardinal; cdecl;
 	ITraceDYNRequest_getTextPtr = function(this: ITraceDYNRequest): PAnsiChar; cdecl;
@@ -3127,15 +3128,13 @@ type
 	TraceStatementVTable = class(VersionedVTable)
 		getStmtID: ITraceStatement_getStmtIDPtr;
 		getPerf: ITraceStatement_getPerfPtr;
-		getPerfStats: ITraceStatement_getPerfStatsPtr;
 	end;
 
 	ITraceStatement = class(IVersioned)
-		const VERSION = 3;
+		const VERSION = 2;
 
 		function getStmtID(): Int64;
 		function getPerf(): PerformanceInfoPtr;
-		function getPerfStats(): IPerformanceStats;
 	end;
 
 	ITraceStatementImpl = class(ITraceStatement)
@@ -3143,7 +3142,6 @@ type
 
 		function getStmtID(): Int64; virtual; abstract;
 		function getPerf(): PerformanceInfoPtr; virtual; abstract;
-		function getPerfStats(): IPerformanceStats; virtual; abstract;
 	end;
 
 	TraceSQLStatementVTable = class(TraceStatementVTable)
@@ -3152,6 +3150,7 @@ type
 		getInputs: ITraceSQLStatement_getInputsPtr;
 		getTextUTF8: ITraceSQLStatement_getTextUTF8Ptr;
 		getExplainedPlan: ITraceSQLStatement_getExplainedPlanPtr;
+		getPerfStats: ITraceSQLStatement_getPerfStatsPtr;
 	end;
 
 	ITraceSQLStatement = class(ITraceStatement)
@@ -3162,6 +3161,7 @@ type
 		function getInputs(): ITraceParams;
 		function getTextUTF8(): PAnsiChar;
 		function getExplainedPlan(): PAnsiChar;
+		function getPerfStats(): IPerformanceStats;
 	end;
 
 	ITraceSQLStatementImpl = class(ITraceSQLStatement)
@@ -3169,18 +3169,19 @@ type
 
 		function getStmtID(): Int64; virtual; abstract;
 		function getPerf(): PerformanceInfoPtr; virtual; abstract;
-		function getPerfStats(): IPerformanceStats; virtual; abstract;
 		function getText(): PAnsiChar; virtual; abstract;
 		function getPlan(): PAnsiChar; virtual; abstract;
 		function getInputs(): ITraceParams; virtual; abstract;
 		function getTextUTF8(): PAnsiChar; virtual; abstract;
 		function getExplainedPlan(): PAnsiChar; virtual; abstract;
+		function getPerfStats(): IPerformanceStats; virtual; abstract;
 	end;
 
 	TraceBLRStatementVTable = class(TraceStatementVTable)
 		getData: ITraceBLRStatement_getDataPtr;
 		getDataLength: ITraceBLRStatement_getDataLengthPtr;
 		getText: ITraceBLRStatement_getTextPtr;
+		getPerfStats: ITraceBLRStatement_getPerfStatsPtr;
 	end;
 
 	ITraceBLRStatement = class(ITraceStatement)
@@ -3189,6 +3190,7 @@ type
 		function getData(): BytePtr;
 		function getDataLength(): Cardinal;
 		function getText(): PAnsiChar;
+		function getPerfStats(): IPerformanceStats;
 	end;
 
 	ITraceBLRStatementImpl = class(ITraceBLRStatement)
@@ -3196,10 +3198,10 @@ type
 
 		function getStmtID(): Int64; virtual; abstract;
 		function getPerf(): PerformanceInfoPtr; virtual; abstract;
-		function getPerfStats(): IPerformanceStats; virtual; abstract;
 		function getData(): BytePtr; virtual; abstract;
 		function getDataLength(): Cardinal; virtual; abstract;
 		function getText(): PAnsiChar; virtual; abstract;
+		function getPerfStats(): IPerformanceStats; virtual; abstract;
 	end;
 
 	TraceDYNRequestVTable = class(VersionedVTable)
@@ -9256,16 +9258,6 @@ begin
 	Result := TraceStatementVTable(vTable).getPerf(Self);
 end;
 
-function ITraceStatement.getPerfStats(): IPerformanceStats;
-begin
-	if (vTable.version < 3) then begin
-		Result := nil;
-	end
-	else begin
-		Result := TraceStatementVTable(vTable).getPerfStats(Self);
-	end;
-end;
-
 function ITraceSQLStatement.getText(): PAnsiChar;
 begin
 	Result := TraceSQLStatementVTable(vTable).getText(Self);
@@ -9291,6 +9283,16 @@ begin
 	Result := TraceSQLStatementVTable(vTable).getExplainedPlan(Self);
 end;
 
+function ITraceSQLStatement.getPerfStats(): IPerformanceStats;
+begin
+	if (vTable.version < 4) then begin
+		Result := nil;
+	end
+	else begin
+		Result := TraceSQLStatementVTable(vTable).getPerfStats(Self);
+	end;
+end;
+
 function ITraceBLRStatement.getData(): BytePtr;
 begin
 	Result := TraceBLRStatementVTable(vTable).getData(Self);
@@ -9304,6 +9306,16 @@ end;
 function ITraceBLRStatement.getText(): PAnsiChar;
 begin
 	Result := TraceBLRStatementVTable(vTable).getText(Self);
+end;
+
+function ITraceBLRStatement.getPerfStats(): IPerformanceStats;
+begin
+	if (vTable.version < 4) then begin
+		Result := nil;
+	end
+	else begin
+		Result := TraceBLRStatementVTable(vTable).getPerfStats(Self);
+	end;
 end;
 
 function ITraceDYNRequest.getData(): BytePtr;
@@ -15718,16 +15730,6 @@ begin
 	end
 end;
 
-function ITraceStatementImpl_getPerfStatsDispatcher(this: ITraceStatement): IPerformanceStats; cdecl;
-begin
-	Result := nil;
-	try
-		Result := ITraceStatementImpl(this).getPerfStats();
-	except
-		on e: Exception do FbException.catchException(nil, e);
-	end
-end;
-
 var
 	ITraceStatementImpl_vTable: TraceStatementVTable;
 
@@ -15751,16 +15753,6 @@ begin
 	Result := nil;
 	try
 		Result := ITraceSQLStatementImpl(this).getPerf();
-	except
-		on e: Exception do FbException.catchException(nil, e);
-	end
-end;
-
-function ITraceSQLStatementImpl_getPerfStatsDispatcher(this: ITraceSQLStatement): IPerformanceStats; cdecl;
-begin
-	Result := nil;
-	try
-		Result := ITraceSQLStatementImpl(this).getPerfStats();
 	except
 		on e: Exception do FbException.catchException(nil, e);
 	end
@@ -15816,6 +15808,16 @@ begin
 	end
 end;
 
+function ITraceSQLStatementImpl_getPerfStatsDispatcher(this: ITraceSQLStatement): IPerformanceStats; cdecl;
+begin
+	Result := nil;
+	try
+		Result := ITraceSQLStatementImpl(this).getPerfStats();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
 var
 	ITraceSQLStatementImpl_vTable: TraceSQLStatementVTable;
 
@@ -15839,16 +15841,6 @@ begin
 	Result := nil;
 	try
 		Result := ITraceBLRStatementImpl(this).getPerf();
-	except
-		on e: Exception do FbException.catchException(nil, e);
-	end
-end;
-
-function ITraceBLRStatementImpl_getPerfStatsDispatcher(this: ITraceBLRStatement): IPerformanceStats; cdecl;
-begin
-	Result := nil;
-	try
-		Result := ITraceBLRStatementImpl(this).getPerfStats();
 	except
 		on e: Exception do FbException.catchException(nil, e);
 	end
@@ -15879,6 +15871,16 @@ begin
 	Result := nil;
 	try
 		Result := ITraceBLRStatementImpl(this).getText();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function ITraceBLRStatementImpl_getPerfStatsDispatcher(this: ITraceBLRStatement): IPerformanceStats; cdecl;
+begin
+	Result := nil;
+	try
+		Result := ITraceBLRStatementImpl(this).getPerfStats();
 	except
 		on e: Exception do FbException.catchException(nil, e);
 	end
@@ -18715,30 +18717,29 @@ initialization
 	ITraceParamsImpl_vTable.getTextUTF8 := @ITraceParamsImpl_getTextUTF8Dispatcher;
 
 	ITraceStatementImpl_vTable := TraceStatementVTable.create;
-	ITraceStatementImpl_vTable.version := 3;
+	ITraceStatementImpl_vTable.version := 2;
 	ITraceStatementImpl_vTable.getStmtID := @ITraceStatementImpl_getStmtIDDispatcher;
 	ITraceStatementImpl_vTable.getPerf := @ITraceStatementImpl_getPerfDispatcher;
-	ITraceStatementImpl_vTable.getPerfStats := @ITraceStatementImpl_getPerfStatsDispatcher;
 
 	ITraceSQLStatementImpl_vTable := TraceSQLStatementVTable.create;
 	ITraceSQLStatementImpl_vTable.version := 4;
 	ITraceSQLStatementImpl_vTable.getStmtID := @ITraceSQLStatementImpl_getStmtIDDispatcher;
 	ITraceSQLStatementImpl_vTable.getPerf := @ITraceSQLStatementImpl_getPerfDispatcher;
-	ITraceSQLStatementImpl_vTable.getPerfStats := @ITraceSQLStatementImpl_getPerfStatsDispatcher;
 	ITraceSQLStatementImpl_vTable.getText := @ITraceSQLStatementImpl_getTextDispatcher;
 	ITraceSQLStatementImpl_vTable.getPlan := @ITraceSQLStatementImpl_getPlanDispatcher;
 	ITraceSQLStatementImpl_vTable.getInputs := @ITraceSQLStatementImpl_getInputsDispatcher;
 	ITraceSQLStatementImpl_vTable.getTextUTF8 := @ITraceSQLStatementImpl_getTextUTF8Dispatcher;
 	ITraceSQLStatementImpl_vTable.getExplainedPlan := @ITraceSQLStatementImpl_getExplainedPlanDispatcher;
+	ITraceSQLStatementImpl_vTable.getPerfStats := @ITraceSQLStatementImpl_getPerfStatsDispatcher;
 
 	ITraceBLRStatementImpl_vTable := TraceBLRStatementVTable.create;
 	ITraceBLRStatementImpl_vTable.version := 4;
 	ITraceBLRStatementImpl_vTable.getStmtID := @ITraceBLRStatementImpl_getStmtIDDispatcher;
 	ITraceBLRStatementImpl_vTable.getPerf := @ITraceBLRStatementImpl_getPerfDispatcher;
-	ITraceBLRStatementImpl_vTable.getPerfStats := @ITraceBLRStatementImpl_getPerfStatsDispatcher;
 	ITraceBLRStatementImpl_vTable.getData := @ITraceBLRStatementImpl_getDataDispatcher;
 	ITraceBLRStatementImpl_vTable.getDataLength := @ITraceBLRStatementImpl_getDataLengthDispatcher;
 	ITraceBLRStatementImpl_vTable.getText := @ITraceBLRStatementImpl_getTextDispatcher;
+	ITraceBLRStatementImpl_vTable.getPerfStats := @ITraceBLRStatementImpl_getPerfStatsDispatcher;
 
 	ITraceDYNRequestImpl_vTable := TraceDYNRequestVTable.create;
 	ITraceDYNRequestImpl_vTable.version := 2;
