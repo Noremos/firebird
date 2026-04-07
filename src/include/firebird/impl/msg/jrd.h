@@ -1004,7 +1004,7 @@ FB_IMPL_MSG(JRD, 1001, sysf_argmustbe_range_inc0_1, -833, "42", "000", "Argument
 FB_IMPL_MSG(JRD, 1002, argmustbe_numeric_function, -833, "42", "000", "Argument for @1 function must be numeric types")
 FB_IMPL_MSG(JRD, 1003, percetile_only_one_sort_item, -833, "42", "000", "The PERCENTILE_DISC and PERENTILE_CONT functions support only one sort item in WITHIN GROUP")
 FB_IMPL_MSG(JRD, 1004, argmustbe_const_within_group, -833, "42", "000", "Argument for @1 function must be constant within each group")
-FB_IMPL_MSG(JRD, 1005, not_defined_constant, -901, "42", "000", "The constant @1 is not defined in the package @2")
+FB_IMPL_MSG(JRD, 1005, update_overwrite, -901, "27", "000", "UPDATE will overwrite changes made by the trigger or by the another UPDATE in the same cursor")
 FB_IMPL_MSG(JRD, 1006, const_name, -901, "42", "000", "CONSTANT @1")
 FB_IMPL_MSG(JRD, 1007, private_constant, -901, "42", "000", "The constant @1 is private")
 FB_IMPL_MSG(JRD, 1008, package_alias_help, -901, "42", "000", "Use an alias to resolve the conflict")
@@ -1012,3 +1012,4 @@ FB_IMPL_MSG(JRD, 1009, bad_constant_blr, -901, "2F", "000", "Error while parsing
 FB_IMPL_MSG(JRD, 1010, bad_constant_desc, -901, "2F", "000", "Error while reading type of the constant with name @1")
 FB_IMPL_MSG(JRD, 1011, bad_constant_name, -901, "2F", "000", "Constant @1 cannot be found")
 FB_IMPL_MSG(JRD, 1012, bad_constant_type, -901, "2F", "000", "@1 is not suppotred to be a constant type")
+FB_IMPL_MSG(JRD, 1013, not_defined_constant, -901, "42", "000", "The constant @1 is not defined in the package @2")
