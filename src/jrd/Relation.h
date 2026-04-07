@@ -482,7 +482,7 @@ public:
 
 	void releaseLock(thread_db*) { }
 
-	RelationPermanent* getRelation()
+	RelationPermanent* getRelation() noexcept
 	{
 		return idp_relation;
 	}
@@ -495,6 +495,7 @@ private:
 	MetaId				idp_id;
 	TraNumber			idp_tranum = 0;
 	UCHAR				idp_state = 0;
+	UCHAR				idp_formatNumber = 0;
 
 	[[noreturn]] void errIndexGone();
 
@@ -515,10 +516,30 @@ public:
 		memcpy(&idx->idx_expression_desc, &idp_expression_desc, sizeof(struct dsc));
 	}
 
+	void setState(UCHAR state) noexcept
+	{
+		idp_state = state;
+	}
+
+	UCHAR getState() const noexcept
+	{
+		return idp_state;
+	}
+
+	UCHAR getFormat() const noexcept
+	{
+		return idp_formatNumber;
+	}
+
+	void setFormat(UCHAR fmt) noexcept
+	{
+		idp_formatNumber = fmt;
+	}
+
+private:
 	void refreshIndexCode(thread_db* tdbb, Cached::Relation* relation,
 		index_desc* idx, const Ods::index_root_page::irt_repeat* irt_desc);
 
-private:
 	Firebird::Mutex		idp_code_mutex;			// Delays concurrent threads till the end of code refresh
 
 	bid					idp_expression_bid;
@@ -828,7 +849,7 @@ public:
 
 	void newIndexVersion(thread_db* tdbb, MetaId id, ObjectBase::Flag scanType)
 	{
-		auto chk = rel_indices.makeObject(tdbb, id, CacheFlag::NOCOMMIT | scanType);
+		[[maybe_unused]] auto chk = rel_indices.newVersion(tdbb, id);
 		fb_assert(chk);
 	}
 

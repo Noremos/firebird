@@ -1687,7 +1687,7 @@ DeferredWork* DFW_post_work_arg( jrd_tra* transaction, DeferredWork* work, const
 
 
 void DFW_update_index(const QualifiedName& name, USHORT id, const SelectivityList& selectivity,
-	jrd_tra* transaction)
+	jrd_tra* transaction, jrd_rel* relation)
 {
 /**************************************
  *
@@ -1727,6 +1727,11 @@ void DFW_update_index(const QualifiedName& name, USHORT id, const SelectivityLis
 			IDX.RDB$INDEX_ID = id + 1;
 			IDX.RDB$INDEX_ID.NULL = FALSE;
 			IDX.RDB$STATISTICS = selectivity.back();
+			if (relation)
+			{
+				IDX.RDB$FORMAT = relation->rel_current_fmt;
+				IDX.RDB$FORMAT.NULL = FALSE;
+			}
 		END_MODIFY
 	}
 	END_FOR
