@@ -108,7 +108,8 @@ public:
 
 	void drop(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& packageAndSchema);
 	void checkDefineMatch(Firebird::MemoryPool& pool, const QualifiedName& packageAndSchema, const PackageItemsHolder& newItems);
-	void collectPackagedItems(thread_db* tdbb, jrd_tra* transaction, const QualifiedName& packageAndSchema, bool details, bool collectConstants);
+	void collectPackagedItems(thread_db* tdbb, jrd_tra* transaction,
+		const QualifiedName& packageAndSchema, const bool details, const bool collectConstants);
 	void clear();
 
 public:
@@ -179,6 +180,7 @@ public:
 	{
 		m_isPrivate = false;
 	}
+
 	inline void makePrivate()
 	{
 		m_isPrivate = true;

@@ -135,12 +135,12 @@ void dropItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const Qualifie
 void checkItemsDefineMatch(MemoryPool& pool, const QualifiedName& packageAndSchema,
 	const PackageItemsHolder::ItemsSignatureArray& newItems,
 	const PackageItemsHolder::ItemsSignatureArray& existingItems,
-	ISC_STATUS missingCode, ISC_STATUS mismatchCode)
+	const ISC_STATUS missingCode, const ISC_STATUS mismatchCode)
 {
 	for (auto i = existingItems.begin(); i != existingItems.end(); ++i)
 	{
 		FB_SIZE_T pos;
-		bool found = newItems.find(Signature(pool, i->name), pos);
+		const bool found = newItems.find(Signature(pool, i->name), pos);
 
 		if (!found || !newItems[pos].defined)
 		{
@@ -176,11 +176,11 @@ void PackageItemsHolder::checkDefineMatch(MemoryPool& pool, const QualifiedName&
 		isc_dyn_procnotdef_package, isc_dyn_procsignat_package);
 }
 
-	// Return function and procedure names (in the user charset) and optionally its details for a
-	// given package.
+// Return function and procedure names (in the user charset) and optionally its details for a
+// given package.
 void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transaction,
 	const QualifiedName& packageName,
-	bool details, bool collectConstants)
+	const bool details, const bool collectConstants)
 {
 	AutoCacheRequest requestHandle(tdbb, drq_l_pkg_funcs, DYN_REQUESTS);
 	AutoCacheRequest requestHandle2(tdbb, drq_l_pkg_func_args, DYN_REQUESTS);
@@ -202,10 +202,10 @@ void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transact
 				ARG IN RDB$FUNCTION_ARGUMENTS CROSS
 				FLD IN RDB$FIELDS
 				WITH ARG.RDB$SCHEMA_NAME EQ FUN.RDB$SCHEMA_NAME AND
-						ARG.RDB$PACKAGE_NAME EQ FUN.RDB$PACKAGE_NAME AND
-						ARG.RDB$FUNCTION_NAME EQ FUN.RDB$FUNCTION_NAME AND
-						FLD.RDB$SCHEMA_NAME EQUIV ARG.RDB$FIELD_SOURCE_SCHEMA_NAME AND
-						FLD.RDB$FIELD_NAME EQ ARG.RDB$FIELD_SOURCE
+					 ARG.RDB$PACKAGE_NAME EQ FUN.RDB$PACKAGE_NAME AND
+					 ARG.RDB$FUNCTION_NAME EQ FUN.RDB$FUNCTION_NAME AND
+					 FLD.RDB$SCHEMA_NAME EQUIV ARG.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+					 FLD.RDB$FIELD_NAME EQ ARG.RDB$FIELD_SOURCE
 			{
 				SignatureParameter parameter(*getDefaultMemoryPool());
 
@@ -259,7 +259,7 @@ void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transact
 	FOR (REQUEST_HANDLE requestHandle TRANSACTION_HANDLE transaction)
 		PRC IN RDB$PROCEDURES
 		WITH PRC.RDB$SCHEMA_NAME EQ packageName.schema.c_str() AND
-				PRC.RDB$PACKAGE_NAME EQ packageName.object.c_str()
+			 PRC.RDB$PACKAGE_NAME EQ packageName.object.c_str()
 	{
 		Signature procedure(PRC.RDB$PROCEDURE_NAME);
 		procedure.defined = !PRC.RDB$PROCEDURE_BLR.NULL || !PRC.RDB$ENTRYPOINT.NULL;
@@ -270,10 +270,10 @@ void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transact
 				PRM IN RDB$PROCEDURE_PARAMETERS CROSS
 				FLD IN RDB$FIELDS
 				WITH PRM.RDB$SCHEMA_NAME EQ PRC.RDB$SCHEMA_NAME AND
-						PRM.RDB$PACKAGE_NAME EQ PRC.RDB$PACKAGE_NAME AND
-						PRM.RDB$PROCEDURE_NAME EQ PRC.RDB$PROCEDURE_NAME AND
-						FLD.RDB$SCHEMA_NAME EQUIV PRM.RDB$FIELD_SOURCE_SCHEMA_NAME AND
-						FLD.RDB$FIELD_NAME EQ PRM.RDB$FIELD_SOURCE
+					 PRM.RDB$PACKAGE_NAME EQ PRC.RDB$PACKAGE_NAME AND
+					 PRM.RDB$PROCEDURE_NAME EQ PRC.RDB$PROCEDURE_NAME AND
+					 FLD.RDB$SCHEMA_NAME EQUIV PRM.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+					 FLD.RDB$FIELD_NAME EQ PRM.RDB$FIELD_SOURCE
 			{
 				SignatureParameter parameter(*getDefaultMemoryPool());
 				parameter.type = PRM.RDB$PARAMETER_TYPE;
@@ -321,7 +321,6 @@ void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transact
 	}
 	END_FOR
 
-
 	if (collectConstants)
 	{
 		static const CachedRequestId requestId;
@@ -331,7 +330,6 @@ void PackageItemsHolder::collectPackagedItems(thread_db* tdbb, jrd_tra* transact
 				CONST.RDB$SCHEMA_NAME EQ packageName.schema.c_str() AND
 				CONST.RDB$PACKAGE_NAME EQ packageName.object.c_str()
 		{
-
 			Signature constant(CONST.RDB$CONSTANT_NAME);
 			constants.add(constant);
 		}
@@ -395,7 +393,6 @@ ValueExprNode* PackageReferenceNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	return node;
 }
 
-
 DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* csb, const UCHAR)
 {
 	const UCHAR itemType = csb->csb_blr_reader.getByte();
@@ -419,8 +416,7 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 			csb->addDependency(dependency);
 		}
 
-		{
-			csb->qualifyExistingName(tdbb, fullName, obj_package_constant);
+		{ // Package cache
 			auto package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
 			if (package)
 			{
@@ -441,7 +437,6 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 
 	return nullptr;
 }
-
 
 void PackageReferenceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
@@ -476,7 +471,7 @@ bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transac
 	if (package == nullptr)
 		return false;
 
-	ConstantValue* value = package->findConstant(fullName);
+	const ConstantValue* value = package->findConstant(fullName);
 
 	if (value == nullptr)
 		return false;
@@ -621,7 +616,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 	}
 
 	// Generate a new unique field name because constants in different packages may have same name
-	// but names in RDB$FIELDS should be unique in for a SCHEME
+	// but names in RDB$FIELDS should be unique in for a SCHEMA
 	QualifiedName fieldName = name;
 	fieldName.object = "";
 	// Store description in the RDB$FIELDS relation
@@ -700,7 +695,6 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		}
 	}// While
 }
-
 
 bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
 {
@@ -1164,7 +1158,6 @@ bool CreateAlterPackageNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* 
 
 bool CreateAlterPackageNode::executeAlterIndividualParameters(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
 {
-	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_m_prm_pkg, DYN_REQUESTS);
 	bool modified = false;
 
@@ -1251,8 +1244,6 @@ void DropPackageNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
 	AutoSavePoint savePoint(tdbb, transaction);
 
 	bool found = false;
-
-	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_e_pkg, DYN_REQUESTS);
 
 	MetaId id{};
@@ -1447,7 +1438,6 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 	// run all statements under savepoint control
 	AutoSavePoint savePoint(tdbb, transaction);
 
-	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_m_pkg_body, DYN_REQUESTS);
 	bool modified = false;
 
@@ -1613,8 +1603,6 @@ void DropPackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScra
 	AutoSavePoint savePoint(tdbb, transaction);
 
 	bool found = false;
-
-	static const CachedRequestId requestId;
 	AutoCacheRequest requestHandle(tdbb, drq_m_pkg_body2, DYN_REQUESTS);
 
 	MetaId id{};
