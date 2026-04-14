@@ -11415,13 +11415,6 @@ void DropRelationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch
 		if (dbb->dbb_garbage_collector)
 			dbb->dbb_garbage_collector->removeRelation(rel->getId());
 
-		if (relation->isTemporary())
-		{
-			// release pages, allocated for current GTT instance
-			AutoSetRestoreFlag<ULONG> tmpSpace(&tdbb->tdbb_flags, TDBB_use_db_page_space, false);
-			relation->delPages(tdbb);
-		}
-
 		RelationPages* const relPages = relation->getBasePages();
 		if (relPages->rel_pages)
 			DPM_mark_relation(tdbb, relation);

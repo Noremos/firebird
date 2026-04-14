@@ -197,6 +197,7 @@ private:
 	FB_SIZE_T versionOffset;
 };
 
+// This specialization is required for successful initialization of database
 template <>
 jrd_rel* CachedResource<jrd_rel, RelationPermanent>::operator()(thread_db* tdbb) const;
 
@@ -255,7 +256,7 @@ public:
 
 		bool checkPresence(StoredElement* res, FB_SIZE_T& pos)
 		{
-			return this->find([res](const CachedResource<OBJ, PERM>& elem) {
+			return this->findEx([res](const CachedResource<OBJ, PERM>& elem) {
 					auto* e = elem();
 					return e == res ? 0 : std::less<StoredElement*>{}(e, res) ? -1 : 1;
 				}, pos);

@@ -3786,6 +3786,7 @@ static bool delete_relation(thread_db* tdbb, SSHORT phase, DeferredWork* work, j
 			auto* relation = MetadataCache::getPerm<Cached::Relation>(tdbb, work->dfw_id, CacheFlag::ERASED);
 			if (relation)
 			{
+				relation->clearDropMarker(tdbb);
 				if (relation->isDropped())
 					relation->rollback(tdbb);
 			}
@@ -3832,7 +3833,18 @@ static bool delete_relation(thread_db* tdbb, SSHORT phase, DeferredWork* work, j
 
 	case 2:
 	case 3:
+		return true;
+
 	case 4:
+		{
+			auto* relation = MetadataCache::getPerm<Cached::Relation>(tdbb, work->dfw_id, CacheFlag::ERASED);
+			if (!relation)
+				return false;
+
+			relation->dropTempPages(tdbb);
+		}
+		return true;
+
 	case 5:
 	case 6:
 		return true;
@@ -3840,8 +3852,10 @@ static bool delete_relation(thread_db* tdbb, SSHORT phase, DeferredWork* work, j
 	case 7:
 		{
 			auto* relation = MetadataCache::getPerm<Cached::Relation>(tdbb, work->dfw_id, CacheFlag::ERASED);
-			if (relation)
-				relation->commit(tdbb);
+			if (!relation)
+				return false;
+
+			relation->commit(tdbb);
 		}
 		break;
 	}

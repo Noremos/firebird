@@ -206,7 +206,8 @@ public:
 	const QualifiedName& getName() const noexcept;
 
 	static bool destroy(thread_db* tdbb, DbTriggersHeader* trigs);
-	void releaseLock(thread_db*) { }
+	void releaseLock(thread_db* tdbb) { }
+	void reloadAst(thread_db* tdbb, bool erase) { }
 
 private:
 	MetaId type;
@@ -480,7 +481,8 @@ public:
 		return idp_id;
 	}
 
-	void releaseLock(thread_db*) { }
+	void releaseLock(thread_db* tdbb) { }
+	void reloadAst(thread_db* tdbb, bool erase) { }
 
 	RelationPermanent* getRelation() noexcept
 	{
@@ -835,6 +837,12 @@ public:
 	~RelationPermanent();
 	static bool destroy(thread_db* tdbb, RelationPermanent* rel);
 
+	void reloadAst(thread_db* tdbb, bool erase)
+	{
+		if (erase)
+			dropTempPages(tdbb);
+	}
+
 	void makeLocks(thread_db* tdbb, Cached::Relation* relation);
 	static constexpr USHORT getRelLockKeyLength() noexcept;
 	Lock* createLock(thread_db* tdbb, lck_t, bool);
@@ -898,6 +906,7 @@ public:
 
 	RelationPages* getPages(thread_db* tdbb, TraNumber tran = MAX_TRA_NUMBER, bool allocPages = true);
 	bool	delPages(thread_db* tdbb, TraNumber tran = MAX_TRA_NUMBER, RelationPages* aPages = NULL);
+	void	freePages(thread_db* tdbb);
 	void	retainPages(thread_db* tdbb, TraNumber oldNumber, TraNumber newNumber);
 	void	cleanUp() noexcept;
 	void	fillPagesSnapshot(RelPagesSnapshot&, const bool AttachmentOnly = false);
@@ -960,6 +969,10 @@ public:
 	// Relation must be updated on next use or commit
 	static Cached::Relation* newVersion(thread_db* tdbb, const QualifiedName& name);
 
+	// Relation is in process of remove - mark it with current transaction
+	void dropTempPages(thread_db* tdbb);
+	void clearDropMarker(thread_db* tdbb);
+
 	// Lists of FK partners should be updated on next update
 	void checkPartners(thread_db* tdbb);
 
@@ -996,7 +1009,7 @@ public:
 	ForeignRefs*	rel_foreign_refs = nullptr;		// foreign references to other relations' primary keys
 
 private:
-	Firebird::Mutex			rel_pages_mutex;
+	Firebird::Mutex	rel_pages_mutex;	// protects rel_pages_inst and rel_pages_free
 
 	typedef Firebird::SortedArray<
 				RelationPages*,

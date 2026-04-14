@@ -5104,7 +5104,7 @@ Cached::Index* RelationPermanent::lookupIndex(thread_db* tdbb, const QualifiedNa
 
 	// See if we already know the relation by name
 	auto* idp = rel_indices.lookup(tdbb,
-		[tdbb, name, flags](Cached::Index* idp)
+		[name](Cached::Index* idp)
 		{
 			return idp->getName() == name ? idp : nullptr;
 		},

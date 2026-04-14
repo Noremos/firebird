@@ -64,7 +64,8 @@ namespace Jrd
 		}
 
 		static bool destroy(thread_db* tdbb, RoutinePermanent* routine);
-		void releaseLock(thread_db*) { }
+		void reloadAst(thread_db* tdbb, bool erase) { }
+		void releaseLock(thread_db* tdbb) { }
 
 		const QualifiedName& getName() const noexcept { return name; }
 		void setName(const QualifiedName& value) { name = value; }
