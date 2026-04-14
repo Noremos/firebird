@@ -1011,5 +1011,5 @@ FB_IMPL_MSG(JRD, 1008, package_alias_help, -901, "42", "000", "Use an alias to r
 FB_IMPL_MSG(JRD, 1009, bad_constant_blr, -901, "2F", "000", "Error while parsing BLR value of the constant @1")
 FB_IMPL_MSG(JRD, 1010, bad_constant_desc, -901, "2F", "000", "Error while reading type of the constant with name @1")
 FB_IMPL_MSG(JRD, 1011, bad_constant_name, -901, "2F", "000", "Constant @1 cannot be found")
-FB_IMPL_MSG(JRD, 1012, bad_constant_type, -901, "2F", "000", "@1 is not suppotred to be a constant type")
+FB_IMPL_MSG(JRD, 1012, bad_constant_type, -901, "2F", "000", "@1 is not supported to be a constant type")
 FB_IMPL_MSG(JRD, 1013, not_defined_constant, -901, "42", "000", "The constant @1 is not defined in the package @2")
