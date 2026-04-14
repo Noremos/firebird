@@ -705,7 +705,7 @@ public:
 	virtual bool unmappable(const MapNode* mapNode, StreamType shellStream) const;
 
 	// Check if expression returns constant result
-	// The result true means the value does not change after recompilation
+	// Check if expression returns a constant result (the one which does not change after recompilation)
 	virtual bool constant() const
 	{
 		return false;
