@@ -1167,12 +1167,10 @@ namespace
 				return false;
 
 			case 1:
-				return true;
-
-			case 2:
 				check_dependencies(tdbb, work->getQualifiedName(), NULL, obj_package_constant, transaction);
 				return true;
 
+			case 2:
 			case 3:
 				return true;
 
