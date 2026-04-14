@@ -104,7 +104,7 @@ Objectives:
       the [<schema>.]<package>.<constant_name> notation.
       Constants declared in the package body are private and cannot be accessed from outside the package.
       However, they can be referenced directly by <constant_name> within <procedure_impl> and <function_impl>.
-      Header constants can also be used directly with just the name for package body elements.
+      Header constants can also be referenced directly by their name inside package body elements.
 
     - Facilitate permission management.
 
