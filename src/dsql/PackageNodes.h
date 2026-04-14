@@ -118,7 +118,7 @@ public:
 	ItemsSignatureArray constants;
 };
 
-class PackageReferenceNode final : public TypedNode<ValueExprNode, ExprNode::TYPE_REFERENCE>
+class PackageReferenceNode final : public TypedNode<ValueExprNode, ExprNode::TYPE_PACKAGE_REFERENCE>
 {
 public:
 	PackageReferenceNode(Firebird::MemoryPool& pool, const QualifiedName& name,

@@ -492,7 +492,7 @@ static ISC_STATUS getErrorNotFound(int obj_type)
 		err_code = isc_dyn_func_not_found;
 		break;
 	case obj_package_constant:
-		err_code = isc_dyn_const_not_found;
+		err_code = isc_dyn_constant_not_found;
 		break;
 	default:
 		fb_assert(false);

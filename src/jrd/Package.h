@@ -1,7 +1,7 @@
 /*
  *	PROGRAM:		Firebird CONSTANTS implementation.
  *	MODULE:			Package.h
- *	DESCRIPTION:	Routine to cache and reload Package constants
+ *	DESCRIPTION:	Routines to cache and reload package items
  *
  *  The contents of this file are subject to the Initial
  *  Developer's Public License Version 1.0 (the "License");

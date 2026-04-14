@@ -6481,8 +6481,6 @@ ValueExprNode* FieldNode::internalDsqlPass(DsqlCompilerScratch* dsqlScratch, Rec
 
 			if (PackageReferenceNode::constantExists(tdbb, dsqlScratch->getTransaction(), constantName))
 			{
-				packageContext.ctx_relation = nullptr;
-				packageContext.ctx_procedure = nullptr;
 				// Alias is a package name, not a constant
 				packageContext.ctx_alias.push(QualifiedName(constantName.package, constantName.schema));
 				packageContext.ctx_flags |= CTX_package;

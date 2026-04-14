@@ -16001,7 +16001,7 @@ void GrantRevokeNode::grantRevoke(thread_db* tdbb, jrd_tra* transaction, const G
 
 		case obj_package_constant:
 			if (!checkObjectExist(tdbb, transaction, objName, objType))
-				status_exception::raise(Arg::PrivateDyn(303) << objName.toQuotedString());	// Package @1 does not exist
+				status_exception::raise(Arg::Gds(isc_dyn_constant_not_found) << objName.toQuotedString());
 			break;
 
 		default:
