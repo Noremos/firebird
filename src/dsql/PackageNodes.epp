@@ -638,7 +638,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
 
 		// Gen value blr
-		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
+		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name);
 
 		// Put the blr
 		attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
@@ -791,7 +791,7 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		AlterDomainNode::checkUpdate(origDom, newDom);
 
 		// Gen the new constant value as blr
-		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
+		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name);
 
 		MODIFY CONST USING
 			attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());

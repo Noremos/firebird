@@ -44,35 +44,51 @@ class dsql_fld;
 class ConstantValue final : public Firebird::PermanentStorage
 {
 public:
+	QualifiedName name;
+	bool isPrivate = false;
+
 	ConstantValue(MemoryPool& pool) :
 		Firebird::PermanentStorage(pool),
 		name(pool)
 	{ }
 
-	QualifiedName name;
-
-	// Keep type to gen hash (when not commited - we cannot read it from system table)
-	// Keep value when scanning and after the first execution
-	impure_value value{};
-
-	// keep only materialized value
-	bid blrBlobId{};
-
-	bool isPrivate = false;
+	~ConstantValue()
+	{
+		delete m_value.vlu_string;
+	}
 
 	bool hash(thread_db* tdbb, Firebird::sha512& digest) const;
 
 	static dsc getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const QualifiedName& name);
 
 	static void genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-		ValueExprNode* constExpr, dsql_fld* type, const MetaName& schema);
+		ValueExprNode* constExpr, dsql_fld* type, const QualifiedName& name);
 
 	dsc& makeValue(thread_db* tdbb);
 
-	~ConstantValue()
+	bid getBlobId();
+
+	void updateValue(const dsc typeDesc)
 	{
-		delete value.vlu_string;
+		m_blrBlobId = {};
+
+		delete m_value.vlu_string;
+		m_value = {};
+		m_value.vlu_desc = typeDesc;
 	}
+
+	void updateValue(const bid blobId)
+	{
+		m_blrBlobId = blobId;
+	}
+
+private:
+	// Keep type to gen hash (when not commited - we cannot read it from system table)
+	// Keep value when scanning and after the first execution
+	impure_value m_value{};
+
+	// keep only materialized value
+	bid m_blrBlobId{};
 };
 
 struct ConstantsCache

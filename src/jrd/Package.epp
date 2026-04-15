@@ -178,8 +178,8 @@ static void genConstantCompatibleBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlS
 
 bool ConstantValue::hash(thread_db* tdbb, Firebird::sha512& digest) const
 {
-	fb_assert(value.vlu_desc.dsc_dtype != 0);
-	digest.process(sizeof(value.vlu_desc), &value.vlu_desc);
+	fb_assert(m_value.vlu_desc.dsc_dtype != 0);
+	digest.process(sizeof(m_value.vlu_desc), &m_value.vlu_desc);
 
 	return true;
 }
@@ -223,7 +223,7 @@ dsc ConstantValue::getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const Qua
 }
 
 void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-	ValueExprNode* constExpr, dsql_fld* type, const MetaName& schema)
+	ValueExprNode* constExpr, dsql_fld* type, const QualifiedName& name)
 {
 	BlrWriter::BlrData& blr = dsqlScratch->getBlrData();
 	blr.clear();
@@ -247,11 +247,10 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 			tdbb->setRequest(requestToRestore);
 		});
 
-	// Parse BLR for constant expression
-	PAR_blr(tdbb, &schema, nullptr,
+	// Parse BLR for constant expression and store dependencies
+	MET_get_dependencies(tdbb, nullptr,
 		dsqlScratch->getBlrData().begin(), dsqlScratch->getBlrData().getCount(),
-		nullptr, &csb,
-		nullptr, false, 0);
+		nullptr, nullptr, nullptr, &csb, name, obj_package_constant, 0, dsqlScratch->getTransaction());
 
 	// Execute node from BLR
 	auto output = executeConstantExpressionWithRequest(tdbb, csb);
@@ -282,8 +281,8 @@ inline bid getConstantBid(thread_db* tdbb, const QualifiedName& name)
 
 dsc& ConstantValue::makeValue(thread_db* tdbb)
 {
-	if (value.vlu_desc.dsc_address != nullptr)
-		return value.vlu_desc;
+	if (m_value.vlu_desc.dsc_address != nullptr)
+		return m_value.vlu_desc;
 
 	Attachment* attachment = tdbb->getAttachment();
 
@@ -299,11 +298,11 @@ dsc& ConstantValue::makeValue(thread_db* tdbb)
 			Cleanup cc([csb]() {delete csb;});
 
 			// Use cached ID or get a real one (is it probably materialized)
-			bid constantBid = blrBlobId.isEmpty() ? getConstantBid(tdbb, name) : blrBlobId;
+			bid constantBid = m_blrBlobId.isEmpty() ? getConstantBid(tdbb, name) : m_blrBlobId;
 			MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
 			fb_assert(csb != nullptr);
 
-			executeConstantExpression(tdbb, csb, getPool(), value);
+			executeConstantExpression(tdbb, csb, getPool(), m_value);
 		}
 		catch (const Exception& ex)
 		{
@@ -321,7 +320,7 @@ dsc& ConstantValue::makeValue(thread_db* tdbb)
 		throw;
 	}
 
-	return value.vlu_desc;
+	return m_value.vlu_desc;
 }
 
 ConstantValue& ConstantsCache::add(const QualifiedName& constName, const bool isPrivate)
@@ -482,8 +481,7 @@ ConstantValue& Package::addConstant(thread_db* tdbb,
 	DsqlDescMaker::fromField(&typeDesc, type);
 
 	auto& value = constants.add(constName, isPrivate);
-	value.blrBlobId = {};
-	value.value.vlu_desc = typeDesc;
+	value.updateValue(typeDesc);
 
 	return value;
 }
@@ -495,7 +493,7 @@ ConstantValue& Package::addConstant(thread_db* tdbb,
 	const bool skipMakeValue)
 {
 	auto& value = constants.add(constName, isPrivate);
-	value.blrBlobId = blrBlobId;
+	value.updateValue(blrBlobId);
 	if (!skipMakeValue)
 		value.makeValue(tdbb);
 
@@ -513,12 +511,8 @@ ConstantValue& Package::updateConstant(thread_db* tdbb, const QualifiedName& nam
 	fb_assert(innerId != nullptr);
 
 	auto& constant = constants.values[*innerId];
-	constant.blrBlobId = {};
 	constant.isPrivate = isPrivate;
-
-	delete constant.value.vlu_string;
-	constant.value = {};
-	constant.value.vlu_desc = typeDesc;
+	constant.updateValue(typeDesc);
 
 	return constant;
 }
