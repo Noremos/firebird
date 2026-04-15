@@ -788,6 +788,8 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		if (newDom.dyn_dtype == blr_blob && newDomainName.object.isEmpty())
 			newDom.dyn_sub_type = m_type->subType;
 
+		AlterDomainNode::checkUpdate(origDom, newDom);
+
 		// Gen the new constant value as blr
 		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
