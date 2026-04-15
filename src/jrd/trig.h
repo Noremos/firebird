@@ -82,7 +82,6 @@ static inline constexpr Jrd::gen generators[] =
 	{ "RDB$BACKUP_HISTORY", 9, "Nbackup technology", ODS_13_0 },
 	{ FUNCTIONS_GENERATOR, 10, "Function ID", ODS_13_0 },
 	{ "RDB$GENERATOR_NAME", 11, "Implicit generator name", ODS_13_0 },
-	{ CONSTANTS_GENERATOR, 12, "Constant ID", ODS_14_0 },
 	{ PACKAGES_GENERATOR, 13, "Package ID", ODS_14_0 },
 	{ nullptr, 0, nullptr, 0 }
 };

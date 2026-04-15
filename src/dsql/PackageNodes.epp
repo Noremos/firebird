@@ -600,8 +600,6 @@ void CreatePackageConstantNode::execute(thread_db* tdbb, DsqlCompilerScratch* ds
 	}
 	else
 		executeAlter(tdbb, dsqlScratch, transaction);
-
-	fb_assert(m_id);
 }
 
 void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
@@ -627,73 +625,45 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 	static const CachedRequestId requestId;
 	AutoCacheRequest storeConstantRequest(tdbb, requestId);
 
-	int faults = 0;
-	while (true)
+	// Store desc and metainfo in the RDB$CONSTANTS relation
+	STORE (REQUEST_HANDLE storeConstantRequest TRANSACTION_HANDLE transaction)
+		CONST IN RDB$CONSTANTS USING
 	{
-		try
+		// Constant name
+		CONST.RDB$CONSTANT_NAME.NULL = FALSE;
+		strcpy(CONST.RDB$CONSTANT_NAME, name.object.c_str());
+
+		// Description (filed) name
+		CONST.RDB$FIELD_SOURCE.NULL = FALSE;
+		strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
+
+		// Gen value blr
+		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
+
+		// Put the blr
+		attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
+
+		// Parent package
+		fb_assert(name.package.hasData());
 		{
-			SINT64 id = DYN_UTIL_gen_unique_id(tdbb, drq_g_nxt_const_id, CONSTANTS_GENERATOR);
-			id %= (MAX_SSHORT + 1);
-			if (!id)
-				continue;
+			CONST.RDB$PACKAGE_NAME.NULL = FALSE;
+			strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
 
-			m_id = id;
-
-			// Store desc and metainfo in the RDB$CONSTANTS relation
-			STORE (REQUEST_HANDLE storeConstantRequest TRANSACTION_HANDLE transaction)
-				CONST IN RDB$CONSTANTS USING
-			{
-				// Constant name
-				CONST.RDB$CONSTANT_NAME.NULL = FALSE;
-				strcpy(CONST.RDB$CONSTANT_NAME, name.object.c_str());
-
-				// Constant unique id
-				CONST.RDB$CONSTANT_ID = id;
-
-				// Description (filed) name
-				CONST.RDB$FIELD_SOURCE.NULL = FALSE;
-				strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
-
-				// Gen value blr
-				ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
-
-				// Put the blr
-				attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
-
-				// Parent package
-				fb_assert(name.package.hasData());
-				{
-					CONST.RDB$PACKAGE_NAME.NULL = FALSE;
-					strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
-
-					fb_assert(package);
-					package->addConstant(tdbb, m_id, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
-				}
-
-				// Schema of the parent package
-				CONST.RDB$SCHEMA_NAME.NULL = FALSE;
-				strcpy(CONST.RDB$SCHEMA_NAME, name.schema.c_str());
-
-				// Type
-				CONST.RDB$PRIVATE_FLAG.NULL = FALSE;
-				CONST.RDB$PRIVATE_FLAG = m_isPrivate;
-
-				CONST.RDB$CONSTANT_SOURCE.NULL = TRUE;
-			}
-			END_STORE
-			break;
+			fb_assert(package);
+			package->addConstant(tdbb, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
 		}
-		catch (const status_exception& ex)
-		{
-			if (ex.value()[1] != isc_unique_key_violation)
-				throw;
 
-			if (++faults > MAX_SSHORT)
-				throw;
+		// Schema of the parent package
+		CONST.RDB$SCHEMA_NAME.NULL = FALSE;
+		strcpy(CONST.RDB$SCHEMA_NAME, name.schema.c_str());
 
-			fb_utils::init_status(tdbb->tdbb_status_vector);
-		}
-	}// While
+		// Type
+		CONST.RDB$PRIVATE_FLAG.NULL = FALSE;
+		CONST.RDB$PRIVATE_FLAG = m_isPrivate;
+
+		CONST.RDB$CONSTANT_SOURCE.NULL = TRUE;
+	}
+	END_STORE
 }
 
 bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction)
@@ -721,8 +691,6 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 				FLD.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME AND
 				FLD.RDB$FIELD_NAME EQ CONST.RDB$FIELD_SOURCE
 	{
-		m_id = CONST.RDB$CONSTANT_ID;
-
 		dyn_fld origDom, newDom;
 		DSC_make_descriptor(&origDom.dyn_dsc, FLD.RDB$FIELD_TYPE, FLD.RDB$FIELD_SCALE,
 			FLD.RDB$FIELD_LENGTH, FLD.RDB$FIELD_SUB_TYPE,
@@ -828,11 +796,9 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 			CONST.RDB$CONSTANT_BLR.NULL = FALSE;
 		END_MODIFY
 
-		{
-			fb_assert(package);
-			// Do not cache blob id because the blob is not materialized
-			package->updateConstant(tdbb, m_id, m_isPrivate, m_type);
-		}
+		fb_assert(package);
+		// Do not cache blob id because the blob is not materialized
+		package->updateConstant(tdbb, name, m_isPrivate, m_type);
 
 		found = true;
 	}

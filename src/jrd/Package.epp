@@ -236,7 +236,6 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 	cast.genBlr(dsqlScratch);
 	dsqlScratch->appendUChar(blr_eoc);
 
-
 	Attachment* attachment = tdbb->getAttachment();
 	MemoryPool* csb_pool = attachment->att_database->createPool(ALLOC_ARGS0);
 	ContextPoolHolder context(tdbb, csb_pool);
@@ -260,7 +259,7 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 		genConstantCompatibleBlr(tdbb, dsqlScratch, *output);
 }
 
-inline bid getConstantBid(thread_db* tdbb, const MetaId id)
+inline bid getConstantBid(thread_db* tdbb, const QualifiedName& name)
 {
 	Attachment* attachment = tdbb->getAttachment();
 	jrd_tra* metaTransaction = attachment->getMetaTransaction(tdbb);
@@ -270,7 +269,9 @@ inline bid getConstantBid(thread_db* tdbb, const MetaId id)
 
 	FOR(REQUEST_HANDLE requestConst TRANSACTION_HANDLE metaTransaction)
 		CONST IN RDB$CONSTANTS
-		WITH CONST.RDB$CONSTANT_ID EQ id
+		WITH CONST.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+			CONST.RDB$PACKAGE_NAME EQ name.package.c_str() AND
+			CONST.RDB$CONSTANT_NAME EQ name.object.c_str()
 	{
 		return CONST.RDB$CONSTANT_BLR;
 	}
@@ -298,7 +299,7 @@ dsc& ConstantValue::makeValue(thread_db* tdbb)
 			Cleanup cc([csb]() {delete csb;});
 
 			// Use cached ID or get a real one (is it probably materialized)
-			bid constantBid = blrBlobId.isEmpty() ? getConstantBid(tdbb, id) : blrBlobId;
+			bid constantBid = blrBlobId.isEmpty() ? getConstantBid(tdbb, name) : blrBlobId;
 			MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
 			fb_assert(csb != nullptr);
 
@@ -323,19 +324,16 @@ dsc& ConstantValue::makeValue(thread_db* tdbb)
 	return value.vlu_desc;
 }
 
-ConstantValue& ConstantsCache::add(const MetaId constId, const QualifiedName& constName, const bool isPrivate)
+ConstantValue& ConstantsCache::add(const QualifiedName& constName, const bool isPrivate)
 {
-	fb_assert(!idMap.exist(constId));
 	fb_assert(!nameMap.exist(constName));
 
 	const ULONG id = values.getCount();
 
 	auto& value = values.add();
 	value.name = constName;
-	value.id = constId;
 	value.isPrivate = isPrivate;
 
-	idMap.put(constId, id);
 	nameMap.put(constName, id);
 
 	return value;
@@ -410,7 +408,7 @@ ScanResult Package::scan(thread_db* tdbb, ObjectBase::Flag flags)
 				PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME AND
 				PKG.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME
 		{
-			addConstant(tdbb, CONST.RDB$CONSTANT_ID,
+			addConstant(tdbb,
 				QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME),
 				CONST.RDB$PRIVATE_FLAG,
 				CONST.RDB$CONSTANT_BLR,
@@ -452,7 +450,7 @@ ScanResult Package::reload(thread_db* tdbb, ObjectBase::Flag fl)
 			PKG.RDB$PACKAGE_NAME EQ CONST.RDB$PACKAGE_NAME AND
 			PKG.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME
 	{
-		addConstant(tdbb, CONST.RDB$CONSTANT_ID,
+		addConstant(tdbb,
 			QualifiedName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME),
 			CONST.RDB$PRIVATE_FLAG,
 			CONST.RDB$CONSTANT_BLR);
@@ -475,7 +473,7 @@ bool Package::hash(thread_db* tdbb, Firebird::sha512& digest)
 	return true;
 }
 
-ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
+ConstantValue& Package::addConstant(thread_db* tdbb,
 	const QualifiedName& constName,
 	const bool isPrivate,
 	const TypeClause* type)
@@ -483,20 +481,20 @@ ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
 	dsc typeDesc;
 	DsqlDescMaker::fromField(&typeDesc, type);
 
-	auto& value = constants.add(constId, constName, isPrivate);
+	auto& value = constants.add(constName, isPrivate);
 	value.blrBlobId = {};
 	value.value.vlu_desc = typeDesc;
 
 	return value;
 }
 
-ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
+ConstantValue& Package::addConstant(thread_db* tdbb,
 	const QualifiedName& constName,
 	const bool isPrivate,
 	const bid blrBlobId,
 	const bool skipMakeValue)
 {
-	auto& value = constants.add(constId, constName, isPrivate);
+	auto& value = constants.add(constName, isPrivate);
 	value.blrBlobId = blrBlobId;
 	if (!skipMakeValue)
 		value.makeValue(tdbb);
@@ -504,14 +502,14 @@ ConstantValue& Package::addConstant(thread_db* tdbb, const MetaId constId,
 	return value;
 }
 
-ConstantValue& Package::updateConstant(thread_db* tdbb, const MetaId constId,
+ConstantValue& Package::updateConstant(thread_db* tdbb, const QualifiedName& name,
 	const bool isPrivate,
 	const TypeClause* type)
 {
 	dsc typeDesc;
 	DsqlDescMaker::fromField(&typeDesc, type);
 
-	auto* innerId = constants.idMap.get(constId);
+	auto* innerId = constants.nameMap.get(name);
 	fb_assert(innerId != nullptr);
 
 	auto& constant = constants.values[*innerId];
@@ -523,16 +521,6 @@ ConstantValue& Package::updateConstant(thread_db* tdbb, const MetaId constId,
 	constant.value.vlu_desc = typeDesc;
 
 	return constant;
-}
-
-ConstantValue* Package::findConstant(const MetaId id)
-{
-	auto it = constants.idMap.get(id);
-
-	if (it != nullptr)
-		return &constants.values[*it];
-
-	return nullptr;
 }
 
 ConstantValue* Package::findConstant(const QualifiedName& name)

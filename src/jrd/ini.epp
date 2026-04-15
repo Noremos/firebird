@@ -1970,7 +1970,6 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 	const SLONG procGen = lookupGenerator(PROCEDURES_GENERATOR);
 	const SLONG funcGen = lookupGenerator(FUNCTIONS_GENERATOR);
 	const SLONG packageGen = lookupGenerator(PACKAGES_GENERATOR);
-	const SLONG constantGen = lookupGenerator(CONSTANTS_GENERATOR);
 
 	for (const auto& systemPackage : SystemPackage::get())
 	{
@@ -2172,21 +2171,16 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 				// Constant name
 				PAD(constant.name, CONST.RDB$CONSTANT_NAME);
 
-				// Constant unique id
-				CONST.RDB$CONSTANT_ID = DPM_gen_id(tdbb, constantGen, false, 1);;
-
 				// Description (filed) name
 				PAD(names[gfields[constant.fieldId].gfld_name], CONST.RDB$FIELD_SOURCE);
 
 				// Put the blr
-				{
-					Array<UCHAR> blrData(1 + constant.valueBlr.getCount() + 1);
-					blrData.push(blr_version5);
-					blrData.append(constant.valueBlr);
-					blrData.push(blr_eoc);
-					attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, blrData);
-					CONST.RDB$CONSTANT_BLR.NULL = FALSE;
-				}
+				Array<UCHAR> blrData(1 + constant.valueBlr.getCount() + 1);
+				blrData.push(blr_version5);
+				blrData.append(constant.valueBlr);
+				blrData.push(blr_eoc);
+				attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, blrData);
+				CONST.RDB$CONSTANT_BLR.NULL = FALSE;
 
 				// Parent package
 				PAD(systemPackage.name, CONST.RDB$PACKAGE_NAME);

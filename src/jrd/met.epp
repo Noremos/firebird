@@ -829,18 +829,18 @@ Cached::Relation* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const
 	{
 		QualifiedName constantFullName(CONST.RDB$CONSTANT_NAME, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME);
 
-		const auto id = CONST.RDB$CONSTANT_ID;
-
 		DeferredWork* dw2 = DFW_post_work(transaction, dfw_modify_package_constant,
-			string(constantFullName.object.c_str()), constantFullName.schema, id, constantFullName.package);
+			string(constantFullName.object.c_str()), constantFullName.schema, 0, constantFullName.package);
 
 		if (package == nullptr)
 		{
+			const auto id = PKG.RDB$PACKAGE_ID;
+
 			package = MetadataCache::newVersion<Cached::Package>(tdbb, id)->getVersioned(tdbb, 0);
 			fb_assert(package);
 		}
 
-		package->addConstant(tdbb, id, constantFullName, CONST.RDB$PRIVATE_FLAG, CONST.RDB$CONSTANT_BLR);
+		package->addConstant(tdbb, constantFullName, CONST.RDB$PRIVATE_FLAG, CONST.RDB$CONSTANT_BLR);
 	}
 	END_FOR
 

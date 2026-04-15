@@ -49,7 +49,6 @@ public:
 		name(pool)
 	{ }
 
-	MetaId id{};
 	QualifiedName name;
 
 	// Keep type to gen hash (when not commited - we cannot read it from system table)
@@ -81,21 +80,18 @@ struct ConstantsCache
 	using ValueId = ULONG;
 
 	ConstantsCache(MemoryPool& pool) :
-		idMap(pool),
 		nameMap(pool),
 		values(pool)
 	{ }
 
-	Firebird::NonPooledMap<MetaId, ValueId> idMap;
 	Firebird::LeftPooledMap<QualifiedName, ValueId> nameMap;
 
 	Firebird::ObjectsArray<ConstantValue> values;
 
-	ConstantValue& add(const MetaId constId, const QualifiedName& constName, const bool isPrivate);
+	ConstantValue& add(const QualifiedName& constName, const bool isPrivate);
 
 	void clear()
 	{
-		idMap.clear();
 		nameMap.clear();
 		values.clear();
 	}
@@ -105,7 +101,7 @@ struct ConstantsCache
 class PackagePermanent : public Firebird::PermanentStorage
 {
 public:
-	explicit PackagePermanent(thread_db* tdbb, MemoryPool& p, MetaId metaId, NoData)
+	explicit PackagePermanent(thread_db* tdbb, MemoryPool& p, const MetaId metaId, NoData)
 		: PermanentStorage(p),
 			id(metaId),
 			name(p)
@@ -206,22 +202,22 @@ public:
 
 	// ----------
 
-	ConstantValue& addConstant(thread_db* tdbb, const MetaId constId,
+	ConstantValue& addConstant(thread_db* tdbb,
 		const QualifiedName& constName,
 		const bool isPrivate,
 		const TypeClause* type);
 
-	ConstantValue& addConstant(thread_db* tdbb, const MetaId constId,
+	ConstantValue& addConstant(thread_db* tdbb,
 		const QualifiedName& constName,
 		const bool isPrivate,
 		const bid blrBlobId,
 		const bool skipMakeValue = false);
 
-	ConstantValue& updateConstant(thread_db* tdbb, const MetaId constId,
+	ConstantValue& updateConstant(thread_db* tdbb,
+		const QualifiedName& constName,
 		const bool isPrivate,
 		const TypeClause* type);
 
-	ConstantValue* findConstant(const MetaId id);
 	ConstantValue* findConstant(const QualifiedName& name);
 
 private:

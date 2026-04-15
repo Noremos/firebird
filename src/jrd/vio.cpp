@@ -2359,10 +2359,8 @@ bool VIO_erase(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			EVL_field(0, rpb->rpb_record, f_const_package, &desc2);
 			MOV_get_metaname(tdbb, &desc2, object_name.package);
 
-			EVL_field(0, rpb->rpb_record, f_const_id, &desc2);
-			id = MOV_get_long(tdbb, &desc2, 0);
 
-			DFW_post_work(transaction, dfw_delete_package_constant, &desc, &schemaDesc, id, object_name.package);
+			DFW_post_work(transaction, dfw_delete_package_constant, &desc, &schemaDesc, 0, object_name.package);
 			break;
 
 		default:    // Shut up compiler warnings
@@ -3766,11 +3764,7 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 			EVL_field(0, org_rpb->rpb_record, f_const_package, &desc2);
 			MOV_get_metaname(tdbb, &desc2, object_name.package);
 
-			{ // Send dfw
-				EVL_field(0, org_rpb->rpb_record, f_const_id, &desc2);
-				const USHORT id = MOV_get_long(tdbb, &desc2, 0);
-				DFW_post_work(transaction, dfw_modify_package_constant, &desc1, &schemaDesc, id, object_name.package);
-			}
+			DFW_post_work(transaction, dfw_modify_package_constant, &desc1, &schemaDesc, 0, object_name.package);
 			break;
 
 		default:
@@ -4701,11 +4695,9 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			EVL_field(0, rpb->rpb_record, f_const_name, &desc);
 			EVL_field(0, rpb->rpb_record, f_const_package_schema, &schemaDesc);
 
-			if (EVL_field(0, rpb->rpb_record, f_const_package, &desc2))
-				MOV_get_metaname(tdbb, &desc2, object_name.package);
+			EVL_field(0, rpb->rpb_record, f_const_package, &desc2);
+			MOV_get_metaname(tdbb, &desc2, object_name.package);
 
-			object_id = set_metadata_id(tdbb, rpb->rpb_record,
-							f_const_id, drq_g_nxt_const_id, CONSTANTS_GENERATOR);
 			break;
 
 		default:    // Shut up compiler warnings

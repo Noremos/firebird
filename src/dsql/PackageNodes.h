@@ -211,7 +211,6 @@ public:
 private:
 	NestConst<dsql_fld> m_type;
 	NestConst<ValueExprNode> m_expr;
-	MetaId m_id = 0;
 	bool m_isPrivate = false;
 };
 

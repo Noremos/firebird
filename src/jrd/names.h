@@ -496,7 +496,6 @@ NAME("RDB$CONSTANTS", nam_constants)
 NAME("RDB$CONSTANT_NAME", nam_const_name)
 NAME("RDB$CONSTANT_BLR", nam_const_blr)
 NAME("RDB$CONSTANT_SOURCE", nam_const_source)
-NAME("RDB$CONSTANT_ID", nam_const_id)
 
 NAME("MON$TABLE_TYPE", nam_mon_tab_type)
 NAME("MON$LOCAL_TEMPORARY_TABLES", nam_mon_local_temp_tables)
