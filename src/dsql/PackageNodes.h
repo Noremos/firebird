@@ -126,6 +126,11 @@ public:
 
 	Firebird::string internalPrint(NodePrinter& printer) const final;
 
+	bool constant() const final
+	{
+		return m_itemType == blr_pkg_reference_to_constant;
+	}
+
 	ValueExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) final;
 	static DmlNode* parse(thread_db* tdbb, Firebird::MemoryPool& pool, CompilerScratch* csb, const UCHAR blrOp);
 	void genBlr(DsqlCompilerScratch* dsqlScratch) final;
