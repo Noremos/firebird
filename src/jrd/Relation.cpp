@@ -350,7 +350,7 @@ RelationPages* RelationPermanent::getPagesInternal(thread_db* tdbb, TraNumber tr
 		fb_assert(rel);
 
 		IndexDescList indices;
-		BTR_all(tdbb, getPermanent(rel), indices, &rel_pages_base);
+		BTR_all(tdbb, rel->getPermanent(), indices, &rel_pages_base);
 
 		for (auto& idx : indices)
 		{
