@@ -4698,6 +4698,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			EVL_field(0, rpb->rpb_record, f_const_package, &desc2);
 			MOV_get_metaname(tdbb, &desc2, object_name.package);
 
+			DFW_post_work(transaction, dfw_create_package_constant, &desc, &schemaDesc, 0, object_name.package);
 			break;
 
 		default:    // Shut up compiler warnings

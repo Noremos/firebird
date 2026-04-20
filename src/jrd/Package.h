@@ -62,11 +62,8 @@ public:
 	static dsc getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const QualifiedName& name);
 
 	static void genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
-		ValueExprNode* constExpr, dsql_fld* type, const QualifiedName& name);
+		ValueExprNode* constExpr, dsql_fld* type, const MetaName& schema);
 
-	dsc& makeValue(thread_db* tdbb);
-
-	bid getBlobId();
 
 	void updateValue(const dsc typeDesc)
 	{
@@ -82,7 +79,14 @@ public:
 		m_blrBlobId = blobId;
 	}
 
+	bid getBlobId(thread_db* tdbb);
+
+	dsc* makeValue(thread_db* tdbb, Request* request);
+
 private:
+	// Lock in case of makeing value during the execute state
+	Firebird::RWLock m_makeValueLock{};
+
 	// Keep type to gen hash (when not commited - we cannot read it from system table)
 	// Keep value when scanning and after the first execution
 	impure_value m_value{};

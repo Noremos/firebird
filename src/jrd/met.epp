@@ -4441,8 +4441,7 @@ void MET_store_dependency(thread_db* tdbb,
 		dpdo_name = &name;
 		break;
 	case obj_package_constant:
-		name = dependency.name;
-		dpdo_name = &name;
+		dpdo_name = &dependency.name;
 		break;
 	}
 

@@ -557,6 +557,7 @@ enum dfw_t : int {
 	dfw_deps_to_disk,		// store saved deps to disk
 
 	// Constant
+	dfw_create_package_constant,
 	dfw_modify_package_constant,
 	dfw_delete_package_constant,
 

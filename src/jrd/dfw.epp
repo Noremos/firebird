@@ -1126,27 +1126,60 @@ namespace
 		}
 	}
 
-	static bool modifyConstant(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction)
+	static bool createOrAlterConstant(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tra* transaction)
 	{
 		fb_assert(!work->dfw_package.isEmpty());
 
 		SET_TDBB(tdbb);
-		const QualifiedName name(work->dfw_name);
 
 		switch (phase)
 		{
-			case 0:
+		case 0:
+			return false;
+
+		case 1:
+		case 2:
+		case 3:
+			return true;
+
+		case 4:
+		{
+			const QualifiedName constantName = work->getQualifiedName();
+			const QualifiedName packageName = constantName.getSchemaAndPackage();
+
+			auto* package = MetadataCache::getVersioned<Cached::Package>(tdbb, packageName,
+				CacheFlag::AUTOCREATE);
+
+			fb_assert(package);
+			if (package == nullptr)
 				return false;
 
-			case 1:
-			case 2:
-			case 3:
-				return true;
-
-			case 4:
-				MET_delete_dependencies(tdbb, work->getQualifiedName(), obj_package_constant);
+			auto constant = package->findConstant(constantName);
+			fb_assert(constant);
+			if (constant == nullptr)
 				return false;
-		}
+
+			bid blobId = constant->getBlobId(tdbb);
+
+			Jrd::Database* dbb = tdbb->getDatabase();
+			MemoryPool* new_pool = dbb->createPool();
+			// block is used to ensure verify_cache()
+			// works in not deleted context
+			{
+				Jrd::ContextPoolHolder context(tdbb, new_pool);
+				// Store constant dependencies as a package dependencies
+				MET_get_dependencies(tdbb, nullptr, nullptr, 0, nullptr, &blobId,
+					nullptr,
+					nullptr,
+					packageName, obj_package_header,
+					0, transaction);
+
+				dbb->deletePool(new_pool);
+			}
+
+			return false;
+		} // case
+		} //
 
 		return false;
 	}
@@ -1156,23 +1189,16 @@ namespace
 		fb_assert(!work->dfw_package.isEmpty());
 
 		SET_TDBB(tdbb);
-
+		//! Put Package as a dependency because RDB$DEPENDENCIES only tracks object and schema
+		const QualifiedName packageDependency(work->dfw_package, work->dfw_schema);
 		switch (phase)
 		{
-			case 0:
-				return false;
+		case 0:
+			return false;
 
-			case 1:
-				check_dependencies(tdbb, work->getQualifiedName(), NULL, obj_package_constant, transaction);
-				return true;
-
-			case 2:
-			case 3:
-				return true;
-
-			case 4:
-				MET_delete_dependencies(tdbb, work->getQualifiedName(), obj_package_constant);
-				return false;
+		case 1:
+			check_dependencies(tdbb, work->getQualifiedName(), nullptr, obj_package_constant, transaction);
+			return false;
 		}
 
 		return false;
@@ -1232,7 +1258,8 @@ static inline constexpr deferred_task task_table[] =
 	{ dfw_clear_cache, clear_cache },
 	{ dfw_change_repl_state, change_repl_state },
 	{ dfw_set_statistics, set_statistics },
-	{ dfw_modify_package_constant, modifyConstant },
+	{ dfw_create_package_constant, createOrAlterConstant },
+	{ dfw_modify_package_constant, createOrAlterConstant },
 	{ dfw_delete_package_constant, deleteConstant },
 	{ dfw_create_package, createPackage },
 
