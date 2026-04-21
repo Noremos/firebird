@@ -515,7 +515,8 @@ void Provider::releaseConnection(thread_db* tdbb, Connection& conn, bool inPool)
 				}
 			}
 		}
-		status->init();
+		// commented out till final solution because it caused regressions
+		// status->init();		// ????????????
 	}
 
 	if (inPool)
