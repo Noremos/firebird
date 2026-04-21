@@ -629,7 +629,8 @@ namespace Jrd
 
 	void Database::Linger::handler()
 	{
-		JRD_shutdown_database(dbb, SHUT_DBB_RELEASE_POOLS);
+		if (active)
+			JRD_shutdown_database(dbb, SHUT_DBB_RELEASE_POOLS);
 	}
 
 	void Database::Linger::reset()

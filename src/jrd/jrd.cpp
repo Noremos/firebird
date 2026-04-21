@@ -8123,6 +8123,10 @@ bool JRD_shutdown_database(Database* dbb, const unsigned flags)
 	// Since that moment dbb becomes not reusable
 	dbb->dbb_init_fini->destroy();
 
+	// Reset linger in order to avoid second parallel shutdown in case this one takes really long time
+	if (dbb->dbb_linger_timer)
+		dbb->dbb_linger_timer->reset();
+
 	fb_assert(!dbb->locked());
 
 	WorkerAttachment::shutdownDbb(dbb);
