@@ -349,10 +349,11 @@ RelationPages* RelationPermanent::getPagesInternal(thread_db* tdbb, TraNumber tr
 		jrd_rel* rel = MetadataCache::getVersioned<Cached::Relation>(tdbb, getId(), CacheFlag::AUTOCREATE);
 		fb_assert(rel);
 
-		IndexDescList indices;
-		BTR_all(tdbb, rel->getPermanent(), indices, &rel_pages_base);
+		WIN window(rel_pages_base.rel_pg_space_id, -1);
+		index_desc idx;
+		idx.idx_id = idx_invalid;
 
-		for (auto& idx : indices)
+		while (BTR_next_index(tdbb, rel->getPermanent(), idxTran, &idx, &window, &rel_pages_base))
 		{
 			auto* idp = this->lookupIndex(tdbb, idx.idx_id, CacheFlag::AUTOCREATE);
 			QualifiedName idx_name;
@@ -380,6 +381,24 @@ RelationPages* RelationPermanent::getPagesInternal(thread_db* tdbb, TraNumber tr
 
 		return newPages;
 	}
+
+	RelationPages* pages = (*rel_pages_inst)[pos];
+	fb_assert(pages->rel_instance_id == inst_id);
+	return pages;
+}
+
+RelationPages* RelationPermanent::getAttPages(thread_db* tdbb, RelationPages::InstanceId inst_id)
+{
+	fb_assert(!(rel_flags & REL_temp_tran));
+
+	MutexLockGuard g(rel_pages_mutex, FB_FUNCTION);
+
+	if (!rel_pages_inst)
+		return nullptr;
+
+	FB_SIZE_T pos;
+	if (!rel_pages_inst->find(inst_id, pos))
+		return nullptr;
 
 	RelationPages* pages = (*rel_pages_inst)[pos];
 	fb_assert(pages->rel_instance_id == inst_id);
@@ -1061,6 +1080,13 @@ void IndexPermanent::releaseStatements(thread_db* tdbb)
 		idp_condition_statement = nullptr;
 		idp_condition = nullptr;
 	}
+}
+
+void IndexPermanent::reloadAst(thread_db* tdbb, TraNumber tran, bool erase)
+{
+	// we need to special handle temp tables with ON PRESERVE ROWS only
+	if (erase && (idp_relation->rel_flags & REL_temp_conn))
+		IDX_mark_temp(tdbb, idp_relation, idp_id, nullptr, tran);
 }
 
 

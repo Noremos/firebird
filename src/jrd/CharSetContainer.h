@@ -56,7 +56,7 @@ public:
 	static bool destroy(thread_db* tdbb, CharSetContainer* container);
 	static CharSetContainer* create(thread_db* tdbb, MetaId id);
 	void releaseLock(thread_db* tdbb) { }
-	void reloadAst(thread_db* tdbb, bool erase) { }
+	void reloadAst(thread_db* tdbb, TraNumber tran, bool erase) { }
 
 	Firebird::CharSet* getCharSet()
 	{

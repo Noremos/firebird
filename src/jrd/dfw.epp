@@ -3669,21 +3669,15 @@ static bool delete_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			if (!relation)
 				break;
 
-			RelationPages* relPages = relation->getPages(tdbb, MAX_TRA_NUMBER, false);
-			if (!relPages)
-				break;
-
-			// we need to special handle temp tables with ON PRESERVE ROWS only
-			const bool isTempIndex = (relation->rel_flags & REL_temp_conn) &&
-				(relPages->rel_instance_id != 0);
-			if (isTempIndex)
-				return true;
-
 			fb_assert(work->dfw_ids.getCount() == 1);
 			auto* index = relation->lookup_index(tdbb, work->dfw_ids[0], CacheFlag::NOERASED);
 			fb_assert(index);
 			if (!index)
 				break;
+
+			// we need to special handle temp tables with ON PRESERVE ROWS only
+			if (relation->rel_flags & REL_temp_conn)
+				IDX_mark_temp(tdbb, relation, index->getId(), tdbb->getAttachment(), transaction->tra_number);
 
 			if (index->getForeignKey().hasData())
 			{

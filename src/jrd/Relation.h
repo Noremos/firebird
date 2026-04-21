@@ -207,7 +207,7 @@ public:
 
 	static bool destroy(thread_db* tdbb, DbTriggersHeader* trigs);
 	void releaseLock(thread_db* tdbb) { }
-	void reloadAst(thread_db* tdbb, bool erase) { }
+	void reloadAst(thread_db* tdbb, TraNumber tran, bool erase) { }
 
 private:
 	MetaId type;
@@ -482,7 +482,7 @@ public:
 	}
 
 	void releaseLock(thread_db* tdbb) { }
-	void reloadAst(thread_db* tdbb, bool erase) { }
+	void reloadAst(thread_db* tdbb, TraNumber tran, bool erase);
 
 	RelationPermanent* getRelation() noexcept
 	{
@@ -837,7 +837,7 @@ public:
 	~RelationPermanent();
 	static bool destroy(thread_db* tdbb, RelationPermanent* rel);
 
-	void reloadAst(thread_db* tdbb, bool erase)
+	void reloadAst(thread_db* tdbb, TraNumber tran, bool erase)
 	{
 		if (erase)
 			dropTempPages(tdbb);
@@ -905,6 +905,7 @@ public:
 	};
 
 	RelationPages* getPages(thread_db* tdbb, TraNumber tran = MAX_TRA_NUMBER, bool allocPages = true);
+	RelationPages* getAttPages(thread_db* tdbb, RelationPages::InstanceId inst_id);
 	bool	delPages(thread_db* tdbb, TraNumber tran = MAX_TRA_NUMBER, RelationPages* aPages = NULL);
 	void	freePages(thread_db* tdbb);
 	void	retainPages(thread_db* tdbb, TraNumber oldNumber, TraNumber newNumber);
@@ -1030,12 +1031,20 @@ private:
 };
 
 
-// specialization
+// specialization for LTT
 template <> template <>
 inline FB_UINT64 CacheElement<IndexVersion, IndexPermanent>::makeId<RelationPermanent*>(MetaId id,
 	RelationPermanent* rel)
 {
 	return IndexPermanent::makeLockId(rel->getId(), id);
+}
+
+
+// specialization for system relations
+template <> template <>
+inline FB_UINT64 CacheElement<jrd_rel, RelationPermanent>::makeId<NoData>(MetaId id, NoData)
+{
+	return id < 128 ? NO_METALOCK : id;
 }
 
 
