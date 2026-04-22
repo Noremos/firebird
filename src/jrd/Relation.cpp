@@ -899,7 +899,7 @@ void GCLock::downgrade(thread_db* tdbb)
 		checkGuard(newFlags);
 	} while (!gcFlags.compare_exchange_weak(oldFlags, newFlags, std::memory_order_release, std::memory_order_acquire));
 
-	if ((!gcRel->isLTT()) && (newFlags & GC_counterMask == 0) && (newFlags & GC_blocking))
+	if ((!gcRel->isLTT()) && ((newFlags & GC_counterMask) == 0) && (newFlags & GC_blocking))
 	{
 		fb_assert(newFlags & GC_locked);
 		fb_assert(gcLck->lck_id);

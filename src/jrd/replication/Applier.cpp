@@ -1145,7 +1145,6 @@ bool Applier::lookupRecord(thread_db* tdbb,
 	bool haveIdx = false;
 	if (idxName && idxName->object.hasData())
 	{
-		SLONG foundRelId;
 		auto* idv = relation->getPermanent()->lookup_index(tdbb, *idxName, CacheFlag::AUTOCREATE);
 
 		if (idv)

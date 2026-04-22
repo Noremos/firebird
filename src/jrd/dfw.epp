@@ -3786,9 +3786,7 @@ static bool delete_relation(thread_db* tdbb, SSHORT phase, DeferredWork* work, j
  *
  **************************************/
 	AutoRequest request;
-	jrd_rel* relation;
 	USHORT view_count;
-	bool adjusted;
 
 	SET_TDBB(tdbb);
 	Jrd::Attachment* attachment = tdbb->getAttachment();
