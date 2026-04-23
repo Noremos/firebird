@@ -1,9 +1,7 @@
 #include "boost/test/unit_test.hpp"
 #include "../common/classes/auto.h"
 
-
 using namespace Firebird;
-
 
 BOOST_AUTO_TEST_SUITE(CommonClassesSuite)
 BOOST_AUTO_TEST_SUITE(AutoPtrFunctionalTests)
@@ -22,7 +20,6 @@ public:
 		--aliveCounter;
 	}
 };
-
 
 AutoPtr<TestRefCounter> makePtr()
 {
