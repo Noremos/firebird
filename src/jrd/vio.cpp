@@ -4394,13 +4394,6 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 			object_id = set_metadata_id(tdbb, rpb->rpb_record,
 										f_pkg_id, drq_g_nxt_package_id, PACKAGES_GENERATOR);
 
-			// This getVersioned call is necessary for to set the lock during restore
-			// The lock itself is created by calling `pingLock`, but the `locked` variable is not set to true
-			// This resulted in the lock not being released during the cleaning stage
-			// So set the lock by calling `getVersioned` function
-			if (tdbb->getAttachment()->isGbak())
-				MetadataCache::getVersioned<Cached::Package>(tdbb, object_id, CacheFlag::AUTOCREATE);
-
 			DFW_post_work(transaction, dfw_create_package, &desc, &schemaDesc, object_id);
 			break;
 
