@@ -144,7 +144,7 @@ public:
 	}
 
 	void releaseLock(thread_db*) { }
-	void reloadAst(thread_db* tdbb, bool erase) { }
+	void reloadAst(thread_db* tdbb, TraNumber tran, bool erase) { }
 
 	const QualifiedName& getName() const noexcept { return name; }
 	void setName(const QualifiedName& value) { name = value; }
