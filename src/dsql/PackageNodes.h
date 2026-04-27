@@ -45,7 +45,7 @@ public:
 	ItemNames() : TArray()
 	{}
 
-	ItemNames(Firebird::MemoryPool& pool) : TArray(pool)
+	explicit ItemNames(Firebird::MemoryPool& pool) : TArray(pool)
 	{}
 
 	operator TArray&()
