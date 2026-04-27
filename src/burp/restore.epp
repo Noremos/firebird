@@ -10573,6 +10573,9 @@ bool get_constants_table(BurpGlobals* tdgbl)
 			REQUEST_HANDLE tdgbl->handles_get_type_req_handle1)
 		CONST IN RDB$CONSTANTS
 	{
+		CONST.RDB$SYSTEM_FLAG = 0;
+		CONST.RDB$SYSTEM_FLAG.NULL = FALSE;
+
 		skip_init(&scan_next_attr);
 		while (skip_scan(&scan_next_attr), get_attribute(&attribute, tdgbl) != att_end)
 		{
