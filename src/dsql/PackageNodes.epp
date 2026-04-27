@@ -354,7 +354,7 @@ static RegisterNode<PackageReferenceNode> regPackageReferenceNode({blr_package_r
 
 PackageReferenceNode::PackageReferenceNode(MemoryPool& pool, const QualifiedName& fullName, const UCHAR itemType)
 		: TypedNode<ValueExprNode, ExprNode::TYPE_PACKAGE_REFERENCE>(pool),
-		m_fullName(fullName.object, fullName.schema.hasData() ? fullName.schema : PUBLIC_SCHEMA, fullName.package), m_itemType(itemType)
+		m_fullName(fullName), m_itemType(itemType)
 {}
 
 string PackageReferenceNode::internalPrint(NodePrinter& printer) const

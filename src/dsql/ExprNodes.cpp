@@ -6487,7 +6487,7 @@ ValueExprNode* FieldNode::internalDsqlPass(DsqlCompilerScratch* dsqlScratch, Rec
 				ambiguousCtxStack.push(&packageContext);
 
 				MemoryPool& pool = dsqlScratch->getPool();
-				node = FB_NEW_POOL(pool) PackageReferenceNode(pool, constantName);
+				node = FB_NEW_POOL(pool) PackageReferenceNode(pool, constantName, blr_pkg_reference_to_constant);
 			}
 		}
 	}
@@ -14205,7 +14205,8 @@ ValueExprNode* VariableNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			if (PackageReferenceNode::constantExists(tdbb, dsqlScratch->getTransaction(), constantFullName))
 			{
 				delete node;
-				return FB_NEW_POOL(dsqlScratch->getPool()) PackageReferenceNode(dsqlScratch->getPool(), constantFullName);
+				return FB_NEW_POOL(dsqlScratch->getPool()) PackageReferenceNode(dsqlScratch->getPool(),
+					constantFullName, blr_pkg_reference_to_constant);
 			}
 		}
 

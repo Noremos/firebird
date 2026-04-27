@@ -122,7 +122,7 @@ class PackageReferenceNode final : public TypedNode<ValueExprNode, ExprNode::TYP
 {
 public:
 	PackageReferenceNode(Firebird::MemoryPool& pool, const QualifiedName& name,
-		const UCHAR itemType = blr_pkg_reference_to_constant);
+		const UCHAR itemType);
 
 	Firebird::string internalPrint(NodePrinter& printer) const final;
 

@@ -120,11 +120,8 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 	MemoryPool* csb_pool = attachment->att_database->createPool(ALLOC_ARGS0);
 	ContextPoolHolder context(tdbb, csb_pool);
 
-	CompilerScratch* csb = nullptr;
-	Cleanup cc([&csb]()
-		{
-			delete csb;
-		});
+	AutoPtr<CompilerScratch> autoCsb(FB_NEW_POOL(*csb_pool) CompilerScratch(*csb_pool));
+	CompilerScratch* csb = autoCsb;
 
 	// Parse BLR for constant expression
 	// It would be cool to calculate the result value and store it as a LiteralNode
@@ -206,12 +203,9 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 			handmadeStmt = Statement::makeStatement(tdbb, csb, true);
 			request = handmadeStmt->makeRootRequest(tdbb);
 
-			Cleanup requestRestore([&, requestToRestore = tdbb->getRequest()]()
-			{
-				tdbb->setRequest(requestToRestore);
-			});
+			AutoSetRestore2<Request*, thread_db> autoSetRequest(
+				tdbb, &thread_db::getRequest, &thread_db::setRequest, request);
 
-			tdbb->setRequest(request);
 			request->setUsed();
 			request->setAttachment(attachment);
 			attachment->att_requests.add(request);
@@ -233,8 +227,8 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		ex.stuffException(temp_status);
 
 		const string quotedName = name.toQuotedString();
-		(Arg::Gds(isc_bad_constant_blr) << Arg::Str(quotedName)
-			<< Arg::StatusVector(temp_status.begin())).raise();
+		(Arg::StatusVector(temp_status.begin()) <<
+			Arg::Gds(isc_bad_constant_blr) << quotedName).raise();
 	}
 	csb_pool = nullptr; // Do not delete
 
