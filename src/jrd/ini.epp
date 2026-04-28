@@ -2174,9 +2174,6 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 				// Description (filed) name
 				PAD(names[gfields[constant.fieldId].gfld_name], CONST.RDB$FIELD_SOURCE);
 
-				CONST.RDB$SYSTEM_FLAG = RDB_system;
-				CONST.RDB$SYSTEM_FLAG.NULL = FALSE;
-
 				// Put the blr
 				Array<UCHAR> blrData(1 + constant.valueBlr.getCount() + 1);
 				blrData.push(blr_version5);

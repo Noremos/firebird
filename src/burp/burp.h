@@ -711,7 +711,6 @@ enum att_type {
 	att_constant_blr,
 	att_constant_source,
 	att_constant_schema_name,
-	att_constant_sysflag,
 	att_constant_description,
 };
 
