@@ -637,9 +637,6 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		CONST.RDB$FIELD_SOURCE.NULL = FALSE;
 		strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
 
-		CONST.RDB$SYSTEM_FLAG = 0;
-		CONST.RDB$SYSTEM_FLAG.NULL = FALSE;
-
 		// Gen value blr
 		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
