@@ -3987,7 +3987,14 @@ Record* VIO_record(thread_db* tdbb, record_param* rpb, const Format* format, Mem
 	// If format wasn't given, look one up
 
 	if (!format)
-		format = MET_format(tdbb, getPermanent(rpb->rpb_relation), rpb->rpb_format_number);
+		format = rpb->rpb_relation->getPermanent()->getFormat(tdbb, rpb->rpb_format_number);
+
+	fb_assert(format);
+	if (!format)
+	{
+		fatal_exception::raiseFmt("Format %d missing for relation %s", rpb->rpb_format_number,
+			rpb->rpb_relation->getName().toQuotedString().c_str());
+	}
 
 	Record* record = rpb->rpb_record;
 

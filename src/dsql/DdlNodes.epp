@@ -9170,7 +9170,7 @@ void RelationNode::getArrayDesc(thread_db* tdbb, const TEXT* field_name, Ods::In
 }
 
 
-Format* RelationNode::makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::Relation* relation,
+const Format* RelationNode::makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::Relation* relation,
 	USHORT* version, TemporaryField* stack)
 {
 /**************************************
@@ -9219,6 +9219,8 @@ Format* RelationNode::makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::
 		// We should never get here
 		fb_assert(false);
 	}
+
+	// Single thread write access to formats in relation is guaranteed here by metadata cache
 
 	Format* format = Format::newFormat(relation->getPool(), count + 1);
 	format->fmt_version = version ? *version : 0;
@@ -9291,10 +9293,10 @@ Format* RelationNode::makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::
 
 	format->fmt_length = offset;
 
-	Format* old_format;
+	const Format* old_format;
 	if (!(relation->rel_flags & REL_temp_ltt) &&
 		format->fmt_version &&
-		(old_format = MET_format(tdbb, relation, (format->fmt_version - 1))) &&
+		(old_format = relation->getFormat(tdbb, (format->fmt_version - 1))) &&
 		(*old_format == *format))
 	{
 		delete format;

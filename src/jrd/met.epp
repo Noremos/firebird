@@ -987,7 +987,7 @@ void MET_error(const TEXT* string, ...)
 			 Arg::Gds(isc_random) << Arg::Str(s));
 }
 
-Format* MET_format(thread_db* tdbb, RelationPermanent* relation, USHORT number)
+const Format* RelationPermanent::getFormat(thread_db* tdbb, USHORT number)
 {
 /**************************************
  *
@@ -1003,23 +1003,30 @@ Format* MET_format(thread_db* tdbb, RelationPermanent* relation, USHORT number)
 	Attachment* attachment = tdbb->getAttachment();
 	Database* dbb = tdbb->getDatabase();
 
-	Format* format;
-	auto formats = relation->getFormats();
-	if ((number < formats->getCount()) && (format = formats->value(number)))
-	{
-		return format;
+	{ // scope
+		auto formats = getFormats();
+		if ((number < formats->getCount()) && formats->value(number))
+			return formats->value(number);
 	}
 
-	// System relations don't have their formats stored inside RDB$FORMATS,
-	// so it's absolutely pointless trying to find one there
-	fb_assert(!relation->isSystem());
-	fb_assert(!(relation->rel_flags & REL_temp_ltt));
+	MutexLockGuard guard(rel_formats_grow, FB_FUNCTION);
 
-	format = NULL;
+	{ // scope
+		auto formats = getFormats();
+		if ((number < formats->getCount()) && formats->value(number))
+			return formats->value(number);
+	}
+
+	// System relations and LTT don't have their formats stored inside RDB$FORMATS,
+	// so it's absolutely pointless trying to find one there
+	fb_assert(!isSystem());
+	fb_assert(!(rel_flags & REL_temp_ltt));
+
+	Format* format = NULL;
 	AutoCacheRequest request(tdbb, irq_r_format, IRQ_REQUESTS);
 
 	FOR(REQUEST_HANDLE request)
-		X IN RDB$FORMATS WITH X.RDB$RELATION_ID EQ relation->getId() AND
+		X IN RDB$FORMATS WITH X.RDB$RELATION_ID EQ getId() AND
 			X.RDB$FORMAT EQ number
 	{
 		blb* blob = blb::open(tdbb, attachment->getSysTransaction(), &X.RDB$DESCRIPTOR);
@@ -1031,7 +1038,7 @@ Format* MET_format(thread_db* tdbb, RelationPermanent* relation, USHORT number)
 		unsigned bufferPos = 2;
 		USHORT count = buffer[0] | (buffer[1] << 8);
 
-		format = Format::newFormat(relation->getPool(), count);
+		format = Format::newFormat(getPool(), count);
 
 		Array<Ods::Descriptor> odsDescs;
 		Ods::Descriptor* odsDesc = odsDescs.getBuffer(count);
@@ -1063,20 +1070,20 @@ Format* MET_format(thread_db* tdbb, RelationPermanent* relation, USHORT number)
 
 			desc.dsc_address = tmpArray.getBuffer(desc.dsc_length, false);
 			memcpy(desc.dsc_address, p, desc.dsc_length);
-			EVL_make_value(tdbb, &desc, &format->fmt_defaults[offset], &relation->getPool());
+			EVL_make_value(tdbb, &desc, &format->fmt_defaults[offset], &getPool());
 
 			p += desc.dsc_length;
 		}
 	}
 	END_FOR
 
-	if (!format)
-		format = Format::newFormat(relation->getPool());
+	if (format)
+	{
+		format->fmt_version = number;
 
-	format->fmt_version = number;
-
-	// Link the format block into the world
-	relation->addFormat(format);
+		// Link the format block into the world
+		addFormat(format);
+	}
 
 	return format;
 }
@@ -3434,7 +3441,7 @@ ScanResult jrd_rel::scan(thread_db* tdbb, ObjectBase::Flag& flags)
 
 	delete csb;
 
-	rel_current_format = MET_format(tdbb, rel_perm, rel_current_fmt);
+	rel_current_format = rel_perm->getFormat(tdbb, rel_current_fmt);
 	dependencies = false;
 
 	if (rel_fields)
@@ -4804,10 +4811,10 @@ void MetadataCache::releaseLocks(thread_db* tdbb)
 
 void MetadataCache::invalidateReplSet(thread_db* tdbb)
 {
-	for (auto relation : mdc_relations)
+	for (auto* relation : mdc_relations)
 	{
 		if (relation)
-			relation->rel_repl_state.reset();
+			relation->rel_repl_state = RelationPermanent::Bool3State::Unknown;
 	}
 }
 

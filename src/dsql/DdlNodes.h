@@ -1716,7 +1716,7 @@ protected:
 public:
 	static void makeVersion(thread_db* tdbb, jrd_tra* transaction, const QualifiedName& relName);
 	static void raiseTooManyVersionsError(const int obj_type, const QualifiedName& obj_name);
-	static Format* makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::Relation* relation,
+	static const Format* makeFormat(thread_db* tdbb, jrd_tra* transaction, Cached::Relation* relation,
 		USHORT* version, TemporaryField* stack);
 
 private:

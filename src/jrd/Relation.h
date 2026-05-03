@@ -645,7 +645,7 @@ private:
 
 public:
 	USHORT				rel_current_fmt;	// Current format number
-	Format*				rel_current_format;	// Current record format
+	const Format*		rel_current_format;	// Current record format
 	USHORT				rel_dbkey_length;	// RDB$DBKEY length
 
 	vec<jrd_fld*>*		rel_fields;			// vector of field blocks
@@ -655,7 +655,6 @@ public:
 	TrigArray			rel_triggers;
 
 	Firebird::TriState	rel_ss_definer;
-	Firebird::TriState	rel_repl_state;		// replication state
 
 	bool hasData() const;
 	MetaId getId() const noexcept;
@@ -985,7 +984,7 @@ public:
 	typedef SharedReadVector<Format*, 16> Formats;
 
 private:
-	SharedReadVector<Format*, 16> rel_formats;	// Known record formats
+	Formats rel_formats;				// Known record formats
 	Firebird::Mutex rel_formats_grow;	// Mutex to grow rel_formats
 
 public:
@@ -995,6 +994,7 @@ public:
 	}
 
 	void addFormat(Format* fmt);
+	const Format* getFormat(thread_db* tdbb, USHORT );
 
 	Indices			rel_indices;		// Active indices
 	QualifiedName	rel_name;			// ascii relation name
@@ -1004,7 +1004,8 @@ public:
 	QualifiedName	rel_security_name;	// security class name for relation
 	std::atomic<ULONG>	rel_flags;		// flags
 
-	Firebird::TriState	rel_repl_state;	// replication state
+	enum class Bool3State {Unknown, False, True};
+	std::atomic<Bool3State>	rel_repl_state;			// replication state
 
 	PrimaryDeps*	rel_primary_dpnds = nullptr;	// foreign dependencies on this relation's primary key
 	ForeignRefs*	rel_foreign_refs = nullptr;		// foreign references to other relations' primary keys

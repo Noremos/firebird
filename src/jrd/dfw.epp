@@ -479,28 +479,6 @@ static ISC_STATUS getErrorCodeByObjectType(int obj_type)
 	return err_code;
 }
 
-static ISC_STATUS getErrorNotFound(int obj_type)
-{
-	ISC_STATUS err_code = 0;
-
-	switch (obj_type)
-	{
-	case obj_procedure:
-		err_code = isc_dyn_proc_not_found;
-		break;
-	case obj_udf:
-		err_code = isc_dyn_func_not_found;
-		break;
-	case obj_package_constant:
-		err_code = isc_dyn_constant_not_found;
-		break;
-	default:
-		fb_assert(false);
-	}
-
-	return err_code;
-}
-
 static void raiseDatabaseInUseError(bool timeout)
 {
 	if (timeout)
@@ -649,10 +627,7 @@ namespace
 				{
 					T* routine = lookupById(tdbb, work->dfw_id, flag);
 					if (!routine)
-					{
-						ERR_post(Arg::Gds(isc_no_meta_update) <<
-							Arg::Gds(getErrorNotFound(T::Versioned::objectType())) << Arg::Num(work->dfw_id));
-					}
+						return false;		// Happens when DROP after CREATE in same transaction
 
 					return true;
 				}
@@ -664,7 +639,6 @@ namespace
 				case 7:
 				{
 					T* routine = lookupById(tdbb, work->dfw_id, flag);
-					fb_assert(routine);
 					if (routine)
 						routine->commit(tdbb);
 
@@ -754,7 +728,6 @@ namespace
 				case 7:
 				{
 					T* routine = lookupById(tdbb, work->dfw_id, CacheFlag::NOSCAN);
-					fb_assert(routine);
 					if (routine)
 						routine->commit(tdbb);
 
@@ -2475,7 +2448,6 @@ static bool change_repl_state(thread_db* tdbb, SSHORT phase, DeferredWork* work,
  **************************************/
 	SET_TDBB(tdbb);
 	Database* const dbb = tdbb->getDatabase();
-	Attachment* const attachment = tdbb->getAttachment();
 
 	switch (phase)
 	{
@@ -2493,7 +2465,7 @@ static bool change_repl_state(thread_db* tdbb, SSHORT phase, DeferredWork* work,
 		else
 		{
 			// replication set is changed
-			attachment->invalidateReplSet(tdbb, true);
+			dbb->invalidateReplSet(tdbb, true);
 		}
 		break;
 	}
