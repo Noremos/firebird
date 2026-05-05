@@ -2364,7 +2364,7 @@ void write_character_sets()
  *	each user defined character set.
  *
  **************************************/
-	IRequest* req_handle1 = nullptr;
+	Firebird::IRequest* req_handle1 = nullptr;
 
 	BurpGlobals* tdgbl = BurpGlobals::getSpecific();
 
@@ -4855,7 +4855,7 @@ void write_user_privileges()
 
 void write_constants()
 {
-	Firebird::IRequest* req_handle1 = nullptr;
+	IRequest* req_handle1 = nullptr;
 
 	BurpGlobals* tdgbl = BurpGlobals::getSpecific();
 

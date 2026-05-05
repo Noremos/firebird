@@ -662,7 +662,7 @@ FrontendParser::AnyShowNode FrontendParser::parseShow()
 				node.name = parseQualifiedName(true);
 				if (node.name->package.isEmpty())
 				{
-					// It is expecting to get package = <PACKAGE> and object =<CONSTANT>
+					// It is expecting to get package = <PACKAGE> and object = <CONSTANT>
 					// But it is getting package = <SCHEMA> and object = <CONSTANT>
 					// Fix the name
 					node.name->package = node.name->schema;

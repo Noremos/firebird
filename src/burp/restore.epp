@@ -4535,7 +4535,7 @@ bool get_function(BurpGlobals* tdgbl)
 
 	bool existFlag = false;
 
-	ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
+	Firebird::ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
 
 	if (tdgbl->runtimeODS >= DB_VERSION_DDL12)
 	{
@@ -10567,7 +10567,7 @@ bool get_constants(BurpGlobals* tdgbl)
 	att_type attribute;
 	scan_attr_t scan_next_attr;
 
-	Firebird::ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
+	ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
 
 	STORE (TRANSACTION_HANDLE local_trans
 			REQUEST_HANDLE tdgbl->handles_get_type_req_handle1)
@@ -10579,7 +10579,6 @@ bool get_constants(BurpGlobals* tdgbl)
 			switch (attribute)
 			{
 			case att_constant_name:
-				CONST.RDB$CONSTANT_NAME.NULL = FALSE;
 				GET_TEXT(CONST.RDB$CONSTANT_NAME);
 				name.object = CONST.RDB$CONSTANT_NAME;
 				break;
@@ -10591,17 +10590,14 @@ bool get_constants(BurpGlobals* tdgbl)
 				break;
 
 			case att_constant_field_source:
-				CONST.RDB$FIELD_SOURCE.NULL = FALSE;
 				GET_TEXT(CONST.RDB$FIELD_SOURCE);
 				break;
 
 			case att_constant_private_flag:
-				CONST.RDB$PRIVATE_FLAG.NULL = FALSE;
 				CONST.RDB$PRIVATE_FLAG = (USHORT) get_int32(tdgbl);
 				break;
 
 			case att_constant_blr:
-				CONST.RDB$CONSTANT_BLR.NULL = FALSE;
 				get_blr_blob(tdgbl, CONST.RDB$CONSTANT_BLR, true);
 				break;
 
@@ -10611,7 +10607,6 @@ bool get_constants(BurpGlobals* tdgbl)
 				break;
 
 			case att_constant_schema_name:
-				CONST.RDB$SCHEMA_NAME.NULL = FALSE;
 				GET_TEXT(CONST.RDB$SCHEMA_NAME);
 				name.schema = CONST.RDB$SCHEMA_NAME;
 				break;

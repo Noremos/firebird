@@ -61,99 +61,98 @@ DATABASE DB = STATIC "ODS.RDB";
 
 namespace
 {
-
-class DropConstantNode
-{
-public:
-	DropConstantNode(Firebird::MemoryPool& pool, const QualifiedName& fullName) :
-		m_name(pool, fullName)
-	{ }
-
-	void dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	class DropConstantNode
 	{
-		dsqlScratch->qualifyExistingName(m_name, obj_package_constant);
-	}
+	public:
+		DropConstantNode(Firebird::MemoryPool& pool, const QualifiedName& fullName) :
+			m_name(pool, fullName)
+		{ }
 
-	void execute(thread_db* tdbb, DsqlCompilerScratch*, jrd_tra* transaction)
-	{
-		static const CachedRequestId requestId;
-		AutoCacheRequest request(tdbb, requestId);
-
-		FOR (REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
-			CONST IN RDB$CONSTANTS
-			WITH CONST.RDB$SCHEMA_NAME EQ m_name.schema.c_str() AND
-				CONST.RDB$PACKAGE_NAME EQ m_name.package.c_str() AND
-				CONST.RDB$CONSTANT_NAME EQ m_name.object.c_str()
+		void dsqlPass(DsqlCompilerScratch* dsqlScratch)
 		{
-			ERASE CONST;
+			dsqlScratch->qualifyExistingName(m_name, obj_package_constant);
 		}
-		END_FOR
+
+		void execute(thread_db* tdbb, DsqlCompilerScratch*, jrd_tra* transaction)
+		{
+			static const CachedRequestId requestId;
+			AutoCacheRequest request(tdbb, requestId);
+
+			FOR (REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
+				CONST IN RDB$CONSTANTS
+				WITH CONST.RDB$SCHEMA_NAME EQ m_name.schema.c_str() AND
+					CONST.RDB$PACKAGE_NAME EQ m_name.package.c_str() AND
+					CONST.RDB$CONSTANT_NAME EQ m_name.object.c_str()
+			{
+				ERASE CONST;
+			}
+			END_FOR
+		}
+
+	private:
+		QualifiedName m_name;
+	};
+
+
+	template<class TDropNode>
+	void dropItem(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& fullName)
+	{
+		MemoryPool& pool = dsqlScratch->getPool();
+		jrd_tra* transaction = dsqlScratch->getTransaction();
+
+		TDropNode dropNode(pool, fullName);
+		dropNode.dsqlPass(dsqlScratch);
+		dropNode.execute(tdbb, dsqlScratch, transaction);
 	}
 
-private:
-	QualifiedName m_name;
-};
-
-
-template<class TDropNode>
-void dropItem(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& fullName)
-{
-	MemoryPool& pool = dsqlScratch->getPool();
-	jrd_tra* transaction = dsqlScratch->getTransaction();
-
-	TDropNode dropNode(pool, fullName);
-	dropNode.dsqlPass(dsqlScratch);
-	dropNode.execute(tdbb, dsqlScratch, transaction);
-}
-
-template<class TDropNode>
-void dropMissingItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& packageAndSchema,
-	const PackageItemsHolder::ItemsSignatureArray& existsItems,
-	const CreateAlterPackageNode::ItemsNameArray& newNames)
-{
-	for (auto i = existsItems.begin(); i != existsItems.end(); ++i)
+	template<class TDropNode>
+	void dropMissingItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& packageAndSchema,
+		const PackageItemsHolder::ItemsSignatureArray& existsItems,
+		const CreateAlterPackageNode::ItemsNameArray& newNames)
 	{
-		if (!newNames.exist(i->name))
+		for (auto i = existsItems.begin(); i != existsItems.end(); ++i)
+		{
+			if (!newNames.exist(i->name))
+			{
+				dropItem<TDropNode>(tdbb, dsqlScratch,
+					QualifiedName(i->name, packageAndSchema.schema, packageAndSchema.object));
+			}
+		}
+	}
+
+	template<class TDropNode>
+	void dropItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& packageAndSchema,
+		const PackageItemsHolder::ItemsSignatureArray& items)
+	{
+		for (auto i = items.begin(); i != items.end(); ++i)
 		{
 			dropItem<TDropNode>(tdbb, dsqlScratch,
 				QualifiedName(i->name, packageAndSchema.schema, packageAndSchema.object));
 		}
 	}
-}
 
-template<class TDropNode>
-void dropItems(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, const QualifiedName& packageAndSchema,
-	const PackageItemsHolder::ItemsSignatureArray& items)
-{
-	for (auto i = items.begin(); i != items.end(); ++i)
+	void checkItemsDefineMatch(MemoryPool& pool, const QualifiedName& packageAndSchema,
+		const PackageItemsHolder::ItemsSignatureArray& newItems,
+		const PackageItemsHolder::ItemsSignatureArray& existingItems,
+		const ISC_STATUS missingCode, const ISC_STATUS mismatchCode)
 	{
-		dropItem<TDropNode>(tdbb, dsqlScratch,
-			QualifiedName(i->name, packageAndSchema.schema, packageAndSchema.object));
-	}
-}
-
-void checkItemsDefineMatch(MemoryPool& pool, const QualifiedName& packageAndSchema,
-	const PackageItemsHolder::ItemsSignatureArray& newItems,
-	const PackageItemsHolder::ItemsSignatureArray& existingItems,
-	const ISC_STATUS missingCode, const ISC_STATUS mismatchCode)
-{
-	for (auto i = existingItems.begin(); i != existingItems.end(); ++i)
-	{
-		FB_SIZE_T pos;
-		const bool found = newItems.find(Signature(pool, i->name), pos);
-
-		if (!found || !newItems[pos].defined)
+		for (auto i = existingItems.begin(); i != existingItems.end(); ++i)
 		{
-			status_exception::raise(
-				Arg::Gds(missingCode) << i->name << packageAndSchema.toQuotedString());
-		}
-		else if (newItems[pos] != *i)
-		{
-			status_exception::raise(
-				Arg::Gds(mismatchCode) << i->name << packageAndSchema.toQuotedString());
+			FB_SIZE_T pos;
+			const bool found = newItems.find(Signature(pool, i->name), pos);
+
+			if (!found || !newItems[pos].defined)
+			{
+				status_exception::raise(
+					Arg::Gds(missingCode) << i->name << packageAndSchema.toQuotedString());
+			}
+			else if (newItems[pos] != *i)
+			{
+				status_exception::raise(
+					Arg::Gds(mismatchCode) << i->name << packageAndSchema.toQuotedString());
+			}
 		}
 	}
-}
 
 }	// namespace
 
@@ -402,37 +401,37 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 	{
 		case blr_pkg_reference_to_constant:
 		{
-		QualifiedName fullName;
-		csb->csb_blr_reader.getMetaName(fullName.object);
-		csb->csb_blr_reader.getMetaName(fullName.schema);
-		csb->csb_blr_reader.getMetaName(fullName.package);
+			QualifiedName fullName;
+			csb->csb_blr_reader.getMetaName(fullName.object);
+			csb->csb_blr_reader.getMetaName(fullName.schema);
+			csb->csb_blr_reader.getMetaName(fullName.package);
 
-		PackageReferenceNode* node = FB_NEW_POOL(pool) PackageReferenceNode(pool, fullName, itemType);
+			PackageReferenceNode* node = FB_NEW_POOL(pool) PackageReferenceNode(pool, fullName, itemType);
 
-		if (csb->collectingDependencies())
-		{
-			Dependency dependency(obj_package_constant);
-			dependency.name = fullName;
-
-			csb->addDependency(dependency);
-		}
-
-		{ // Package cache
-			auto package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
-			if (package)
+			if (csb->collectingDependencies())
 			{
-				node->m_package = csb->csb_resources->packages.registerResource(package->getPermanent());
+				Dependency dependency(obj_package_constant);
+				dependency.name = fullName;
+
+				csb->addDependency(dependency);
 			}
-		}
 
-		if (!node->m_package)
-		{
-			status_exception::raise(Arg::Gds(isc_bad_constant_name) <<
-				Arg::Str(fullName.toQuotedString()));
-		}
+			{ // Package cache
+				auto package = MetadataCache::getVersioned<Cached::Package>(tdbb, fullName.getSchemaAndPackage(), CacheFlag::AUTOCREATE);
+				if (package)
+				{
+					node->m_package = csb->csb_resources->packages.registerResource(package->getPermanent());
+				}
+			}
 
-		return node;
-	}
+			if (!node->m_package)
+			{
+				status_exception::raise(Arg::Gds(isc_bad_constant_name) <<
+					Arg::Str(fullName.toQuotedString()));
+			}
+
+			return node;
+		}
 	// TODO: rowtype
 	default:
 		fb_assert(false);
@@ -510,11 +509,11 @@ ValueExprNode* PackageReferenceNode::pass1(thread_db* tdbb, CompilerScratch* csb
 
 	switch (m_itemType)
 	{
-	case blr_pkg_reference_to_constant:
-	{
-		CMP_post_access(tdbb, csb, security.object, 0, SCL_usage, obj_packages, m_fullName.getSchemaAndPackage());
-		break;
-	}
+		case blr_pkg_reference_to_constant:
+		{
+			CMP_post_access(tdbb, csb, security.object, 0, SCL_usage, obj_packages, m_fullName.getSchemaAndPackage());
+			break;
+		}
 	default:
 		fb_assert(false);
 		return nullptr;
@@ -538,14 +537,14 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 	impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
 	switch (m_itemType)
 	{
-	case blr_pkg_reference_to_constant:
-	{
-		Package* package = m_package(request->getResources());
-		package->checkReload(tdbb);
+		case blr_pkg_reference_to_constant:
+		{
+			Package* package = m_package(request->getResources());
+			package->checkReload(tdbb);
 
-		EVL_make_value(tdbb, package->findConstant(m_fullName)->makeValue(tdbb, request), outputImpure);
-		return &outputImpure->vlu_desc;
-	}
+			EVL_make_value(tdbb, package->findConstant(m_fullName)->makeValue(tdbb, request), outputImpure);
+			return &outputImpure->vlu_desc;
+		}
 	default:
 		fb_assert(false);
 		return nullptr;
@@ -583,8 +582,7 @@ DdlNode* CreatePackageConstantNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 		status_exception::raise(Arg::Gds(isc_dyn_non_constant_constant) << name.toQuotedString());
 	}
 
-	DdlNode::dsqlPass(dsqlScratch);
-	return nullptr;
+	return DdlNode::dsqlPass(dsqlScratch);
 }
 
 void CreatePackageConstantNode::checkPermission(thread_db* tdbb, jrd_tra* transaction)
@@ -633,11 +631,9 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		CONST IN RDB$CONSTANTS USING
 	{
 		// Constant name
-		CONST.RDB$CONSTANT_NAME.NULL = FALSE;
 		strcpy(CONST.RDB$CONSTANT_NAME, name.object.c_str());
 
 		// Description (filed) name
-		CONST.RDB$FIELD_SOURCE.NULL = FALSE;
 		strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
 
 		// Gen value blr
@@ -649,18 +645,14 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		// Parent package
 		fb_assert(name.package.hasData());
 
-		CONST.RDB$PACKAGE_NAME.NULL = FALSE;
 		strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
 
 		fb_assert(package);
 		package->addConstant(tdbb, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
 
 		// Schema of the parent package
-		CONST.RDB$SCHEMA_NAME.NULL = FALSE;
 		strcpy(CONST.RDB$SCHEMA_NAME, name.schema.c_str());
 
-		// Type
-		CONST.RDB$PRIVATE_FLAG.NULL = FALSE;
 		CONST.RDB$PRIVATE_FLAG = m_isPrivate;
 
 		CONST.RDB$CONSTANT_SOURCE.NULL = TRUE;
