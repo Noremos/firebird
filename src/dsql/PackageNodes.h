@@ -176,10 +176,10 @@ public:
 		  m_isPrivate(isPrivate)
 	{ }
 
-	Firebird::string internalPrint(NodePrinter& printer) const;
-	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) final;
-	void checkPermission(thread_db* tdbb, jrd_tra* transaction) final;
-	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) final;
+	Firebird::string internalPrint(NodePrinter& printer) const override;
+	DdlNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override;
+	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
+	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;
 
 	inline void makePublic()
 	{
@@ -197,7 +197,7 @@ private:
 	bool executeAlter(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction);
 
 protected:
-	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector)
+	virtual void putErrorPrefix(Firebird::Arg::StatusVector& statusVector) override
 	{
 		statusVector <<
 			Firebird::Arg::Gds(createAlterCode(create, alter,

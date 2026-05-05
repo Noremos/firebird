@@ -25,8 +25,8 @@
  */
 
 
-#ifndef JRD_CONSTANT_H
-#define JRD_CONSTANT_H
+#ifndef JRD_PACKAGE_H
+#define JRD_PACKAGE_H
 
 #include "firebird.h"
 #include "../jrd/CacheVector.h"
@@ -251,4 +251,4 @@ private:
 
 } // namespace Jrd
 
-#endif // JRD_CONSTANT_H
+#endif // JRD_PACKAGE_H

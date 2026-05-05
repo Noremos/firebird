@@ -190,9 +190,9 @@ namespace Jrd
 			const std::initializer_list<UCHAR> aValueBlr = {}
 		)
 			: name(aName),
-			fieldId(aFieldId),
-			valueSource(aValueSource),
-			valueBlr(pool, aValueBlr)
+			  fieldId(aFieldId),
+			  valueSource(aValueSource),
+			  valueBlr(pool, aValueBlr)
 		{ }
 
 		SystemConstant(Firebird::MemoryPool& pool, const SystemConstant& other)

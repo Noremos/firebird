@@ -167,7 +167,7 @@ bool	get_trigger_old (BurpGlobals* tdgbl, burp_rel*);
 bool	get_type(BurpGlobals* tdgbl);
 bool	get_user_privilege(BurpGlobals* tdgbl);
 bool	get_view(BurpGlobals* tdgbl, burp_rel*);
-bool	get_constants_table(BurpGlobals* tdgbl);
+bool	get_constants(BurpGlobals* tdgbl);
 void	ignore_array(BurpGlobals* tdgbl, burp_rel*);
 void	ignore_blob(BurpGlobals* tdgbl);
 rec_type	ignore_data(BurpGlobals* tdgbl, burp_rel*);
@@ -4535,7 +4535,7 @@ bool get_function(BurpGlobals* tdgbl)
 
 	bool existFlag = false;
 
-	Firebird::ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
+	ITransaction* local_trans = tdgbl->global_trans ? tdgbl->global_trans : gds_trans;
 
 	if (tdgbl->runtimeODS >= DB_VERSION_DDL12)
 	{
@@ -10557,7 +10557,7 @@ bool get_view(BurpGlobals* tdgbl, burp_rel* relation)
 	return true;
 }
 
-bool get_constants_table(BurpGlobals* tdgbl)
+bool get_constants(BurpGlobals* tdgbl)
 {
 	if (tdgbl->runtimeODS < DB_VERSION_DDL14)	// FB6
 		return false;
@@ -11480,7 +11480,7 @@ bool restore(BurpGlobals* tdgbl, Firebird::IProvider* provider, const TEXT* file
 			break;
 
 		case rec_constants:
-			if (!get_constants_table(tdgbl))
+			if (!get_constants(tdgbl))
 				return false;
 			flag = true;
 			break;

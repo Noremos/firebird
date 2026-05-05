@@ -341,6 +341,7 @@ void PackageItemsHolder::clear()
 {
 	functions.clear();
 	procedures.clear();
+	constants.clear();
 }
 
 //----------------------
@@ -354,7 +355,7 @@ static RegisterNode<PackageReferenceNode> regPackageReferenceNode({blr_package_r
 
 PackageReferenceNode::PackageReferenceNode(MemoryPool& pool, const QualifiedName& fullName, const UCHAR itemType)
 		: TypedNode<ValueExprNode, ExprNode::TYPE_PACKAGE_REFERENCE>(pool),
-		m_fullName(fullName), m_itemType(itemType)
+		  m_fullName(fullName), m_itemType(itemType)
 {}
 
 string PackageReferenceNode::internalPrint(NodePrinter& printer) const
@@ -645,13 +646,12 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 
 		// Parent package
 		fb_assert(name.package.hasData());
-		{
-			CONST.RDB$PACKAGE_NAME.NULL = FALSE;
-			strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
 
-			fb_assert(package);
-			package->addConstant(tdbb, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
-		}
+		CONST.RDB$PACKAGE_NAME.NULL = FALSE;
+		strcpy(CONST.RDB$PACKAGE_NAME, name.package.c_str());
+
+		fb_assert(package);
+		package->addConstant(tdbb, name, m_isPrivate, m_type); // Do not cache blob id because the blob is not materialized
 
 		// Schema of the parent package
 		CONST.RDB$SCHEMA_NAME.NULL = FALSE;

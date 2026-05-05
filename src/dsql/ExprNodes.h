@@ -582,11 +582,6 @@ public:
 	void genBlr(DsqlCompilerScratch* dsqlScratch) override;
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) override;
 
-	bool constant() const override
-	{
-		return true;
-	}
-
 	void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc) override;
 	ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const override;
 	ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb) override;

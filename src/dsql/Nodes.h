@@ -706,6 +706,36 @@ public:
 
 	// Check if expression returns constant result
 	// Check if expression returns a constant result (the one which does not change after recompilation)
+	//
+	// Current list of consent nodes
+	// -- Always:
+	// LiteralNode
+	// NullNode
+	//
+	// -- Only if all child nodes are marked as constant expression
+	// ArithmeticNode
+	// AtNode
+	// BoolAsValueNode
+	// CastNode
+	// CoalesceNode
+	// ConcatenateNode
+	// DecodeNode
+	// DefaultNode
+	// DerivedExprNode
+	// DomainValidationNode
+	// ExtractNode
+	// NegateNode
+	// ScalarNode
+	// StrCaseNode
+	// StrLenNode
+	// SubstringNode
+	// SubstringSimilarNode
+	// TrimNode
+	// ValueIfNode
+	//
+	// Special:
+	// SysFuncCallNode - see SysFunction::functions
+	// PackageReferenceNode - when referencing a constant.
 	virtual bool constant() const
 	{
 		return false;

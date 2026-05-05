@@ -39,13 +39,7 @@
 #include "../jrd/cvt_proto.h" // CVT_get_string_ptr
 #include "../jrd/mov_proto.h" // MOV_get_string_ptr
 #include "../common/classes/VaryStr.h"
-#include "../common/classes/alloc.h" // ALLOC_ARGS0
 #include "../dsql/make_proto.h" // DsqlDescMaker
-
-// I do not know why but the macros is undefined in CI
-#ifndef ALLOC_ARGS0
-#define ALLOC_ARGS0
-#endif
 
 using namespace Firebird;
 using namespace Jrd;
@@ -110,14 +104,14 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 	dsqlScratch->getDebugData().clear();
 
 	// Gen blr into dsqlScratch
-	AutoMemoryPool tempPool(MemoryPool::createPool(ALLOC_ARGS0));
+	AutoMemoryPool tempPool(MemoryPool::createPool(&dsqlScratch->getPool()));
 	CastNode cast(*tempPool, constExpr, type);
 	dsqlScratch->appendUChar(dsqlScratch->isVersion4() ? blr_version4 : blr_version5);
 	cast.genBlr(dsqlScratch);
 	dsqlScratch->appendUChar(blr_eoc);
 
 	Attachment* attachment = tdbb->getAttachment();
-	MemoryPool* csb_pool = attachment->att_database->createPool(ALLOC_ARGS0);
+	MemoryPool* csb_pool = attachment->att_database->createPool();
 	ContextPoolHolder context(tdbb, csb_pool);
 
 	AutoPtr<CompilerScratch> autoCsb(FB_NEW_POOL(*csb_pool) CompilerScratch(*csb_pool));
@@ -132,7 +126,7 @@ void ConstantValue::genConstantBlr(thread_db* tdbb, DsqlCompilerScratch* dsqlScr
 		nullptr, false, 0);
 }
 
-inline bid getConstantBid(thread_db* tdbb, const QualifiedName& name)
+inline static bid getConstantBid(thread_db* tdbb, const QualifiedName& name)
 {
 	Attachment* attachment = tdbb->getAttachment();
 	jrd_tra* metaTransaction = attachment->getMetaTransaction(tdbb);
@@ -178,7 +172,7 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		attachment->att_database->deletePool(csb_pool);
 	});
 
-	csb_pool = attachment->att_database->createPool(ALLOC_ARGS0);
+	csb_pool = attachment->att_database->createPool();
 
 	try
 	{
