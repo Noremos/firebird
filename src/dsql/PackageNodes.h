@@ -38,62 +38,60 @@ enum class PackageItemType : USHORT
 	META_SIZE
 };
 
-template<class TArray, class TType>
-class ItemNames : public TArray
-{
-public:
-	ItemNames() : TArray()
-	{}
-
-	explicit ItemNames(Firebird::MemoryPool& pool) : TArray(pool)
-	{}
-
-	operator TArray&()
-	{
-		return *this;
-	}
-
-	template<PackageItemType IValue>
-	void addName(const QualifiedName& newName)
-	{
-		checkDuplicate<IValue>(newName);
-		TArray::add(TType(newName.object));
-	}
-
-	template<PackageItemType IValue>
-	void checkDuplicate(const QualifiedName& newName)
-	{
-		if constexpr (std::is_same_v<TType, MetaName>)
-		{
-			if (!TArray::exist(newName.object))
-				return; // The name is unique
-		}
-		else
-		{
-			// Cast
-			if (!TArray::exist(TType(newName.object)))
-				return; // The name is unique
-		}
-
-		static_assert(size_t(IValue) >= 0 && size_t(IValue) < size_t(PackageItemType::META_SIZE), "Invalid item type");
-		static const std::array<const char*, size_t(PackageItemType::META_SIZE)> names{
-			"FUNCTION",
-			"PROCEDURE",
-			"CONSTANT",
-		};
-
-		 // Print just the object name because the full path is present in the parent error message
-		Firebird::status_exception::raise(
-			Firebird::Arg::Gds(isc_no_meta_update) <<
-			Firebird::Arg::Gds(isc_dyn_duplicate_package_item) <<
-				Firebird::Arg::Str(names[size_t(IValue)]) << Firebird::Arg::Str(newName.object.toQuotedString()));
-	}
-};
-
-
 class PackageItemsHolder
 {
 public:
+	template<class TArray, class TType>
+	class ItemNames : public TArray
+	{
+	public:
+		ItemNames() : TArray()
+		{}
+
+		explicit ItemNames(Firebird::MemoryPool& pool) : TArray(pool)
+		{}
+
+		operator TArray&()
+		{
+			return *this;
+		}
+
+		template<PackageItemType IValue>
+		void addName(const QualifiedName& newName)
+		{
+			checkDuplicate<IValue>(newName);
+			TArray::add(TType(newName.object));
+		}
+
+		template<PackageItemType IValue>
+		void checkDuplicate(const QualifiedName& newName)
+		{
+			if constexpr (std::is_same_v<TType, MetaName>)
+			{
+				if (!TArray::exist(newName.object))
+					return; // The name is unique
+			}
+			else
+			{
+				// Cast
+				if (!TArray::exist(TType(newName.object)))
+					return; // The name is unique
+			}
+
+			static_assert(size_t(IValue) >= 0 && size_t(IValue) < size_t(PackageItemType::META_SIZE), "Invalid item type");
+			static const std::array<const char*, size_t(PackageItemType::META_SIZE)> names{
+				"FUNCTION",
+				"PROCEDURE",
+				"CONSTANT",
+			};
+
+			// Print just the object name because the full path is present in the parent error message
+			Firebird::status_exception::raise(
+				Firebird::Arg::Gds(isc_no_meta_update) <<
+				Firebird::Arg::Gds(isc_dyn_duplicate_package_item) <<
+					Firebird::Arg::Str(names[size_t(IValue)]) << Firebird::Arg::Str(newName.object.toQuotedString()));
+		}
+	};
 	using ItemsSignatureArray = ItemNames<Firebird::SortedObjectsArray<Signature>, Signature>;
 
 public:
@@ -264,7 +262,7 @@ public:
 		DsqlCompilerScratch* dsqlScratch;
 	};
 
-	using ItemsNameArray = ItemNames<Firebird::SortedArray<MetaName>, MetaName>;
+	using ItemsNameArray = PackageItemsHolder::ItemNames<Firebird::SortedArray<MetaName>, MetaName>;
 
 public:
 	CreateAlterPackageNode(MemoryPool& pool, const QualifiedName& aName)

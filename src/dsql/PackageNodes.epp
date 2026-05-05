@@ -614,15 +614,6 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		status_exception::raise(Arg::Gds(isc_dyn_dup_const) << name.toQuotedString());
 	}
 
-	// Generate a new unique field name because constants in different packages may have same name
-	// but names in RDB$FIELDS should be unique in for a SCHEMA
-	QualifiedName fieldName = name;
-	fieldName.object = "";
-	// Store description in the RDB$FIELDS relation
-	storeGlobalField(tdbb, tdbb->getTransaction(), fieldName, m_type);
-	fb_assert(fieldName.schema == name.schema);
-	fb_assert(fieldName.package == name.package);
-
 	static const CachedRequestId requestId;
 	AutoCacheRequest storeConstantRequest(tdbb, requestId);
 
@@ -634,7 +625,22 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 		strcpy(CONST.RDB$CONSTANT_NAME, name.object.c_str());
 
 		// Description (filed) name
-		strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
+		if (m_type->typeOfName.object.hasData())
+		{
+			strcpy(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME, m_type->typeOfName.schema.c_str());
+			strcpy(CONST.RDB$FIELD_SOURCE, m_type->typeOfName.object.c_str());
+		}
+		else
+		{
+			// Generate a new unique field name because constants in different packages may have same name
+			// but names in RDB$FIELDS should be unique in for a SCHEMA
+			QualifiedName fieldName({}, name.schema);
+			storeGlobalField(tdbb, transaction, fieldName, m_type);
+			fb_assert(fieldName.schema == name.schema);
+
+			strcpy(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME, fieldName.schema.c_str());
+			strcpy(CONST.RDB$FIELD_SOURCE, fieldName.object.c_str());
+		}
 
 		// Gen value blr
 		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
@@ -683,7 +689,7 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 				CONST.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
 				CONST.RDB$PACKAGE_NAME EQ name.package.c_str() AND
 				CONST.RDB$CONSTANT_NAME EQ name.object.c_str() AND
-				FLD.RDB$SCHEMA_NAME EQ CONST.RDB$SCHEMA_NAME AND
+				FLD.RDB$SCHEMA_NAME EQ CONST.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				FLD.RDB$FIELD_NAME EQ CONST.RDB$FIELD_SOURCE
 	{
 		dyn_fld origDom, newDom;
@@ -700,7 +706,7 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		origDom.dyn_charlen = FLD.RDB$CHARACTER_LENGTH;
 		origDom.dyn_collation = FLD.RDB$COLLATION_ID;
 		origDom.dyn_null_flag = !FLD.RDB$NULL_FLAG.NULL && FLD.RDB$NULL_FLAG != 0;
-		origDom.dyn_fld_source = QualifiedName(CONST.RDB$FIELD_SOURCE, CONST.RDB$SCHEMA_NAME, CONST.RDB$PACKAGE_NAME);
+		origDom.dyn_fld_source = QualifiedName(CONST.RDB$FIELD_SOURCE, CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
 
 		// If the original field type is an array, force its blr type to blr_blob
 		if (FLD.RDB$DIMENSIONS != 0)
@@ -751,6 +757,7 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 			// Case b1: Internal domain -> internal domain.
 			// Case b2: Domain -> internal domain.
 
+			newDomainName.schema = name.schema;
 			m_type->resolve(dsqlScratch, true);
 
 			if (wasInternalDomain)	// Case b1: Internal domain -> internal domain.
@@ -788,8 +795,12 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 		ConstantValue::genConstantBlr(tdbb, dsqlScratch, m_expr, m_type, name.schema);
 
 		MODIFY CONST USING
+			if (newDomainName.object.hasData())
+			{
+				strcpy(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME, newDomainName.schema.c_str());
+				strcpy(CONST.RDB$FIELD_SOURCE, newDomainName.object.c_str());
+			}
 			attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_BLR, dsqlScratch->getBlrData());
-			CONST.RDB$CONSTANT_BLR.NULL = FALSE;
 		END_MODIFY
 
 		fb_assert(package);

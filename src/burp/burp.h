@@ -707,6 +707,7 @@ enum att_type {
 	att_constant_name = SERIES,
 	att_constant_package,
 	att_constant_field_source,
+	att_constant_field_source_schema,
 	att_constant_private_flag,
 	att_constant_blr,
 	att_constant_source,

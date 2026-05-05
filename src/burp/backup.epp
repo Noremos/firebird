@@ -4872,6 +4872,7 @@ void write_constants()
 		PUT_TEXT(att_constant_name, CONST.RDB$CONSTANT_NAME);
 		PUT_TEXT(att_constant_package, CONST.RDB$PACKAGE_NAME);
 		PUT_TEXT(att_constant_field_source, CONST.RDB$FIELD_SOURCE);
+		PUT_TEXT(att_constant_field_source_schema, CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
 
 		if (!CONST.RDB$PRIVATE_FLAG.NULL)
 			put_int32(att_constant_private_flag, CONST.RDB$PRIVATE_FLAG);

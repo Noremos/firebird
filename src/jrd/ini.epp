@@ -2172,6 +2172,7 @@ static void store_packages(thread_db* tdbb, NonRelationSecurity& security, USHOR
 				PAD(constant.name, CONST.RDB$CONSTANT_NAME);
 
 				// Description (filed) name
+				PAD(SYSTEM_SCHEMA, CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
 				PAD(names[gfields[constant.fieldId].gfld_name], CONST.RDB$FIELD_SOURCE);
 
 				// Put the blr

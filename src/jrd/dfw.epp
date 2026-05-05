@@ -1107,52 +1107,52 @@ namespace
 
 		switch (phase)
 		{
-		case 0:
-			return false;
-
-		case 1:
-		case 2:
-		case 3:
-			return true;
-
-		case 4:
-		{
-			const QualifiedName constantName = work->getQualifiedName();
-			const QualifiedName packageName = constantName.getSchemaAndPackage();
-
-			auto* package = MetadataCache::getVersioned<Cached::Package>(tdbb, packageName,
-				CacheFlag::AUTOCREATE);
-
-			fb_assert(package);
-			if (package == nullptr)
+			case 0:
 				return false;
 
-			auto constant = package->findConstant(constantName);
-			fb_assert(constant);
-			if (constant == nullptr)
-				return false;
+			case 1:
+			case 2:
+			case 3:
+				return true;
 
-			bid blobId = constant->getBlobId(tdbb);
-
-			Jrd::Database* dbb = tdbb->getDatabase();
-			MemoryPool* new_pool = dbb->createPool();
-			// block is used to ensure verify_cache()
-			// works in not deleted context
+			case 4:
 			{
-				Jrd::ContextPoolHolder context(tdbb, new_pool);
-				// Store constant dependencies as a package dependencies
-				MET_get_dependencies(tdbb, nullptr, nullptr, 0, nullptr, &blobId,
-					nullptr,
-					nullptr,
-					packageName, obj_package_header,
-					0, transaction);
+				const QualifiedName constantName = work->getQualifiedName();
+				const QualifiedName packageName = constantName.getSchemaAndPackage();
 
-				dbb->deletePool(new_pool);
-			}
+				auto* package = MetadataCache::getVersioned<Cached::Package>(tdbb, packageName,
+					CacheFlag::AUTOCREATE);
 
-			return false;
-		} // case
-		} //
+				fb_assert(package);
+				if (package == nullptr)
+					return false;
+
+				auto constant = package->findConstant(constantName);
+				fb_assert(constant);
+				if (constant == nullptr)
+					return false;
+
+				bid blobId = constant->getBlobId(tdbb);
+
+				Jrd::Database* dbb = tdbb->getDatabase();
+				MemoryPool* new_pool = dbb->createPool();
+				// block is used to ensure verify_cache()
+				// works in not deleted context
+				{
+					Jrd::ContextPoolHolder context(tdbb, new_pool);
+					// Store constant dependencies as a package dependencies
+					MET_get_dependencies(tdbb, nullptr, nullptr, 0, nullptr, &blobId,
+						nullptr,
+						nullptr,
+						packageName, obj_package_header,
+						0, transaction);
+
+					dbb->deletePool(new_pool);
+				}
+
+				return false;
+			} // case
+		} // switch
 
 		return false;
 	}

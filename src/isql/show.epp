@@ -6852,8 +6852,8 @@ static processing_state show_constants(const std::optional<QualifiedMetaString>&
 			isqlGlob.printf("%s (%s %s)%-20s", CONST.RDB$CONSTANT_NAME, CONST.RDB$PACKAGE_NAME, type, " ");
 
 			fb_utils::exact_name(CONST.RDB$FIELD_SOURCE);
-			fb_utils::exact_name(CONST.RDB$SCHEMA_NAME);
-			print_constant_type(CONST.RDB$FIELD_SOURCE, CONST.RDB$SCHEMA_NAME);
+			fb_utils::exact_name(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
+			print_constant_type(CONST.RDB$FIELD_SOURCE, CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
 
 			isqlGlob.printf(NEWLINE);
 		}
@@ -6883,8 +6883,8 @@ static processing_state show_constants(const std::optional<QualifiedMetaString>&
 			isqlGlob.printf("%s (%s %s)%-20s", CONST.RDB$CONSTANT_NAME, CONST.RDB$PACKAGE_NAME, type, " ");
 
 			fb_utils::exact_name(CONST.RDB$FIELD_SOURCE);
-			fb_utils::exact_name(CONST.RDB$SCHEMA_NAME);
-			print_constant_type(CONST.RDB$FIELD_SOURCE, CONST.RDB$SCHEMA_NAME);
+			fb_utils::exact_name(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
+			print_constant_type(CONST.RDB$FIELD_SOURCE, CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
 
 			isqlGlob.printf(NEWLINE);
 		}

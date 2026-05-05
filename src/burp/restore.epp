@@ -10593,6 +10593,10 @@ bool get_constants(BurpGlobals* tdgbl)
 				GET_TEXT(CONST.RDB$FIELD_SOURCE);
 				break;
 
+			case att_constant_field_source_schema:
+				GET_TEXT(CONST.RDB$FIELD_SOURCE_SCHEMA_NAME);
+				break;
+
 			case att_constant_private_flag:
 				CONST.RDB$PRIVATE_FLAG = (USHORT) get_int32(tdgbl);
 				break;
