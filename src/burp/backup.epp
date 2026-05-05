@@ -4893,10 +4893,10 @@ void write_constants()
 		BURP_verbose(USHORT(isc_gbak_writing_constant), SafeArg() << name.toQuotedString().data());
 		put(tdgbl, att_end);
 	}
-	END_FOR;
+	END_FOR
 	ON_ERROR
 		general_on_error();
-	END_ERROR;
+	END_ERROR
 
 	MISC_release_request_silent(req_handle1);
 }

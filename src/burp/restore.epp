@@ -10620,6 +10620,7 @@ bool get_constants(BurpGlobals* tdgbl)
 				CONST.RDB$DESCRIPTION.NULL = FALSE;
 				get_source_blob(tdgbl, CONST.RDB$DESCRIPTION, true);
 				break;
+
 			default:
 				bad_attribute(scan_next_attr, attribute, USHORT(isc_gbak_constant));
 				break;
@@ -10628,10 +10629,10 @@ bool get_constants(BurpGlobals* tdgbl)
 
 		BURP_verbose(USHORT(isc_gbak_restoring_constant), SafeArg() << name.toQuotedString().data());
 	}
-	END_STORE;
+	END_STORE
 	ON_ERROR
 		general_on_error();
-	END_ERROR;
+	END_ERROR
 
 	return true;
 }

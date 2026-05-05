@@ -400,8 +400,8 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 
 	switch (itemType)
 	{
-	case blr_pkg_reference_to_constant:
-	{
+		case blr_pkg_reference_to_constant:
+		{
 		QualifiedName fullName;
 		csb->csb_blr_reader.getMetaName(fullName.object);
 		csb->csb_blr_reader.getMetaName(fullName.schema);
@@ -426,8 +426,10 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 		}
 
 		if (!node->m_package)
+		{
 			status_exception::raise(Arg::Gds(isc_bad_constant_name) <<
 				Arg::Str(fullName.toQuotedString()));
+		}
 
 		return node;
 	}
@@ -681,7 +683,8 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 	// Get existing filed
 	// Store constant dsc in RDB$FIELDS
 	FOR (REQUEST_HANDLE eraseDscRequest TRANSACTION_HANDLE transaction)
-		FLD IN RDB$FIELDS CROSS CONST IN RDB$CONSTANTS
+		FLD IN RDB$FIELDS
+		CROSS CONST IN RDB$CONSTANTS
 		CROSS PACKAGE IN RDB$PACKAGES
 			WITH PACKAGE.RDB$PACKAGE_NAME EQ name.package.c_str() AND
 				PACKAGE.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
@@ -779,7 +782,6 @@ bool CreatePackageConstantNode::executeAlter(thread_db* tdbb, DsqlCompilerScratc
 				storeGlobalField(tdbb, transaction, newDomainName, m_type);
 		}
 
-
 		if (newDomainName.object.hasData())
 			newDom.dyn_fld_source = newDomainName;
 
@@ -876,6 +878,7 @@ DdlNode* CreateAlterPackageNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 				proc->name.package = name.object;
 				break;
 			}
+
 			case PackageItemType::CONSTANT:
 			{
 				CreatePackageConstantNode* const constant = (*items)[i].constant;
@@ -1347,6 +1350,7 @@ DdlNode* CreatePackageBodyNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 
 					break;
 				}
+
 				case PackageItemType::CONSTANT:
 				{
 					CreatePackageConstantNode* const constant = (*arrays[i])[j].constant;
@@ -1510,6 +1514,7 @@ void CreatePackageBodyNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 					proc->executeDdl(tdbb, elem.dsqlScratch, transaction, true);
 					break;
 				}
+
 				case PackageItemType::CONSTANT:
 				{
 					CreatePackageConstantNode* constant = elem.constant;

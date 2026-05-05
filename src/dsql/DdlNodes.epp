@@ -15784,6 +15784,7 @@ static bool checkObjectExist(thread_db* tdbb, jrd_tra* transaction, const Qualif
 			END_FOR
 			break;
 		}
+
 		case obj_package_constant:
 		{
 			static const CachedRequestId requestId;
