@@ -720,9 +720,6 @@ public:
 	// CoalesceNode
 	// ConcatenateNode
 	// DecodeNode
-	// DefaultNode
-	// DerivedExprNode
-	// DomainValidationNode
 	// ExtractNode
 	// NegateNode
 	// ScalarNode

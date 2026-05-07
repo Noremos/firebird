@@ -690,11 +690,6 @@ public:
 	void genBlr(DsqlCompilerScratch* dsqlScratch) override;
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) override;
 
-	bool constant() const override
-	{
-		return isChildrenConstant();
-	}
-
 	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 
 	ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) override;
@@ -754,11 +749,6 @@ public:
 		fb_assert(false);
 	}
 
-	bool constant() const override
-	{
-		return isChildrenConstant();
-	}
-
 	void collectStreams(SortedStreamList& streamList) const override;
 
 	bool computable(CompilerScratch* csb, StreamType stream,
@@ -797,11 +787,6 @@ public:
 
 	void genBlr(DsqlCompilerScratch* dsqlScratch) override;
 	void make(DsqlCompilerScratch* dsqlScratch, dsc* desc) override;
-
-	bool constant() const override
-	{
-		return isChildrenConstant();
-	}
 
 	void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc) override;
 	ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const override;
