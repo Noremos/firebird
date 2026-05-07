@@ -100,6 +100,32 @@ Objectives:
 
       A package constant is a value initialized by a constant expression.
       A constant expression is defined by a simple rule: its value does not change after recompilation.
+      The following expressions are allowed:
+      1) Any constant literal
+      2) NULL
+
+      The following expressions are valid only if all operands are constants:
+      1) Arithmetic operations, unary plus/minus
+      2) Bool As Value
+      3) CAST, COALESCE, CONCATENATE, DECODE, EXTRACT, UPPER/LOWER, SUBSTRING
+      4) BIT_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, OCTET_LENGTH
+      5) TRIM, LTRIM, RTRIM, BTRIM
+      6) NULLIF, IIF, CASE
+      7) Other constants
+      8) ABS, ACOS, ASIN, ASINH, ATAN, ATANH, ATAN2, SIGN, SIN, SINH, TAN, TANH, COS, COT
+      9) BIN_*, CEIL, CEILING, FLOOR, ROUND, MOD, EXP, MAXVALUE, MINVALUE, POWER, COMPARE_DECFLOAT, TRUNC, SQRT
+      10) GREATEST, LEAST
+      11) LN, LOG, LOG10, PI
+      12) MAKE_DBKEY, OVERLAY, NORMALIZE_DECFLOAT, QUANTIZE, TOTALORDER
+      13) HEX_DECODE, HEX_ENCODE, BASE64_DECODE, BASE64_ENCODE, RSA_DECRYPT, RSA_ENCRYPT, RSA_SIGN_HASH, RSA_VERIFY_HASH
+      14) DECRYPT, ENCRYPT, HASH, CRYPT_HASH
+      15) LEFT, REPLACE, REVERSE, RIGHT, LPAD, RPAD, POSITION
+      16) CHAR_TO_UUID, UNICODE_CHAR, UNICODE_VAL, UUID_TO_CHAR, ASCII_CHAR, ASCII_VAL
+      17) LAST_DAY, FIRST_DAY, DATEADD, DATEDIFF
+
+      For example, the expression `CAST(PI() / 2 as CHAR(50))` is constant.
+      However, the expression `EXTRACT(YEAR FROM CURRENT_DATE)` is not.
+
       Constants declared in the package specification are publicly visible and can be referenced using
       the [<schema>.]<package>.<constant_name> notation.
       Constants declared in the package body are private and cannot be accessed from outside the package.
