@@ -165,18 +165,11 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		return &m_value.vlu_desc;
 
 	Attachment* attachment = tdbb->getAttachment();
-	MemoryPool* csb_pool = nullptr;
-
-	Cleanup poolCleanup([&]()
-	{
-		attachment->att_database->deletePool(csb_pool);
-	});
-
-	csb_pool = attachment->att_database->createPool();
 
 	try
 	{
-		ContextPoolHolder context(tdbb, csb_pool);
+		// Not sure why, but this new pool should not be deleted
+		ContextPoolHolder context(tdbb, attachment->att_database->createPool());
 
 		CompilerScratch* csb = nullptr;
 		Cleanup cc([&]()
@@ -224,7 +217,6 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		(Arg::StatusVector(temp_status.begin()) <<
 			Arg::Gds(isc_bad_constant_blr) << quotedName).raise();
 	}
-	csb_pool = nullptr; // Do not delete
 
 	return &m_value.vlu_desc;
 }
