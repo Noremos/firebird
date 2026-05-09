@@ -166,16 +166,14 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 
 	Attachment* attachment = tdbb->getAttachment();
 
+	MemoryPool* csb_pool = attachment->att_database->createPool();
+	Statement* handmadeStmt = nullptr;
 	try
 	{
-		// Not sure why, but this new pool should not be deleted
-		ContextPoolHolder context(tdbb, attachment->att_database->createPool());
+		ContextPoolHolder context(tdbb, csb_pool);
 
 		CompilerScratch* csb = nullptr;
-		Cleanup cc([&]()
-		{
-			delete csb;
-		});
+		Cleanup cc([csb]() {delete csb;});
 
 		// Use cached ID or get a real one (is it probably materialized)
 		bid constantBid = getBlobId(tdbb);
@@ -186,7 +184,6 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		if (request == nullptr)
 		{
 			// Came from Reload
-			Statement* handmadeStmt = nullptr;
 			handmadeStmt = Statement::makeStatement(tdbb, csb, true);
 			request = handmadeStmt->makeRootRequest(tdbb);
 
@@ -210,6 +207,14 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 	}
 	catch (const Exception& ex)
 	{
+		if (handmadeStmt)
+		{
+			request->setUnused();
+			handmadeStmt->release(tdbb);
+		}
+		else
+			attachment->att_database->deletePool(csb_pool);
+
 		StaticStatusVector temp_status;
 		ex.stuffException(temp_status);
 
