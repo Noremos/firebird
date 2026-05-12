@@ -397,14 +397,14 @@ namespace
 				break;
 
 			case obj_package_header:
-				privileges = EXEC_PRIVILEGES;
+				privileges = SYSTEM_PACKAGE_PRIVILEGES;
 				break;
 
 			default:
 				fb_assert(false);
 			}
 
-			fb_assert(privileges && privileges[0] && !privileges[1]);
+			fb_assert(privileges && privileges[0] && (!privileges[1] || !privileges[2]));
 
 			const auto userName = getOwnerName();
 			fb_assert(userName && *userName);
@@ -421,8 +421,9 @@ namespace
 					PAD(users[i], PRIV.RDB$USER);
 					PAD(SYSTEM_SCHEMA, PRIV.RDB$RELATION_SCHEMA_NAME);
 					PAD(objName, PRIV.RDB$RELATION_NAME);
-					PRIV.RDB$PRIVILEGE[0] = *privileges;
-					PRIV.RDB$PRIVILEGE[1] = 0;
+					PRIV.RDB$PRIVILEGE[0] = privileges[0];
+					PRIV.RDB$PRIVILEGE[1] = privileges[1];
+					PRIV.RDB$PRIVILEGE[2] = 0;
 					PRIV.RDB$GRANT_OPTION = grantOptions[i];
 					PRIV.RDB$USER_TYPE = obj_user;
 					PRIV.RDB$OBJECT_TYPE = objType;
