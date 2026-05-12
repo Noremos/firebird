@@ -5509,6 +5509,25 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 					break;
 				}
 
+				case obj_package_constant:
+				{
+					static const CachedRequestId consatntHandleId;
+					handle.reset(tdbb, consatntHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						CONST IN RDB$CONSTANTS
+						WITH CONST.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 CONST.RDB$CONSTANT_NAME EQ name.object.c_str() AND
+							 CONST.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '')
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
 				default:
 					fb_assert(false);
 			}

@@ -6477,7 +6477,7 @@ ValueExprNode* FieldNode::internalDsqlPass(DsqlCompilerScratch* dsqlScratch, Rec
 
 		if (constantName.package.hasData())
 		{
-			dsqlScratch->qualifyNewName(constantName);
+			dsqlScratch->qualifyExistingName(constantName, obj_package_constant);
 
 			if (PackageReferenceNode::constantExists(tdbb, dsqlScratch->getTransaction(), constantName))
 			{
