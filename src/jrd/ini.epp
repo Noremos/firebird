@@ -330,16 +330,20 @@ namespace
 			const size_t ownerNameLength = ownerName.length();
 			fb_assert(ownerNameLength <= MAX_UCHAR);
 
-			const UCHAR privilege = package ? priv_execute : priv_usage;
+			Firebird::Vector<UCHAR, 8> NON_REL_OWNER_ACL
+				{ACL_priv_list, priv_control, priv_alter, priv_drop, priv_usage, ACL_end};
 
-			const UCHAR NON_REL_OWNER_ACL[] =
-				{ACL_priv_list, priv_control, priv_alter, priv_drop, privilege, ACL_end};
+			Firebird::Vector<UCHAR, 4> NON_REL_PUBLIC_ACL
+				{ACL_priv_list, priv_usage, ACL_end};
 
-			const UCHAR NON_REL_PUBLIC_ACL[] =
-				{ACL_priv_list, privilege, ACL_end};
+			if (package)
+			{
+				NON_REL_OWNER_ACL.insert(NON_REL_OWNER_ACL.getCount() - 2, priv_execute);
+				NON_REL_PUBLIC_ACL.insert(NON_REL_PUBLIC_ACL.getCount() - 2, priv_execute);
+			}
 
 			fb_assert(sizeof(buffer) >= 8 + ownerNameLength +
-					  sizeof(NON_REL_OWNER_ACL) + sizeof(NON_REL_PUBLIC_ACL));
+					  NON_REL_OWNER_ACL.getCount() + NON_REL_PUBLIC_ACL.getCount());
 
 			UCHAR* acl = buffer;
 			*acl++ = ACL_version;
@@ -352,14 +356,14 @@ namespace
 
 			*acl++ = ACL_end;
 
-			memcpy(acl, NON_REL_OWNER_ACL, sizeof(NON_REL_OWNER_ACL));
-			acl += sizeof(NON_REL_OWNER_ACL);
+			memcpy(acl, NON_REL_OWNER_ACL.begin(), NON_REL_OWNER_ACL.getCount());
+			acl += NON_REL_OWNER_ACL.getCount();
 
 			*acl++ = ACL_id_list;
 			*acl++ = ACL_end;
 
-			memcpy(acl, NON_REL_PUBLIC_ACL, sizeof(NON_REL_PUBLIC_ACL));
-			acl += sizeof(NON_REL_PUBLIC_ACL);
+			memcpy(acl, NON_REL_PUBLIC_ACL.begin(), NON_REL_PUBLIC_ACL.getCount());
+			acl += NON_REL_PUBLIC_ACL.getCount();
 
 			*acl++ = ACL_end; // Extra terminator to avoid scl.epp:walk_acl() missing the end
 
