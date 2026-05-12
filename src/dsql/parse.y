@@ -3341,6 +3341,7 @@ package_const_item
 	: symbol_package_const_name data_type_descriptor '=' value
 		{
 			$$ = newNode<CreatePackageConstantNode>(*$1, $2, $4);
+			$$->source = makeParseStr(YYPOSNARG(3), YYPOSNARG(4));
 		}
 	;
 

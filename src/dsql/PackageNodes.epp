@@ -576,6 +576,7 @@ string CreatePackageConstantNode::internalPrint(NodePrinter& printer) const
 	DdlNode::internalPrint(printer);
 
 	NODE_PRINT(printer, name);
+	NODE_PRINT(printer, source);
 	NODE_PRINT(printer, m_type);
 	NODE_PRINT(printer, m_expr);
 	NODE_PRINT(printer, m_isPrivate);
@@ -586,6 +587,8 @@ string CreatePackageConstantNode::internalPrint(NodePrinter& printer) const
 DdlNode* CreatePackageConstantNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
 	dsqlScratch->qualifyNewName(name);
+
+	source.ltrim("\n\r\t ");
 
 	m_expr = m_expr->dsqlPass(dsqlScratch);
 
@@ -676,7 +679,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 
 		CONST.RDB$PRIVATE_FLAG = m_isPrivate;
 
-		CONST.RDB$CONSTANT_SOURCE.NULL = TRUE;
+		attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_SOURCE, source);
 	}
 	END_STORE
 }
