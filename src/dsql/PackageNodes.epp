@@ -679,7 +679,7 @@ void CreatePackageConstantNode::executeCreate(thread_db* tdbb, DsqlCompilerScrat
 
 		CONST.RDB$PRIVATE_FLAG = m_isPrivate;
 
-		attachment->storeBinaryBlob(tdbb, transaction, &CONST.RDB$CONSTANT_SOURCE, source);
+		attachment->storeMetaDataBlob(tdbb, transaction, &CONST.RDB$CONSTANT_SOURCE, source);
 	}
 	END_STORE
 }
