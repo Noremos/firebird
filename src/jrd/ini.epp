@@ -330,10 +330,10 @@ namespace
 			const size_t ownerNameLength = ownerName.length();
 			fb_assert(ownerNameLength <= MAX_UCHAR);
 
-			Firebird::Vector<UCHAR, 8> NON_REL_OWNER_ACL
+			Vector<UCHAR, 8> NON_REL_OWNER_ACL
 				{ACL_priv_list, priv_control, priv_alter, priv_drop, priv_usage, ACL_end};
 
-			Firebird::Vector<UCHAR, 4> NON_REL_PUBLIC_ACL
+			Vector<UCHAR, 4> NON_REL_PUBLIC_ACL
 				{ACL_priv_list, priv_usage, ACL_end};
 
 			if (package)
