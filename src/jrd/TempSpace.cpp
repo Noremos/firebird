@@ -328,9 +328,14 @@ FB_SIZE_T TempSpace::write(offset_t offset, const void* buffer, FB_SIZE_T length
 
 void TempSpace::extend(FB_SIZE_T size)
 {
-	logicalSize += size;
+	const auto originalLogicalSize = logicalSize;
+	const auto originalPhysicalSize = physicalSize;
 
-	if (logicalSize > physicalSize)
+	logicalSize += size;
+	if (logicalSize <= physicalSize)
+		return;
+
+	try
 	{
 		const FB_SIZE_T initialSize = initialBuffer.getCount();
 
@@ -399,12 +404,10 @@ void TempSpace::extend(FB_SIZE_T size)
 			}
 		}
 
-		// NS 2014-07-31: FIXME: missing exception handling.
-		// error thrown in block of code below will leave TempSpace in inconsistent state:
-		// logical/physical size already increased while allocation has in fact failed.
 		if (!block)
 		{
 			// allocate block in the temp file
+			// Possible error thrown when not enough physical memory
 			TempFile* const file = setupFile(size);
 			fb_assert(file);
 			if (tail && tail->sameFile(file))
@@ -429,6 +432,13 @@ void TempSpace::extend(FB_SIZE_T size)
 			head = block;
 		}
 		tail = block;
+	}
+	catch (...)
+	{
+		// Restore original state
+		logicalSize = originalLogicalSize;
+		physicalSize = originalPhysicalSize;
+		throw;
 	}
 }
 
