@@ -258,7 +258,11 @@ TempSpace::~TempSpace()
 
 FB_SIZE_T TempSpace::read(offset_t offset, void* buffer, FB_SIZE_T length)
 {
-	fb_assert(offset + length <= logicalSize);
+	if (offset + length > logicalSize)
+	{
+		status_exception::raise(Arg::Gds(isc_temp_space_invalid_pos) <<
+			Arg::Num(offset + length) << Arg::Num(logicalSize));
+	}
 
 	if (length)
 	{
@@ -290,7 +294,11 @@ FB_SIZE_T TempSpace::read(offset_t offset, void* buffer, FB_SIZE_T length)
 
 FB_SIZE_T TempSpace::write(offset_t offset, const void* buffer, FB_SIZE_T length)
 {
-	fb_assert(offset <= logicalSize);
+	if (offset > logicalSize)
+	{
+		status_exception::raise(Arg::Gds(isc_temp_space_invalid_pos) <<
+			Arg::Num(offset) << Arg::Num(logicalSize));
+	}
 
 	if (offset + length > logicalSize)
 	{
