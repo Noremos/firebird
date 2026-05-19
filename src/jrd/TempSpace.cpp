@@ -331,7 +331,7 @@ void TempSpace::extend(FB_SIZE_T size)
 	const auto originalLogicalSize = logicalSize;
 	const auto originalPhysicalSize = physicalSize;
 
-	AutoPtr<Block> delayDelete; // Restore in case of error
+	AutoPtr<Block> originalHead; // Delay deletion and restore in case of error
 	Block* originalTail = tail;
 
 	logicalSize += size;
@@ -375,7 +375,7 @@ void TempSpace::extend(FB_SIZE_T size)
 		if (initialSize)
 		{
 			fb_assert(head == tail);
-			delayDelete = head;
+			originalHead = head;
 			head = tail = NULL;
 			size = static_cast<FB_SIZE_T>(FB_ALIGN(logicalSize, minBlockSize));
 			physicalSize = size;
@@ -441,7 +441,7 @@ void TempSpace::extend(FB_SIZE_T size)
 		// Restore original state
 		logicalSize = originalLogicalSize;
 		physicalSize = originalPhysicalSize;
-		head = delayDelete.release();
+		head = originalHead.release();
 		tail = originalTail;
 		throw;
 	}
