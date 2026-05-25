@@ -474,6 +474,7 @@ void PackageReferenceNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 	jrd_tra* transaction = dsqlScratch->getTransaction();
 	thread_db* tdbb = JRD_get_thread_data();
 	*desc = ConstantValue::getDesc(tdbb, transaction, m_fullName);
+	desc->setNullable(true);
 }
 
 bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
@@ -503,6 +504,7 @@ bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transac
 void PackageReferenceNode::getDesc(thread_db* tdbb, CompilerScratch*, dsc* desc)
 {
 	*desc = ConstantValue::getDesc(tdbb, tdbb->getTransaction(), m_fullName);
+	desc->setNullable(true);
 }
 
 ValueExprNode* PackageReferenceNode::copy(thread_db* tdbb, NodeCopier& copier) const
@@ -550,7 +552,6 @@ ValueExprNode* PackageReferenceNode::pass2(thread_db* tdbb, CompilerScratch* csb
 
 dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 {
-	impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
 	switch (m_itemType)
 	{
 		case blr_pkg_reference_to_constant:
@@ -558,7 +559,12 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 			Package* package = m_package(request->getResources());
 			package->checkReload(tdbb);
 
-			EVL_make_value(tdbb, package->findConstant(m_fullName)->makeValue(tdbb, request), outputImpure);
+			dsc* constantDsc = package->findConstant(m_fullName)->makeValue(tdbb, request);
+			if (constantDsc == nullptr || constantDsc->isNull())
+				return nullptr;
+
+			impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
+			EVL_make_value(tdbb, constantDsc, outputImpure);
 			return &outputImpure->vlu_desc;
 		}
 	default:
