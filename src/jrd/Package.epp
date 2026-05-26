@@ -84,8 +84,10 @@ dsc ConstantValue::getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const Qua
 			CSetId(FLD.RDB$CHARACTER_SET_ID),
 			CollId(FLD.RDB$COLLATION_ID));
 
-			if (!succeed)
-				(Arg::Gds(isc_bad_constant_desc) << Arg::Str(name.toQuotedString())).raise();
+		if (!succeed)
+			(Arg::Gds(isc_bad_constant_desc) << Arg::Str(name.toQuotedString())).raise();
+
+		desc.setNullable(FLD.RDB$NULL_FLAG.NULL || FLD.RDB$NULL_FLAG == 0);
 	}
 
 	END_FOR

@@ -474,7 +474,6 @@ void PackageReferenceNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 	jrd_tra* transaction = dsqlScratch->getTransaction();
 	thread_db* tdbb = JRD_get_thread_data();
 	*desc = ConstantValue::getDesc(tdbb, transaction, m_fullName);
-	desc->setNullable(true);
 }
 
 bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transaction,
@@ -504,7 +503,6 @@ bool PackageReferenceNode::constantExists(thread_db* tdbb, Jrd::jrd_tra* transac
 void PackageReferenceNode::getDesc(thread_db* tdbb, CompilerScratch*, dsc* desc)
 {
 	*desc = ConstantValue::getDesc(tdbb, tdbb->getTransaction(), m_fullName);
-	desc->setNullable(true);
 }
 
 ValueExprNode* PackageReferenceNode::copy(thread_db* tdbb, NodeCopier& copier) const
