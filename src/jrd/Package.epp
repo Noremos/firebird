@@ -163,7 +163,7 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 	}
 
 	WriteLockGuard guard(m_makeValueLock, FB_FUNCTION);
-	if (m_value.vlu_desc.dsc_dtype != 0) // Extra check in case of two callers waiting
+	if (m_value.vlu_desc.dsc_dtype != dtype_unknown) // Extra check in case of two callers waiting
 		return &m_value.vlu_desc;
 
 	Attachment* attachment = tdbb->getAttachment();
