@@ -198,7 +198,7 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 
 			TRA_attach_request(tdbb->getTransaction(), request);
 
-			//! Execute it here, while AutoSetRestore2 is active
+			// Execute it here, while AutoSetRestore2 is active
 			executeCsbNode(tdbb, csb);
 		}
 		else
