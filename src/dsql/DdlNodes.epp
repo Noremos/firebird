@@ -6696,78 +6696,54 @@ MetaId RelationNode::generateRelId(thread_db* tdbb, MetaName name)
 	AUTO_HANDLE(requestDb);
 	auto* metaTransaction = attachment->getMetaTransaction(tdbb);
 
-	FOR(REQUEST_HANDLE requestDb TRANSACTION_HANDLE metaTransaction)
-		D IN RDB$DATABASE
-	{
-		MetaId startId = D.RDB$RELATION_ID;
-		MetaId stopId = MAX_RELATION_ID + 1;
+	MetaId startId = DPM_gen_id(tdbb, RELATIONS_GENERATOR, false, 0);
+	MetaId stopId = MAX_RELATION_ID + 1;
 
 // !!!!!! printf("suggest %d %s...", startId, name.c_str()); fflush(stdout);
 
-		for(;;)
+	for(;;)
+	{
+		if (startId < MIN_RELATION_ID || startId > MAX_RELATION_ID)
+			startId = MIN_RELATION_ID;
+
+		relId = startId;
+		enum {MISS, VALID, FREE} found = FREE;
+
+		AUTO_HANDLE(requestRels);
+
+		FOR(REQUEST_HANDLE requestRels TRANSACTION_HANDLE metaTransaction)
+			R IN RDB$RELATIONS
+				WITH R.RDB$RELATION_ID GE startId
+					AND R.RDB$RELATION_ID LT stopId
+				SORTED BY R.RDB$RELATION_ID
 		{
-			if (startId < MIN_RELATION_ID || startId > MAX_RELATION_ID)
-				startId = MIN_RELATION_ID;
-
-			relId = startId;
-			enum {MISS, VALID, FREE} found = FREE;
-
-			AUTO_HANDLE(requestRels);
-
-			FOR(REQUEST_HANDLE requestRels TRANSACTION_HANDLE metaTransaction)
-				R IN RDB$RELATIONS
-					WITH R.RDB$RELATION_ID GE startId
-						AND R.RDB$RELATION_ID LT stopId
-					SORTED BY R.RDB$RELATION_ID
+			found = MISS;
+			if (checkIdRange(tdbb, relId, R.RDB$RELATION_ID))
 			{
-				found = MISS;
-				if (checkIdRange(tdbb, relId, R.RDB$RELATION_ID))
-				{
-					found = VALID;
-					break;
-				}
+				found = VALID;
+				break;
 			}
-			END_FOR
+		}
+		END_FOR
 
-			if (found == FREE)
-				found = checkIdRange(tdbb, relId, stopId) ? VALID : MISS;
+		if (found == FREE)
+			found = checkIdRange(tdbb, relId, stopId) ? VALID : MISS;
 
-			if (found == VALID)
-			{
-				AUTO_HANDLE(requestMod);
-
-				jrd_tra* previous = tdbb->getTransaction();
-				jrd_tra* traMod = TRA_start(tdbb, 0, DEFAULT_LOCK_TIMEOUT);
-				Cleanup rollback([&]()
-					{
-						if (traMod)
-							TRA_rollback(tdbb, traMod, false, true);
-						tdbb->setTransaction(previous);
-					});
-
-				FOR(REQUEST_HANDLE requestMod TRANSACTION_HANDLE traMod)
-					DBMOD IN RDB$DATABASE
-						MODIFY DBMOD USING
-							DBMOD.RDB$RELATION_ID = relId + 1;
-						END_MODIFY
-				END_FOR
-
-				TRA_commit(tdbb, traMod, false);
-				traMod = nullptr;
+		if (found == VALID)
+		{
+			DPM_gen_id(tdbb, RELATIONS_GENERATOR, true, relId + 1);
 
 // !!!!!! printf(" %d\n", relId); fflush(stdout);
-				return relId;
-			}
-			fb_assert(found == MISS);
-
-			if (startId == MIN_RELATION_ID)
-				break;
-
-			stopId = startId;
-			startId = MIN_RELATION_ID;
+			return relId;
 		}
+		fb_assert(found == MISS);
+
+		if (startId == MIN_RELATION_ID)
+			break;
+
+		stopId = startId;
+		startId = MIN_RELATION_ID;
 	}
-	END_FOR
 
 // !!!!!! printf("\n"); fflush(stdout);
 	ERR_post(Arg::Gds(isc_no_meta_update) <<
@@ -12552,7 +12528,7 @@ void ModifyIndexNode::modify(thread_db* tdbb, jrd_tra* transaction)
 	if (create)
 		step2(tdbb, transaction);
 
-	if (indexRelation->rel_flags & REL_temp_conn)
+	if (indexRelation->rel_flags & REL_temp_gtt)
 	{
 		AutoSetRestoreFlag preserveFlags(&tdbb->tdbb_flags, TDBB_use_db_page_space, false);
 

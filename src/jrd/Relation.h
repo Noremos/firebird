@@ -1203,6 +1203,7 @@ inline void GCLock::Exclusive::release()
 // Field block, one for each field in a scanned relation
 
 inline constexpr USHORT FLD_parse_computed = 0x0001;	// computed expression is being parsed
+inline constexpr USHORT FLD_not_null =		 0x0002;	// field cannot be NULL (dups fld_not_null for virtual rel)
 
 class jrd_fld : public pool_alloc<type_fld>
 {

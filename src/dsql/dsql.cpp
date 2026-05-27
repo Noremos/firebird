@@ -1386,8 +1386,9 @@ dsql_rel::dsql_rel(MemoryPool& p, jrd_rel* jrel)
 		fld->charLength = jfld->fld_character_length;
 		fld->fieldSource = jfld->fld_source_name;
 		fld->setExactPrecision();
+		fb_assert(jfld->fld_not_null ? jfld->fld_flags & FLD_not_null : true);
 		fld->flags |= (jfld->fld_computation ? FLD_computed : 0) |
-					  (jfld->fld_not_null ? 0 : FLD_nullable);
+					  (jfld->fld_flags & FLD_not_null ? 0 : FLD_nullable);
 		if (rel_flags & REL_view)
 			fld->flags |= FLD_nullable;
 

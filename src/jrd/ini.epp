@@ -780,11 +780,13 @@ void INI_format(thread_db* tdbb, const string& charset)
 
 	STORE(REQUEST_HANDLE handle) X IN RDB$DATABASE
 	{
-		X.RDB$RELATION_ID = (int) USER_DEF_REL_INIT_ID;
+		X.RDB$RELATION_ID = 0;
 		PAD(charSetName.object.c_str(), X.RDB$CHARACTER_SET_NAME);
 		PAD(charSetName.schema.c_str(), X.RDB$CHARACTER_SET_SCHEMA_NAME);
 	}
 	END_STORE
+
+	DPM_gen_id(tdbb, RELATIONS_GENERATOR, true, USER_DEF_REL_INIT_ID);
 
 	HalfStaticArray<QualifiedName, 2> predefinedSchemas;
 
@@ -1013,6 +1015,8 @@ void INI_init(thread_db* tdbb)
 			field->fld_name = localFields[fieldPos].name;
 			field->fld_source_name = QualifiedName(names[localFields[fieldPos].gfield->gfld_name], SYSTEM_SCHEMA);
 			field->fld_length = localFields[fieldPos].gfield->gfld_length;
+			if (!localFields[fieldPos].gfield->gfld_nullable)
+				field->fld_flags |= FLD_not_null;
 			*iter = field;
 			++fieldPos;
 		}

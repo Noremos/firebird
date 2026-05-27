@@ -186,6 +186,7 @@
     <ClInclude Include="..\..\..\src\common\CvtFormatImpl.h" />
     <ClInclude Include="..\..\..\src\common\db_alias.h" />
     <ClInclude Include="..\..\..\src\common\DecFloat.h" />
+    <ClInclude Include="..\..\..\src\common\DeindentedStr.h" />
     <ClInclude Include="..\..\..\src\common\dllinst.h" />
     <ClInclude Include="..\..\..\src\common\dsc.h" />
     <ClInclude Include="..\..\..\src\common\dsc_proto.h" />

@@ -150,7 +150,7 @@ namespace {
 	{
 	public:
 		UseStandardBuffer(cstring& toSave)
-			: UsePreallocatedBuffer(toSave,0, nullptr)
+			: UsePreallocatedBuffer(toSave, 0, nullptr)
 		{ }
 
 		~UseStandardBuffer()
@@ -7856,6 +7856,8 @@ static void secureAuthentication(ClntAuthBlock& cBlock, rem_port* port)
 	{
 		LocalStatus ls;
 		CheckStatusWrapper st(&ls);
+
+		UseStandardBuffer guard(packet->p_resp.p_resp_data);
 		authReceiveResponse(true, cBlock, port, rdb, &st, packet, true);
 
 		if (st.getState() & IStatus::STATE_ERRORS)
@@ -8997,6 +8999,8 @@ static bool init(CheckStatusWrapper* status, ClntAuthBlock& cBlock, rem_port* po
 			attach->p_atch_file.cstr_address = reinterpret_cast<const UCHAR*>(file_name.c_str());
 			attach->p_atch_dpb.cstr_length = (ULONG) dpb.getBufferLength();
 			attach->p_atch_dpb.cstr_address = dpb.getBuffer();
+
+			UseStandardBuffer guard(packet->p_resp.p_resp_data);
 
 			send_packet(port, packet);
 			try
@@ -10424,25 +10428,20 @@ ICryptKey* ClntAuthBlock::newKey(CheckStatusWrapper* status)
 
 void ClntAuthBlock::tryNewKeys(rem_port* port)
 {
-	for (unsigned k = cryptKeys.getCount(); k--; )
+	while (cryptKeys.hasData())
 	{
-		if (port->tryNewKey(cryptKeys[k]))
-		{
-			releaseKeys(k);
-			cryptKeys.clear();
-			return;
-		}
+		auto* key = cryptKeys.pop();
+		if (port->tryNewKey(key))
+			break;
 	}
 
-	cryptKeys.clear();
+	releaseKeys();
 }
 
-void ClntAuthBlock::releaseKeys(unsigned from)
+void ClntAuthBlock::releaseKeys()
 {
-	while (from < cryptKeys.getCount())
-	{
-		delete cryptKeys[from++];
-	}
+	while (cryptKeys.hasData())
+		delete cryptKeys.pop();
 }
 
 void ClntAuthBlock::createCryptCallback(ICryptKeyCallback** callback)
