@@ -50,7 +50,7 @@ DATABASE DB = FILENAME "ODS.RDB";
 
 
 // Exclude address from the hash calculation due to it possible change
-constexpr inline ULONG DSC_SIZE_TO_HASH = sizeof(dsc) - offsetof(dsc, dsc_address);
+constexpr inline ULONG DSC_SIZE_TO_HASH = offsetof(dsc, dsc_address);
 
 bool ConstantValue::hash(thread_db* tdbb, Firebird::sha512& digest) const
 {
