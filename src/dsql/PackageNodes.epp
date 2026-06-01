@@ -558,7 +558,11 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 			Package* package = m_package(request->getResources());
 			package->checkReload(tdbb);
 
-			EVL_make_value(tdbb, package->findConstant(m_fullName)->makeValue(tdbb, request), outputImpure);
+			auto* constant = package->findConstant(m_fullName);
+			if (constant == nullptr) // Cloud be possible in case of mixing DDL and DML
+				return nullptr;
+
+			EVL_make_value(tdbb, constant->makeValue(tdbb, request), outputImpure);
 			return &outputImpure->vlu_desc;
 		}
 	default:
