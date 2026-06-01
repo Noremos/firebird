@@ -92,8 +92,10 @@ dsc ConstantValue::getDesc(thread_db* tdbb, Jrd::jrd_tra* transaction, const Qua
 			CSetId(FLD.RDB$CHARACTER_SET_ID),
 			CollId(FLD.RDB$COLLATION_ID));
 
-			if (!succeed)
-				(Arg::Gds(isc_bad_constant_desc) << Arg::Str(name.toQuotedString())).raise();
+		if (!succeed)
+			(Arg::Gds(isc_bad_constant_desc) << Arg::Str(name.toQuotedString())).raise();
+
+		desc.setNullable(FLD.RDB$NULL_FLAG.NULL || FLD.RDB$NULL_FLAG == 0);
 	}
 
 	END_FOR
@@ -164,12 +166,12 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 {
 	{
 		ReadLockGuard guard(m_makeValueLock, FB_FUNCTION);
-		if (m_value.vlu_desc.dsc_address != nullptr)
+		if (m_value.vlu_desc.dsc_dtype != dtype_unknown)
 			return &m_value.vlu_desc;
 	}
 
 	WriteLockGuard guard(m_makeValueLock, FB_FUNCTION);
-	if (m_value.vlu_desc.dsc_address != nullptr) // Extra check in case of two callers waiting
+	if (m_value.vlu_desc.dsc_dtype != dtype_unknown) // Extra check in case of two callers waiting
 		return &m_value.vlu_desc;
 
 	Attachment* attachment = tdbb->getAttachment();
@@ -204,14 +206,11 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 
 			TRA_attach_request(tdbb->getTransaction(), request);
 
-			const dsc* temp = EVL_expr(tdbb, request, static_cast<ValueExprNode*>(csb->csb_node));
-			EVL_make_value(tdbb, temp, &m_value, &getPool());
+			// Execute it here, while AutoSetRestore2 is active
+			executeCsbNode(tdbb, csb);
 		}
 		else
-		{
-			const dsc* temp = EVL_expr(tdbb, request, static_cast<ValueExprNode*>(csb->csb_node));
-			EVL_make_value(tdbb, temp, &m_value, &getPool());
-		}
+			executeCsbNode(tdbb, csb);
 	}
 	catch (const Exception& ex)
 	{
@@ -232,6 +231,23 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 	}
 
 	return &m_value.vlu_desc;
+}
+
+void ConstantValue::executeCsbNode(thread_db* tdbb, CompilerScratch* csb)
+{
+	fb_assert(csb->csb_node && csb->csb_node->getKind() == DmlNode::KIND_VALUE);
+	ValueExprNode* exprNode = static_cast<ValueExprNode*>(csb->csb_node);
+
+	const dsc* temp = EVL_expr(tdbb, tdbb->getRequest(), exprNode);
+	if (temp != nullptr)
+	{
+		EVL_make_value(tdbb, temp, &m_value, &getPool());
+	}
+	else
+	{
+		exprNode->getDesc(tdbb, csb, &m_value.vlu_desc);
+		m_value.vlu_desc.setNull();
+	}
 }
 
 ConstantValue& ConstantsCache::add(const QualifiedName& constName, const bool isPrivate)

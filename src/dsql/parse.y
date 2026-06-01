@@ -2521,7 +2521,7 @@ packaged_table_indexes_opt($createRelationNode)
 %type packaged_table_indexes(<createRelationNode>)
 packaged_table_indexes($createRelationNode)
 	: packaged_table_index($createRelationNode)
-	| packaged_table_indexes($createRelationNode) ',' packaged_table_index($createRelationNode)
+	| packaged_table_indexes packaged_table_index($createRelationNode)
 	;
 
 %type packaged_table_index(<createRelationNode>)
@@ -3338,10 +3338,11 @@ replace_package_body_clause
 
 %type <createPackageConstantNode> package_const_item
 package_const_item
-	: symbol_package_const_name data_type_descriptor '=' value
+	: symbol_package_const_name data_type_descriptor collate_clause '=' value
 		{
-			$$ = newNode<CreatePackageConstantNode>(*$1, $2, $4);
-			$$->source = makeParseStr(YYPOSNARG(3), YYPOSNARG(4));
+			setCollate($2, $3);
+			$$ = newNode<CreatePackageConstantNode>(*$1, $2, $5);
+			$$->source = makeParseStr(YYPOSNARG(4), YYPOSNARG(5));
 		}
 	;
 

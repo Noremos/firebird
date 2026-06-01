@@ -992,7 +992,9 @@ void IDX_mark_index(thread_db* tdbb, Cached::Relation* relation, MetaId id)
  **************************************/
 	SET_TDBB(tdbb);
 
-	auto* relPages = relation->getPages(tdbb);
+	auto* relPages = relation->fillPages(tdbb);
+	fb_assert(relPages->rel_index_root);
+
 	WIN window(relPages->rel_pg_space_id, relPages->rel_index_root);
 	index_root_page* root = BTR_fetch_root_for_update(FB_FUNCTION, tdbb, &window);
 
@@ -1100,7 +1102,7 @@ void IDX_mark_indices(thread_db* tdbb, Cached::Relation* relation)
  **************************************/
 	SET_TDBB(tdbb);
 
-	auto* relPages = relation->getBasePages();
+	auto* relPages = relation->fillPages(tdbb);
 	fb_assert(relPages->rel_index_root);
 
 	WIN window(relPages->rel_pg_space_id, relPages->rel_index_root);

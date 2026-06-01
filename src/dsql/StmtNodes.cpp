@@ -2641,11 +2641,12 @@ StmtNode* EraseNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
 	auto relation = dsqlRelation;
 
-	dsqlScratch->qualifyExistingName(relation->dsqlName, obj_relation);
-
 	const auto node = FB_NEW_POOL(dsqlScratch->getPool()) EraseNode(dsqlScratch->getPool());
 	node->dsqlCursorName = dsqlCursorName;
 	node->dsqlSkipLocked = dsqlSkipLocked;
+
+	if (dsqlCursorName.hasData())
+		dsqlScratch->qualifyExistingName(relation->dsqlName, obj_relation);
 
 	if (dsqlCursorName.hasData() && dsqlScratch->isPsql())
 	{
@@ -8136,7 +8137,9 @@ StmtNode* ModifyNode::internalDsqlPass(DsqlCompilerScratch* dsqlScratch, bool up
 
 	NestConst<RelationSourceNode> relation = nodeAs<RelationSourceNode>(dsqlRelation);
 	fb_assert(relation);
-	dsqlScratch->qualifyExistingName(relation->dsqlName, obj_relation);
+
+	if (dsqlCursorName.hasData())
+		dsqlScratch->qualifyExistingName(relation->dsqlName, obj_relation);
 
 	NestConst<ValueExprNode>* ptr;
 
@@ -10971,8 +10974,6 @@ StmtNode* UpdateOrInsertNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
 	auto& pool = dsqlScratch->getPool();
 
-	dsqlScratch->qualifyExistingName(relation->dsqlName, obj_relation);
-
 	if (!dsqlScratch->isPsql())
 		dsqlScratch->flags |= DsqlCompilerScratch::FLAG_UPDATE_OR_INSERT;
 
@@ -10986,7 +10987,6 @@ StmtNode* UpdateOrInsertNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	node->returning = returning;
 
 	const auto& relationName = relation->dsqlName;
-	auto baseName = relationName;
 	bool needSavePoint;
 
 	// Build the INSERT node.
@@ -11002,6 +11002,7 @@ StmtNode* UpdateOrInsertNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	DEV_BLKCHK(context, dsql_type_ctx);
 
 	const auto ctxRelation = context->ctx_relation;
+	auto baseName = relationName;
 	auto fieldsCopy = fields;
 
 	// If a field list isn't present, build one using the same rules of INSERT INTO table VALUES ...

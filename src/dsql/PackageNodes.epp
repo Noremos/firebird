@@ -550,7 +550,6 @@ ValueExprNode* PackageReferenceNode::pass2(thread_db* tdbb, CompilerScratch* csb
 
 dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 {
-	impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
 	switch (m_itemType)
 	{
 		case blr_pkg_reference_to_constant:
@@ -558,11 +557,12 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 			Package* package = m_package(request->getResources());
 			package->checkReload(tdbb);
 
-			auto* constant = package->findConstant(m_fullName);
-			if (constant == nullptr) // Cloud be possible in case of mixing DDL and DML
+			dsc* constantDsc = package->findConstant(m_fullName)->makeValue(tdbb, request);
+			if (constantDsc == nullptr || constantDsc->isNull())
 				return nullptr;
 
-			EVL_make_value(tdbb, constant->makeValue(tdbb, request), outputImpure);
+			impure_value* outputImpure = request->getImpure<impure_value>(m_impureOffset);
+			EVL_make_value(tdbb, constantDsc, outputImpure);
 			return &outputImpure->vlu_desc;
 		}
 	default:
