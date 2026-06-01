@@ -56,12 +56,17 @@ bool ConstantValue::hash(thread_db* tdbb, Firebird::sha512& digest) const
 {
 	fb_assert(m_value.vlu_desc.dsc_dtype != dtype_unknown);
 	digest.process(DSC_SIZE_TO_HASH, &m_value.vlu_desc);
-	if (!m_value.vlu_desc.isNull())
+
+	// The value hashing is unneccecery as Alex Peshkoff explained
+	// See https://groups.google.com/g/firebird-devel/c/xIxhL_QAjEg/m/9RGT47ugAwAJ
+	// Keep it just in case
+	/* if (!m_value.vlu_desc.isNull())
 	{
 		fb_assert(m_value.vlu_desc.dsc_length > 0);
 		fb_assert(m_value.vlu_desc.dsc_address != nullptr);
 		digest.process(m_value.vlu_desc.dsc_length, m_value.vlu_desc.dsc_address);
 	}
+	*/
 
 	return true;
 }
