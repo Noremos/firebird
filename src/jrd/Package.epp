@@ -51,6 +51,7 @@ DATABASE DB = FILENAME "ODS.RDB";
 
 // Exclude address from the hash calculation due to it possible change
 constexpr inline ULONG DSC_SIZE_TO_HASH = offsetof(dsc, dsc_address);
+static_assert(DSC_SIZE_TO_HASH - offsetof(dsc, dsc_flags) == sizeof(dsc::dsc_flags), "There should be no padding");
 
 bool ConstantValue::hash(thread_db* tdbb, Firebird::sha512& digest) const
 {
