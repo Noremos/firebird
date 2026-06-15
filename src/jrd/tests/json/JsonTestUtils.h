@@ -10,6 +10,14 @@
 
 #include "boost/test/unit_test.hpp"
 
+#ifdef DEV_BUILD
+#define SKIP_IN_CI
+#else
+#define SKIP_IN_CI return;
+#endif
+
+#define SKIP_TEST return;
+
 namespace TestUtils {
 
 template<class TStatus>

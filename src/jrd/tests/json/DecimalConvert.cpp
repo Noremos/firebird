@@ -1,9 +1,9 @@
 #include "firebird.h"
 #include "boost/test/unit_test.hpp"
 #include "../jrd/json/JsonUtils.h"
+#include "JsonTestUtils.h"
 
 using namespace Firebird;
-#define CI_SKIP return;
 
 
 class LocaleChangeHolder
@@ -38,6 +38,7 @@ constexpr double NUMBER_TO_CONVERT = 3.1415926535'8979323846'2643383279'50288419
 
 BOOST_AUTO_TEST_CASE(ruUtf8LocaleTest)
 {
+	SKIP_TEST; // Missing locale
 	LocaleChangeHolder ruEncoding("ru_RU.UTF-8");
 
 	FBJSON::NumberConvertBuffer buffer;
@@ -54,8 +55,7 @@ BOOST_AUTO_TEST_CASE(enUtf8LocaleTest)
 
 BOOST_AUTO_TEST_CASE(russianLocaleTest)
 {
-	CI_SKIP
-
+	SKIP_TEST // Missing locale
 	LocaleChangeHolder ruEncoding("russian");
 
 	FBJSON::NumberConvertBuffer buffer;
