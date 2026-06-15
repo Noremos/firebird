@@ -73,7 +73,7 @@ $(OBJ)/.jparse-gen-sentinel: $(SRC_ROOT)/jrd/json/path/JsonPathParser.y $(SRC_RO
 	sed -n -e "s/.*btyacc: \(.*conflicts.*\)/\1/p" $(GEN_ROOT)/json_y.txt > $(TMP_ROOT)/jpath-parse-conflicts.txt
 	cp $(TMP_ROOT)/jpath-parse-conflicts.txt $(SRC_ROOT)/jrd/json/path/jpath-parse-conflicts.txt
 	if [ ! -f $(SRC_ROOT)/jrd/json/path/jpath-parse-conflicts.txt ] || ! cmp -s $(TMP_ROOT)/jpath-parse-conflicts.txt $(SRC_ROOT)/jrd/json/path/jpath-parse-conflicts.txt; then \
-		cp $(TMP_ROOT)/jpath-parse-conflicts.txt $(SRC_ROOT)/jrd/json/path/jpath-parse-conflicts.txt; || true \
+		cp $(TMP_ROOT)/jpath-parse-conflicts.txt $(SRC_ROOT)/jrd/json/path/jpath-parse-conflicts.txt || true;  \
 	fi
 	sed -i -e 's/#define \([A-Z].*\)/#define TOK_\1/' $(GEN_ROOT)/jpath_tab.h
 	sed -i -e 's/#define TOK_YY\(.*\)/#define YY\1/' $(GEN_ROOT)/jpath_tab.h
