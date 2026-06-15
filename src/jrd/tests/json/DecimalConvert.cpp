@@ -88,15 +88,23 @@ BOOST_AUTO_TEST_CASE(doubleTest)
 
 BOOST_AUTO_TEST_CASE(intTest)
 {
-	const int intNumber = 2147483646;
+	const int32_t intNumber = 2147483646;
 
 	FBJSON::NumberConvertBuffer buffer;
 	BOOST_TEST(FBJSON::convertNumberToString(buffer, intNumber) == "2147483646");
 }
 
+
+BOOST_AUTO_TEST_CASE(NegativeintTest)
+{
+	const int32_t intNumber = -2147483646;
+
+	FBJSON::NumberConvertBuffer buffer;
+	BOOST_TEST(FBJSON::convertNumberToString(buffer, intNumber) == "-2147483646");
+}
 BOOST_AUTO_TEST_CASE(bigintTest)
 {
-	const unsigned long long bigintNumber = 9223372037;
+	const u_int64_t bigintNumber = 9223372037;
 
 	FBJSON::NumberConvertBuffer buffer;
 	BOOST_TEST(FBJSON::convertNumberToString(buffer, bigintNumber) == "9223372037");
