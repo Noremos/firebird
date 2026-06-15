@@ -206,8 +206,8 @@
     <ClCompile Include="..\..\..\src\jrd\json\path\JsonPathParser.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JPathParser.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\classes\JsonTypes.cpp" />
-    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\classes\JsonScalar.cpp" />
+    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\dsql\AggNodes.h" />
@@ -411,12 +411,11 @@
     <ClInclude Include="..\..\..\src\jrd\VirtualTable.h" />
     <ClInclude Include="..\..\..\src\jrd\WorkerAttachment.h" />
     <ClCompile Include="..\..\..\src\jrd\json\JsonRuntime.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\JsonParser.h" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JsonPath.h" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JPathParser.h" />
     <ClCompile Include="..\..\..\src\jrd\json\classes\JsonTypes.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.h" />
     <ClCompile Include="..\..\..\src\jrd\json\classes\JsonScalar.h" />
+    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\dsql\DdlNodes.epp" />
