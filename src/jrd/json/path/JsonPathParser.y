@@ -230,6 +230,7 @@ path_accessor_compiled
 		}
 	;
 
+
 // ['-'] <path with arithmetic, filter and methods>
 %type <exprNode> json_path_expr
 json_path_expr

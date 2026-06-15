@@ -39,7 +39,7 @@
 
 @sed -i "s/#define \([A-Z].*\)/#define TOK_\1/" jpath_tab.h
 @sed -i "s/#define TOK_YY\(.*\)/#define YY\1/" jpath_tab.h
-@sed -n -e "s/.*btyacc: \(.*conflicts.*\)/\1/p" json_y.txt > %FB_ROOT_PATH%\src\jrd\json\path\jpath-parse-conflicts.txt
+@sed -n -e "s/.*btyacc: \(.*conflicts.*\)/\1/p" json_y.txt > %FB_ROOT_PATH%\src\dsql\jpath-parse-conflicts.txt
 
 @copy jpath_tab.h %FB_ROOT_PATH%\src\include\gen\jparse.h > nul
 @copy jpath_tab.c %FB_ROOT_PATH%\src\jrd\json\path\JsonPathParser.cpp > nul
