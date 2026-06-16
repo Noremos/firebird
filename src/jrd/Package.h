@@ -73,6 +73,7 @@ public:
 		delete m_value.vlu_string;
 		m_value = {};
 		m_value.vlu_desc = typeDesc;
+		m_value.vlu_desc.dsc_address = nullptr; // Make sure to call makeValue
 	}
 
 	void updateValue(const bid blobId)

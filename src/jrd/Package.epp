@@ -172,12 +172,12 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 {
 	{
 		ReadLockGuard guard(m_makeValueLock, FB_FUNCTION);
-		if (m_value.vlu_desc.dsc_dtype != dtype_unknown)
+		if (m_value.vlu_desc.dsc_address != nullptr)
 			return &m_value.vlu_desc;
 	}
 
 	WriteLockGuard guard(m_makeValueLock, FB_FUNCTION);
-	if (m_value.vlu_desc.dsc_dtype != dtype_unknown) // Extra check in case of two callers waiting
+	if (m_value.vlu_desc.dsc_address != nullptr) // Extra check in case of two callers waiting
 		return &m_value.vlu_desc;
 
 	Attachment* attachment = tdbb->getAttachment();
@@ -196,6 +196,8 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 
 		MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
 		fb_assert(csb->csb_node != nullptr);
+		csb->csb_node->pass1(tdbb, csb);
+		csb->csb_node->pass2(tdbb, csb);
 
 		if (request == nullptr)
 		{
@@ -216,7 +218,27 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 			executeCsbNode(tdbb, csb);
 		}
 		else
+		{
+			// A csb->csb_node will use impureArea from the incoming request
+			// but it contains other data
+			// Backup the current data and restore it later
+
+			// Reusing a small chunk is faster instead of makeing a new request
+			// And using existing space for a temporally value is better instead of adding this to request->impureArea
+			// and carrying it for whole request live
+
+			const auto nodeImpureSize = csb->csb_impure;
+			if (request->impureArea.getCount() < nodeImpureSize)
+				request->impureArea.grow(nodeImpureSize - request->impureArea.getCount());
+
+			const Array<UCHAR> backup(request->impureArea.begin(), nodeImpureSize);
+
+			fb_assert(tdbb->getRequest() == request);
 			executeCsbNode(tdbb, csb);
+
+			// Restore
+			memcpy(request->impureArea.begin(), backup.begin(), nodeImpureSize);
+		}
 	}
 	catch (const Exception& ex)
 	{
