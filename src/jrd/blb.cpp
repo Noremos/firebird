@@ -90,6 +90,78 @@ static void move_to_string(Jrd::thread_db*, dsc*, dsc*);
 static void slice_callback(array_slice*, ULONG, dsc*);
 static blb* store_array(thread_db*, jrd_tra*, bid*);
 
+namespace {
+
+class ReplaceDataHelper
+{
+public:
+	ReplaceDataHelper(thread_db* tdbb, const vcl* blb_pages, const offset_t position, const void* buffer, const ULONG length) :
+		m_newData(buffer), m_newLength(length),
+		m_level1Pages(*blb_pages),
+		m_pageDataLength(tdbb->getDatabase()->dbb_page_size - BLP_SIZE)
+	{
+		m_level1PageId = position / m_pageDataLength; // Number of used pages
+		m_offset = position % m_pageDataLength; // Position in the page
+	}
+
+	inline void replaceInPage(blob_page* page) noexcept
+	{
+		UCHAR* data = reinterpret_cast<UCHAR*>(page->blp_page);
+		const ULONG dataLength = std::min<ULONG>(m_pageDataLength - m_offset, m_newLength - m_written);
+		fb_assert(dataLength <= m_pageDataLength);
+
+		memcpy(data + m_offset, reinterpret_cast<const UCHAR*>(m_newData) + m_written, dataLength);
+		m_written += dataLength;
+		m_offset = 0; // Offset only in the first page
+	};
+
+	// Move child page Id from level 1 to level 2
+	inline ULONG setLevel2(const USHORT pagesOnRootPage)
+	{
+		const auto pageId = m_level1PageId;
+		m_level1PageId = pageId / pagesOnRootPage;		// 100000 / 8000 = 12	// level1 page number
+		return pageId % pagesOnRootPage;				// 100000 % 8000 = 4000 // level2 page number
+	}
+
+	// Get level 1 or level 2 page
+	inline ULONG getNextLevel1PageId() noexcept
+	{
+		return m_level1Pages[m_level1PageId++];
+	}
+
+	// Pages are over, write to buffer
+	inline bool hasPages() const noexcept
+	{
+		return m_level1PageId < m_level1Pages.count();
+	}
+
+	inline bool needWrite() const noexcept
+	{
+		return m_written < m_newLength;
+	}
+
+	[[maybe_unused]]
+	inline ULONG getWrittenLength() const noexcept
+	{
+		return m_written;
+	}
+
+private:
+	// Where to replace
+	offset_t m_offset = 0;
+
+	// New Data
+	const void* m_newData;
+	const ULONG m_newLength;
+
+	ULONG m_level1PageId = 0;
+	const vcl& m_level1Pages;
+	const USHORT m_pageDataLength;
+
+	ULONG m_written = 0;
+};
+
+}
 
 void blb::BLB_cancel(thread_db* tdbb)
 {
@@ -3032,4 +3104,104 @@ void blb::storeToPage(USHORT* length, Firebird::Array<UCHAR>& buffer, const UCHA
 void blb::BLB_cancel()
 {
 	BLB_cancel(JRD_get_thread_data());
+}
+
+void blb::BLB_write(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length)
+{
+	if (!(blb_flags & BLB_temporary) || (blb_flags & BLB_closed))
+		ERR_post(Arg::Gds(isc_cannot_update_old_blob));
+
+	if (position > blb_length)
+		ERR_post(Arg::Gds(isc_blob_out_of_length_write) << Arg::Int64(position) << Arg::Int64(blb_length));
+
+	const offset_t end = position + length;
+	if (end > blb_length)
+	{
+		const offset_t middle = blb_length - position;
+		BLB_write(tdbb, position, buffer, middle); // Replace
+		BLB_put_segment(tdbb, (const UCHAR*)buffer + middle, length - middle); // Append
+		return;
+	}
+
+	if (blb_level == 0)
+	{
+		blob_page* page = (blob_page*) getBuffer();
+		memcpy(reinterpret_cast<char*>(page->blp_page) + position, buffer, length);
+		return;
+	}
+
+	ReplaceDataHelper helper(tdbb, blb_pages, position, buffer, length);
+	blob_page* page = nullptr;
+
+	WIN window(blb_pg_space_id, -1);
+	if (blb_flags & BLB_large_scan)
+	{
+		window.win_flags = WIN_large_scan;
+		window.win_scans = 1;
+	}
+
+	auto releasePage = [&tdbb, &window](const bool mark)
+	{
+		if (mark)
+			CCH_MARK(tdbb, &window);
+
+		if (window.win_flags & WIN_large_scan)
+			CCH_RELEASE_TAIL(tdbb, &window);
+		else
+			CCH_RELEASE(tdbb, &window);
+	};
+
+	// Level 1 blobs are much easier -- page number is in vector.
+	if (blb_level == 1)
+	{
+		while (helper.needWrite())
+		{
+			if (!helper.hasPages()) // The last data is in the blb_buffer
+			{
+				page = reinterpret_cast<blob_page*>(getBuffer());
+				helper.replaceInPage(page);
+				fb_assert(helper.getWrittenLength() == length);
+				return;
+			}
+
+			// Level 1 page constains data
+			window.win_page = helper.getNextLevel1PageId();
+			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
+			helper.replaceInPage(page);
+			releasePage(true);
+		}
+	}
+	else
+	{
+		auto level2page = helper.setLevel2(blb_pointers);
+		while (helper.needWrite())
+		{
+			if (!helper.hasPages()) // The last data is in the blb_buffer
+			{
+				helper.replaceInPage(page);
+				fb_assert(helper.getWrittenLength() == length);
+				return;
+			}
+
+			// Level 1 page contains pointers
+			window.win_page = helper.getNextLevel1PageId();
+			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
+
+			// Level 2 pages contain data
+			const auto numberOfPagess = page->blp_length / sizeof(page->blp_page);
+			for (FB_SIZE_T i = level2page; i < numberOfPagess && helper.needWrite(); ++i)
+			{
+				auto level2Page = reinterpret_cast<blob_page*>(CCH_HANDOFF(tdbb, &window,
+					page->blp_page[i],
+					LCK_write, pag_blob));
+
+				helper.replaceInPage(level2Page);
+				CCH_MARK(tdbb, &window);
+			}
+			releasePage(false);
+
+			level2page = 0; // Offset only for the first pages
+		}
+	}
+	fb_assert(helper.getWrittenLength() == length);
 }

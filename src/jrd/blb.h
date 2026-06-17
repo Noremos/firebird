@@ -133,6 +133,11 @@ public:
 		return destination;
 	}
 
+	// Write data at any position in a temporally (new) blob
+	// The position of the new buffer must start inside the blob range, but its length may extend beyond it
+	// Existing data will be overwritten
+	void BLB_write(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length);
+
 private:
 	static blb* allocate_blob(thread_db*, jrd_tra*);
 	static blb* copy_blob(thread_db* tdbb, const bid* source, bid* destination,
