@@ -14407,7 +14407,39 @@ void DropIndexNode::drop(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_
 				IDX.RDB$INDEX_INACTIVE = MET_index_deferred_drop;
 
 				if (tempName.hasData())
+				{
 					strcpy(IDX.RDB$INDEX_NAME, tempName.c_str());
+
+					// Related dependencies should be also renamed
+					AUTO_HANDLE(depRq);
+					FOR(REQUEST_HANDLE depRq TRANSACTION_HANDLE transaction)
+						DEP IN RDB$DEPENDENCIES
+						WITH DEP.RDB$DEPENDENT_SCHEMA_NAME EQ indexName.schema.c_str() AND
+			 				 DEP.RDB$PACKAGE_NAME EQUIV NULLIF(indexName.package.c_str(), '') AND
+							 DEP.RDB$DEPENDENT_NAME EQ indexName.object.c_str() AND
+							 (DEP.RDB$DEPENDENT_TYPE EQ obj_index_expression OR
+							  DEP.RDB$DEPENDENT_TYPE EQ obj_index_condition)
+					{
+						MODIFY DEP USING
+						{
+							strcpy(DEP.RDB$DEPENDENT_NAME, tempName.c_str());
+						}
+						END_MODIFY
+					}
+					END_FOR
+
+					// New deps to be created also to be renamed
+					auto& arr = tdbb->getTransaction()->tra_dependencies;
+					for (unsigned n = 0; n < arr.getCount(); ++n)
+					{
+						if (arr[n].object_name == indexName &&
+							(arr[n].dependency_type == obj_index_expression ||
+							 arr[n].dependency_type == obj_index_condition))
+						{
+							arr[n].object_name.object = tempName;
+						}
+					}
+				}
 			END_MODIFY
 		}
 		else

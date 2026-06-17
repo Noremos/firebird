@@ -3687,8 +3687,6 @@ static bool delete_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 				}
 			}
 		}
-		MET_delete_dependencies(tdbb, work->getQualifiedName(), obj_index_expression);
-		MET_delete_dependencies(tdbb, work->getQualifiedName(), obj_index_condition);
 		return true;
 
 	case 5:
