@@ -1004,7 +1004,6 @@ public:
 	static void modifyLocalFieldIndex(thread_db* tdbb, jrd_tra* transaction,
 		const QualifiedName& relationName, const MetaName& fieldName,
 		const MetaName& newFieldName, ModifyIndexList& indexList);
-
 	Firebird::string internalPrint(NodePrinter& printer) const override;
 	void checkPermission(thread_db* tdbb, jrd_tra* transaction) override;
 	void execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_tra* transaction) override;

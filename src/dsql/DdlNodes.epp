@@ -5472,6 +5472,97 @@ void AlterDomainNode::getDomainType(thread_db* tdbb, jrd_tra* transaction, dyn_f
 	END_FOR
 }
 
+
+namespace {
+
+template <typename T>
+void assign(T* buffer, SSHORT& null, const T* valPtr)
+{
+	if (valPtr)
+	{
+		null = FALSE;
+		*buffer = *valPtr;
+	}
+	else
+		null = TRUE;
+}
+
+template <>
+void assign(TEXT* buffer, SSHORT& null, const TEXT* valPtr)
+{
+	if (valPtr)
+	{
+		null = FALSE;
+		memcpy(buffer, valPtr, MAX_SQL_IDENTIFIER_SIZE);
+	}
+	else
+		null = TRUE;
+}
+
+void upgradeSingleIndex(thread_db* tdbb,
+	jrd_tra* transaction,
+	ModifyIndexList& indexList,
+	const TEXT* index_name,
+	const TEXT* relation_name,
+	SSHORT* unique_flag,
+	bid* description,
+	SSHORT* segment_count,
+	SSHORT* index_inactive,
+	SSHORT* index_type,
+	const TEXT* foreign_key,
+	SSHORT* system_flag,
+	bid* expression_blr,
+	bid* expression_source,
+	double* statistics,
+	bid* condition_blr,
+	bid* condition_source,
+	const TEXT* schema_name,
+	const TEXT* foreign_key_schema_name,
+	const TEXT* package_name)
+{
+	// Mark old index for deletion
+	auto* node = FB_NEW_POOL(indexList.getPool())
+		DropIndexNode(indexList.getPool(), QualifiedName(index_name, schema_name, package_name));
+	node->drop(tdbb, nullptr, transaction, indexList, false);	// keep segments
+
+	// Add record for new index
+	AUTO_HANDLE(request);
+
+	STORE(REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
+		INEW IN RDB$INDICES
+	{
+		INEW.RDB$INDEX_ID.NULL = TRUE;
+		INEW.RDB$FORMAT.NULL = TRUE;		// Leave it till DFW_update_index()
+
+		assign(INEW.RDB$INDEX_NAME, INEW.RDB$INDEX_NAME.NULL, index_name);
+		assign(INEW.RDB$RELATION_NAME, INEW.RDB$RELATION_NAME.NULL, relation_name);
+		assign(&INEW.RDB$UNIQUE_FLAG, INEW.RDB$UNIQUE_FLAG.NULL, unique_flag);
+		assign(&INEW.RDB$DESCRIPTION, INEW.RDB$DESCRIPTION.NULL, description);
+		assign(&INEW.RDB$SEGMENT_COUNT, INEW.RDB$SEGMENT_COUNT.NULL, segment_count);
+		assign(&INEW.RDB$INDEX_INACTIVE, INEW.RDB$INDEX_INACTIVE.NULL, index_inactive);
+		assign(&INEW.RDB$INDEX_TYPE, INEW.RDB$INDEX_TYPE.NULL, index_type);
+		assign(INEW.RDB$FOREIGN_KEY, INEW.RDB$FOREIGN_KEY.NULL, foreign_key);
+		assign(&INEW.RDB$SYSTEM_FLAG, INEW.RDB$SYSTEM_FLAG.NULL, system_flag);
+		assign(&INEW.RDB$EXPRESSION_BLR, INEW.RDB$EXPRESSION_BLR.NULL, expression_blr);
+		assign(&INEW.RDB$EXPRESSION_SOURCE, INEW.RDB$EXPRESSION_SOURCE.NULL, expression_source);
+		assign(&INEW.RDB$STATISTICS, INEW.RDB$STATISTICS.NULL, statistics);
+		assign(&INEW.RDB$CONDITION_BLR, INEW.RDB$CONDITION_BLR.NULL, condition_blr);
+		assign(&INEW.RDB$CONDITION_SOURCE, INEW.RDB$CONDITION_SOURCE.NULL, condition_source);
+		assign(INEW.RDB$SCHEMA_NAME, INEW.RDB$SCHEMA_NAME.NULL, schema_name);
+		assign(INEW.RDB$FOREIGN_KEY_SCHEMA_NAME, INEW.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL, foreign_key_schema_name);
+		assign(INEW.RDB$PACKAGE_NAME, INEW.RDB$PACKAGE_NAME.NULL, package_name);
+	}
+	END_STORE
+
+	// request creation of new index
+	auto* store = FB_NEW_POOL(indexList.getPool()) StoreIndexNode(QualifiedName(index_name, schema_name, package_name),
+		node->getRelation(), expression_blr);
+	indexList.push(store);
+}
+
+} // anonymous namespace
+
+
 // Updates the field names in an index and forces the index to be rebuilt with the new field names.
 void AlterDomainNode::modifyLocalFieldIndex(thread_db* tdbb, jrd_tra* transaction,
 	const QualifiedName& relationName, const MetaName& fieldName, const MetaName& newFieldName,
@@ -5479,6 +5570,9 @@ void AlterDomainNode::modifyLocalFieldIndex(thread_db* tdbb, jrd_tra* transactio
 {
 	bool first = true;
 
+	Array<QualifiedName> iList;
+
+	// segment deps
 	AutoRequest request;
 
 	FOR(REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
@@ -5492,164 +5586,81 @@ void AlterDomainNode::modifyLocalFieldIndex(thread_db* tdbb, jrd_tra* transactio
 			 IDX.RDB$RELATION_NAME EQ relationName.object.c_str() AND
 			 SEG.RDB$FIELD_NAME EQ fieldName.c_str()
 	{
-		if (first)
+		QualifiedName iName(IDX.RDB$INDEX_NAME, IDX.RDB$SCHEMA_NAME, IDX.RDB$PACKAGE_NAME);
+
+		if (!iList.exist(iName))
 		{
-			first = false;
+			iList.push(iName);
 
-			// Mark old index for deletion
-			auto* node = FB_NEW_POOL(indexList.getPool())
-				DropIndexNode(indexList.getPool(), QualifiedName(IDX.RDB$INDEX_NAME, IDX.RDB$SCHEMA_NAME));
-			node->drop(tdbb, nullptr, transaction, indexList, false);	// keep segments
-
-			AutoRequest request2;
-
-			// Add record for new index
-			STORE(REQUEST_HANDLE request2 TRANSACTION_HANDLE transaction)
-				INEW IN RDB$INDICES
-			{
-				INEW.RDB$INDEX_ID.NULL = TRUE;
-				INEW.RDB$FORMAT.NULL = TRUE;		// Leave it till DFW_update_index()
-
-	            if (IDX.RDB$INDEX_NAME.NULL)
-    	        	INEW.RDB$INDEX_NAME.NULL = TRUE;
-        	    else
-            	{
-	            	INEW.RDB$INDEX_NAME.NULL = FALSE;
-    	        	strcpy(INEW.RDB$INDEX_NAME, IDX.RDB$INDEX_NAME);
-        	    }
-
-	            if (IDX.RDB$RELATION_NAME.NULL)
-    	        	INEW.RDB$RELATION_NAME.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$RELATION_NAME.NULL = FALSE;
-	            	strcpy(INEW.RDB$RELATION_NAME, IDX.RDB$RELATION_NAME);
-    	        }
-
-	            if (IDX.RDB$UNIQUE_FLAG.NULL)
-    	        	INEW.RDB$UNIQUE_FLAG.NULL = TRUE;
-        	    else
-	            {
-    	        	INEW.RDB$UNIQUE_FLAG.NULL = FALSE;
-        	    	INEW.RDB$UNIQUE_FLAG = IDX.RDB$UNIQUE_FLAG;
-            	}
-
-	            if (IDX.RDB$DESCRIPTION.NULL)
-    	        	INEW.RDB$DESCRIPTION.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$DESCRIPTION.NULL = FALSE;
-	            	INEW.RDB$DESCRIPTION = IDX.RDB$DESCRIPTION;
-    	        }
-
-	            if (IDX.RDB$SEGMENT_COUNT.NULL)
-    	        	INEW.RDB$SEGMENT_COUNT.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$SEGMENT_COUNT.NULL = FALSE;
-	            	INEW.RDB$SEGMENT_COUNT = IDX.RDB$SEGMENT_COUNT;
-    	        }
-
-        	    if (IDX.RDB$INDEX_INACTIVE.NULL)
-            		INEW.RDB$INDEX_INACTIVE.NULL = TRUE;
-	            else
-    	        {
-        	    	INEW.RDB$INDEX_INACTIVE.NULL = FALSE;
-            		INEW.RDB$INDEX_INACTIVE = IDX.RDB$INDEX_INACTIVE;
-	            }
-
-	            if (IDX.RDB$INDEX_TYPE.NULL)
-    	        	INEW.RDB$INDEX_TYPE.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$INDEX_TYPE.NULL = FALSE;
-	            	INEW.RDB$INDEX_TYPE = IDX.RDB$INDEX_TYPE;
-    	        }
-
-        	    if (IDX.RDB$FOREIGN_KEY.NULL)
-            		INEW.RDB$FOREIGN_KEY.NULL = TRUE;
-	            else
-    	        {
-	            	INEW.RDB$FOREIGN_KEY.NULL = FALSE;
-    	        	strcpy(INEW.RDB$FOREIGN_KEY, IDX.RDB$FOREIGN_KEY);
-        	    }
-
-            	if (IDX.RDB$SYSTEM_FLAG.NULL)
-            		INEW.RDB$SYSTEM_FLAG.NULL = TRUE;
-	            else
-    	        {
-        	    	INEW.RDB$SYSTEM_FLAG.NULL = FALSE;
-            		INEW.RDB$SYSTEM_FLAG = IDX.RDB$SYSTEM_FLAG;
-            	}
-
-	            if (IDX.RDB$EXPRESSION_BLR.NULL)
-    	        	INEW.RDB$EXPRESSION_BLR.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$EXPRESSION_BLR.NULL = FALSE;
-	            	INEW.RDB$EXPRESSION_BLR = IDX.RDB$EXPRESSION_BLR;
-    	        }
-
-        	    if (IDX.RDB$EXPRESSION_SOURCE.NULL)
-            		INEW.RDB$EXPRESSION_SOURCE.NULL = TRUE;
-	            else
-    	        {
-        	    	INEW.RDB$EXPRESSION_SOURCE.NULL = FALSE;
-            		INEW.RDB$EXPRESSION_SOURCE = IDX.RDB$EXPRESSION_SOURCE;
-            	}
-
-	            if (IDX.RDB$STATISTICS.NULL)
-    	        	INEW.RDB$STATISTICS.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$STATISTICS.NULL = FALSE;
-	            	INEW.RDB$STATISTICS = IDX.RDB$STATISTICS;
-    	        }
-
-        	    if (IDX.RDB$CONDITION_BLR.NULL)
-            		INEW.RDB$CONDITION_BLR.NULL = TRUE;
-	            else
-    	        {
-	            	INEW.RDB$CONDITION_BLR.NULL = FALSE;
-    	        	INEW.RDB$CONDITION_BLR = IDX.RDB$CONDITION_BLR;
-        	    }
-
-	            if (IDX.RDB$CONDITION_SOURCE.NULL)
-    	        	INEW.RDB$CONDITION_SOURCE.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$CONDITION_SOURCE.NULL = FALSE;
-	            	INEW.RDB$CONDITION_SOURCE = IDX.RDB$CONDITION_SOURCE;
-    	        }
-
-	            if (IDX.RDB$SCHEMA_NAME.NULL)
-    	        	INEW.RDB$SCHEMA_NAME.NULL = TRUE;
-        	    else
-            	{
-            		INEW.RDB$SCHEMA_NAME.NULL = FALSE;
-	            	strcpy(INEW.RDB$SCHEMA_NAME, IDX.RDB$SCHEMA_NAME);
-    	        }
-
-        	    if (IDX.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL)
-            		INEW.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL = TRUE;
-	            else
-    	        {
-        	    	INEW.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL = FALSE;
-            		strcpy(INEW.RDB$FOREIGN_KEY_SCHEMA_NAME, IDX.RDB$FOREIGN_KEY_SCHEMA_NAME);
-            	}
-
-				// request creation of new index
-				auto* store = FB_NEW_POOL(indexList.getPool()) StoreIndexNode(QualifiedName(IDX.RDB$INDEX_NAME,
-					IDX.RDB$SCHEMA_NAME), node->getRelation(), !IDX.RDB$EXPRESSION_BLR.NULL);
-				indexList.push(store);
-			}
-			END_STORE
+			upgradeSingleIndex(tdbb, transaction, indexList,
+				IDX.RDB$INDEX_NAME.NULL ? nullptr : IDX.RDB$INDEX_NAME,
+	            IDX.RDB$RELATION_NAME.NULL ? nullptr : IDX.RDB$RELATION_NAME,
+	            IDX.RDB$UNIQUE_FLAG.NULL ? nullptr : &IDX.RDB$UNIQUE_FLAG,
+	            IDX.RDB$DESCRIPTION.NULL ? nullptr : &IDX.RDB$DESCRIPTION,
+	            IDX.RDB$SEGMENT_COUNT.NULL ? nullptr : &IDX.RDB$SEGMENT_COUNT,
+        	    IDX.RDB$INDEX_INACTIVE.NULL ? nullptr : &IDX.RDB$INDEX_INACTIVE,
+	            IDX.RDB$INDEX_TYPE.NULL ? nullptr : &IDX.RDB$INDEX_TYPE,
+        	    IDX.RDB$FOREIGN_KEY.NULL ? nullptr : IDX.RDB$FOREIGN_KEY,
+            	IDX.RDB$SYSTEM_FLAG.NULL ? nullptr : &IDX.RDB$SYSTEM_FLAG,
+	            IDX.RDB$EXPRESSION_BLR.NULL ? nullptr : &IDX.RDB$EXPRESSION_BLR,
+        	    IDX.RDB$EXPRESSION_SOURCE.NULL ? nullptr : &IDX.RDB$EXPRESSION_SOURCE,
+	            IDX.RDB$STATISTICS.NULL ? nullptr : &IDX.RDB$STATISTICS,
+        	    IDX.RDB$CONDITION_BLR.NULL ? nullptr : &IDX.RDB$CONDITION_BLR,
+	            IDX.RDB$CONDITION_SOURCE.NULL ? nullptr : &IDX.RDB$CONDITION_SOURCE,
+	            IDX.RDB$SCHEMA_NAME.NULL ? nullptr : IDX.RDB$SCHEMA_NAME,
+        	    IDX.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL ? nullptr : IDX.RDB$FOREIGN_KEY_SCHEMA_NAME,
+        	    IDX.RDB$PACKAGE_NAME.NULL ? nullptr : IDX.RDB$PACKAGE_NAME);
 		}
 
 		// Change the name of the field in the index
 		MODIFY SEG USING
 			memcpy(SEG.RDB$FIELD_NAME, newFieldName.c_str(), sizeof(SEG.RDB$FIELD_NAME));
 		END_MODIFY
+	}
+	END_FOR
+
+	// condition & expression deps
+	AutoRequest request2;
+
+	FOR(REQUEST_HANDLE request2 TRANSACTION_HANDLE transaction)
+		IDX IN RDB$INDICES
+		CROSS DEP IN RDB$DEPENDENCIES
+		WITH DEP.RDB$DEPENDENT_SCHEMA_NAME EQ IDX.RDB$SCHEMA_NAME AND
+			 DEP.RDB$DEPENDENT_NAME EQ IDX.RDB$INDEX_NAME AND
+			 (DEP.RDB$DEPENDENT_TYPE EQ obj_index_expression OR
+			  DEP.RDB$DEPENDENT_TYPE EQ obj_index_condition) AND
+			 DEP.RDB$DEPENDED_ON_SCHEMA_NAME EQ relationName.schema.c_str() AND
+			 DEP.RDB$PACKAGE_NAME EQUIV NULLIF(relationName.package.c_str(), '') AND
+			 DEP.RDB$DEPENDED_ON_NAME EQ relationName.object.c_str() AND
+			 DEP.RDB$FIELD_NAME EQ fieldName.c_str() AND
+			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_relation AND
+			 IDX.RDB$INDEX_NAME NOT STARTING TEMP_DEPEND
+	{
+		QualifiedName iName(IDX.RDB$INDEX_NAME, IDX.RDB$SCHEMA_NAME, IDX.RDB$PACKAGE_NAME);
+
+		if (!iList.exist(iName))
+		{
+			iList.push(iName);
+
+			upgradeSingleIndex(tdbb, transaction, indexList,
+				IDX.RDB$INDEX_NAME.NULL ? nullptr : IDX.RDB$INDEX_NAME,
+	            IDX.RDB$RELATION_NAME.NULL ? nullptr : IDX.RDB$RELATION_NAME,
+	            IDX.RDB$UNIQUE_FLAG.NULL ? nullptr : &IDX.RDB$UNIQUE_FLAG,
+	            IDX.RDB$DESCRIPTION.NULL ? nullptr : &IDX.RDB$DESCRIPTION,
+	            IDX.RDB$SEGMENT_COUNT.NULL ? nullptr : &IDX.RDB$SEGMENT_COUNT,
+        	    IDX.RDB$INDEX_INACTIVE.NULL ? nullptr : &IDX.RDB$INDEX_INACTIVE,
+	            IDX.RDB$INDEX_TYPE.NULL ? nullptr : &IDX.RDB$INDEX_TYPE,
+        	    IDX.RDB$FOREIGN_KEY.NULL ? nullptr : IDX.RDB$FOREIGN_KEY,
+            	IDX.RDB$SYSTEM_FLAG.NULL ? nullptr : &IDX.RDB$SYSTEM_FLAG,
+	            IDX.RDB$EXPRESSION_BLR.NULL ? nullptr : &IDX.RDB$EXPRESSION_BLR,
+        	    IDX.RDB$EXPRESSION_SOURCE.NULL ? nullptr : &IDX.RDB$EXPRESSION_SOURCE,
+	            IDX.RDB$STATISTICS.NULL ? nullptr : &IDX.RDB$STATISTICS,
+        	    IDX.RDB$CONDITION_BLR.NULL ? nullptr : &IDX.RDB$CONDITION_BLR,
+	            IDX.RDB$CONDITION_SOURCE.NULL ? nullptr : &IDX.RDB$CONDITION_SOURCE,
+	            IDX.RDB$SCHEMA_NAME.NULL ? nullptr : IDX.RDB$SCHEMA_NAME,
+        	    IDX.RDB$FOREIGN_KEY_SCHEMA_NAME.NULL ? nullptr : IDX.RDB$FOREIGN_KEY_SCHEMA_NAME,
+        	    IDX.RDB$PACKAGE_NAME.NULL ? nullptr : IDX.RDB$PACKAGE_NAME);
+		}
 	}
 	END_FOR
 }
@@ -14415,7 +14426,6 @@ void DropIndexNode::drop(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch, jrd_
 					FOR(REQUEST_HANDLE depRq TRANSACTION_HANDLE transaction)
 						DEP IN RDB$DEPENDENCIES
 						WITH DEP.RDB$DEPENDENT_SCHEMA_NAME EQ indexName.schema.c_str() AND
-			 				 DEP.RDB$PACKAGE_NAME EQUIV NULLIF(indexName.package.c_str(), '') AND
 							 DEP.RDB$DEPENDENT_NAME EQ indexName.object.c_str() AND
 							 (DEP.RDB$DEPENDENT_TYPE EQ obj_index_expression OR
 							  DEP.RDB$DEPENDENT_TYPE EQ obj_index_condition)
