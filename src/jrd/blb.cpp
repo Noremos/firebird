@@ -2048,10 +2048,39 @@ void blb::scalar(thread_db*		tdbb,
 
 void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length)
 {
-	fb_assert ((blb_flags & BLB_temporary) && !(blb_flags & BLB_closed)); // Can update only new blob
+	// All BLOB data is stored in the following format: <pages> <buffer>
+	//
+	// <buffer> contains unflushed data and is easy to modify.
+	// <pages> must be fetched, modified, marked, and released.
+	//
+	// Depending on the level, the algorithm works as follows:
+	//
+	// Level 0: All data is inside blb_buffer.
+	//           This is the simplest case: just perform a memset, and we're done.
+	//
+	// Level 1: Flushed data is located on pages (blb_pages), unflushed data is in blb_buffer.
+	//           To modify the data:
+	//           1. Find the first page that needs modification, read, mark and release it.
+	//           2. If the remaining data to modify exceeds the current page size, proceed to the next page.
+	//           3. If there are no more pages but there is still data to modify, update the <buffer>.
+	//
+	// Level 2: Flushed data is organized in a pages tree.
+	//           - The blb_pages array contains level 1 pages.
+	//           - Each level 1 page holds a list of level 2 page IDs.
+	//
+	//           To locate and modify the required page:
+	//           1. Calculate the page offset: OFFSET = position / <page size>.
+	//           2. Determine the target level 2 page: FIRST = OFFSET / <number of IDs per page>.
+	//           3. Compute the byte offset within the level 2 page:
+	//              BytesOffset = position % <page size>.
+	//           4. Modify the first relevant level 2 page, then move to the next one.
+	//           5. If no more level 2 pages are available, advance to the next level 1 page,
+	//              read its first level 2 page, and continue modifying subsequent level 2 pages.
+	//           6. If all pages have been processed but there is still unmodified data, update the <buffer>.
 
-	// Only update
-	fb_assert(position + length <= blb_length);
+
+	fb_assert ((blb_flags & BLB_temporary) && !(blb_flags & BLB_closed)); // Can update only new blob
+	fb_assert(position + length <= blb_length); // Update only existing data
 
 	if (blb_level == 0) // No pages, just a buffer
 	{
