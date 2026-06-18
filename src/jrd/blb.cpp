@@ -92,6 +92,7 @@ static blb* store_array(thread_db*, jrd_tra*, bid*);
 
 namespace {
 
+// A helper class to track positions of buffer, pages and modifications
 class DataModifyHelper
 {
 public:
@@ -104,8 +105,11 @@ public:
 		m_offset = position % m_pageDataLength; // Position in the page
 	}
 
+	// Get data from blob data page and replace data on it
 	inline void replaceInPage(blob_page* page) noexcept
 	{
+		fb_assert(needWrite());
+
 		UCHAR* data = reinterpret_cast<UCHAR*>(page->blp_page);
 		const ULONG dataLength = std::min<ULONG>(m_pageDataLength - m_offset, m_newLength - m_written);
 		fb_assert(dataLength <= m_pageDataLength);
@@ -2044,18 +2048,19 @@ void blb::scalar(thread_db*		tdbb,
 
 void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length)
 {
-	fb_assert ((blb_flags & BLB_temporary) && !(blb_flags & BLB_closed));
+	fb_assert ((blb_flags & BLB_temporary) && !(blb_flags & BLB_closed)); // Can update only new blob
 
-	const offset_t end = position + length;
-	fb_assert(end <= blb_length);
+	// Only update
+	fb_assert(position + length <= blb_length);
 
-	if (blb_level == 0)
+	if (blb_level == 0) // No pages, just a buffer
 	{
 		blob_page* page = (blob_page*) getBuffer();
 		memcpy(reinterpret_cast<char*>(page->blp_page) + position, buffer, length);
 		return;
 	}
 
+	// Use helper to simplify pages modification
 	DataModifyHelper helper(tdbb, blb_pages, position, buffer, length);
 	blob_page* page = nullptr;
 
@@ -2069,7 +2074,7 @@ void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buf
 	auto releasePage = [&tdbb, &window](const bool mark)
 	{
 		if (mark)
-			CCH_MARK(tdbb, &window);
+			CCH_MARK(tdbb, &window); // Mark as dirty
 
 		if (window.win_flags & WIN_large_scan)
 			CCH_RELEASE_TAIL(tdbb, &window);
@@ -2080,9 +2085,12 @@ void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buf
 	// Level 1 blobs are much easier -- page number is in vector.
 	if (blb_level == 1)
 	{
+		// Level1 pages are pointing to data
+
+		// Update data on pages one by one
 		while (helper.needWrite())
 		{
-			if (!helper.hasPages()) // The last data is in the blb_buffer
+			if (!helper.hasPages()) // The last data chunk is in the blb_buffer
 			{
 				page = reinterpret_cast<blob_page*>(getBuffer());
 				helper.replaceInPage(page);
@@ -2099,7 +2107,10 @@ void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buf
 	}
 	else
 	{
-		auto level2page = helper.setLevel2(blb_pointers);
+		// Level1 pages are pointing to Level2 pages
+		// Level2 pages are pointing to date
+
+		auto level2pageOffset = helper.setLevel2(blb_pointers);
 		while (helper.needWrite())
 		{
 			if (!helper.hasPages()) // The last data is in the blb_buffer
@@ -2113,9 +2124,9 @@ void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buf
 			window.win_page = helper.getNextLevel1PageId();
 			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
 
-			// Level 2 pages contain data
+			// Level 2 pages contain data. Update them one by one
 			const auto numberOfPagess = page->blp_length / sizeof(page->blp_page);
-			for (FB_SIZE_T i = level2page; i < numberOfPagess && helper.needWrite(); ++i)
+			for (FB_SIZE_T i = level2pageOffset; i < numberOfPagess && helper.needWrite(); ++i)
 			{
 				auto level2Page = reinterpret_cast<blob_page*>(CCH_HANDOFF(tdbb, &window,
 					page->blp_page[i],
@@ -2126,7 +2137,7 @@ void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buf
 			}
 			releasePage(false);
 
-			level2page = 0; // Offset only for the first pages
+			level2pageOffset = 0; // Offset only for the first pages
 		}
 	}
 	fb_assert(helper.getWrittenLength() == length);
@@ -3230,5 +3241,5 @@ void blb::BLB_write(thread_db* tdbb, offset_t position, const void* buffer, ULON
 	if (modifyDataMoveBuffer(tdbb, position, buffer, length))
 		return; // Only modify, exit
 
-	BLB_put_segment(tdbb, buffer, length); // Append
+	BLB_put_data(tdbb, reinterpret_cast<const UCHAR*>(buffer), length); // Append
 }
