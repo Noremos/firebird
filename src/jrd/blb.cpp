@@ -92,10 +92,10 @@ static blb* store_array(thread_db*, jrd_tra*, bid*);
 
 namespace {
 
-class ReplaceDataHelper
+class DataModifyHelper
 {
 public:
-	ReplaceDataHelper(thread_db* tdbb, const vcl* blb_pages, const offset_t position, const void* buffer, const ULONG length) :
+	DataModifyHelper(thread_db* tdbb, const vcl* blb_pages, const offset_t position, const void* buffer, const ULONG length) :
 		m_newData(buffer), m_newLength(length),
 		m_level1Pages(*blb_pages),
 		m_pageDataLength(tdbb->getDatabase()->dbb_page_size - BLP_SIZE)
@@ -1645,6 +1645,21 @@ void blb::BLB_put_data(thread_db* tdbb, const UCHAR* buffer, SLONG length)
 	SET_TDBB(tdbb);
 	const BLOB_PTR* p = buffer;
 
+	// BLB_put_segment will remove the flag after teh first call so replace the data here
+	if (blb_flags & BLB_seek)
+	{
+		if (!(blb_flags & BLB_temporary) || (blb_flags & BLB_closed))
+			ERR_post(Arg::Gds(isc_cannot_update_old_blob));
+
+		blb_flags &= ~BLB_seek;
+
+		// Modify part inside existing data
+		if (modifyDataMoveBuffer(tdbb, blb_seek, p, length))
+			return;
+
+		// Continue and append the rest
+	}
+
 	while (length > 0)
 	{
 		// ASF: the comment below was copied from BLB_get_data
@@ -1678,6 +1693,17 @@ void blb::BLB_put_segment(thread_db* tdbb, const void* seg, USHORT segment_lengt
 
 	if (!(blb_flags & BLB_temporary) || (blb_flags & BLB_closed))
 		ERR_post(Arg::Gds(isc_cannot_update_old_blob));
+
+	if (blb_flags & BLB_seek)
+	{
+		blb_flags &= ~BLB_seek;
+
+		// Modify part inside existing data
+		if (modifyDataMoveBuffer(tdbb, blb_seek, segment, segment_length))
+			return;
+
+		// Continue and append the rest
+	}
 
 	if (blb_filter)
 	{
@@ -2016,6 +2042,95 @@ void blb::scalar(thread_db*		tdbb,
 	blob->BLB_close(tdbb);
 }
 
+void blb::modifyExistingData(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length)
+{
+	fb_assert ((blb_flags & BLB_temporary) && !(blb_flags & BLB_closed));
+
+	const offset_t end = position + length;
+	fb_assert(end <= blb_length);
+
+	if (blb_level == 0)
+	{
+		blob_page* page = (blob_page*) getBuffer();
+		memcpy(reinterpret_cast<char*>(page->blp_page) + position, buffer, length);
+		return;
+	}
+
+	DataModifyHelper helper(tdbb, blb_pages, position, buffer, length);
+	blob_page* page = nullptr;
+
+	WIN window(blb_pg_space_id, -1);
+	if (blb_flags & BLB_large_scan)
+	{
+		window.win_flags = WIN_large_scan;
+		window.win_scans = 1;
+	}
+
+	auto releasePage = [&tdbb, &window](const bool mark)
+	{
+		if (mark)
+			CCH_MARK(tdbb, &window);
+
+		if (window.win_flags & WIN_large_scan)
+			CCH_RELEASE_TAIL(tdbb, &window);
+		else
+			CCH_RELEASE(tdbb, &window);
+	};
+
+	// Level 1 blobs are much easier -- page number is in vector.
+	if (blb_level == 1)
+	{
+		while (helper.needWrite())
+		{
+			if (!helper.hasPages()) // The last data is in the blb_buffer
+			{
+				page = reinterpret_cast<blob_page*>(getBuffer());
+				helper.replaceInPage(page);
+				fb_assert(helper.getWrittenLength() == length);
+				return;
+			}
+
+			// Level 1 page constains data
+			window.win_page = helper.getNextLevel1PageId();
+			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
+			helper.replaceInPage(page);
+			releasePage(true);
+		}
+	}
+	else
+	{
+		auto level2page = helper.setLevel2(blb_pointers);
+		while (helper.needWrite())
+		{
+			if (!helper.hasPages()) // The last data is in the blb_buffer
+			{
+				helper.replaceInPage(page);
+				fb_assert(helper.getWrittenLength() == length);
+				return;
+			}
+
+			// Level 1 page contains pointers
+			window.win_page = helper.getNextLevel1PageId();
+			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
+
+			// Level 2 pages contain data
+			const auto numberOfPagess = page->blp_length / sizeof(page->blp_page);
+			for (FB_SIZE_T i = level2page; i < numberOfPagess && helper.needWrite(); ++i)
+			{
+				auto level2Page = reinterpret_cast<blob_page*>(CCH_HANDOFF(tdbb, &window,
+					page->blp_page[i],
+					LCK_write, pag_blob));
+
+				helper.replaceInPage(level2Page);
+				CCH_MARK(tdbb, &window);
+			}
+			releasePage(false);
+
+			level2page = 0; // Offset only for the first pages
+		}
+	}
+	fb_assert(helper.getWrittenLength() == length);
+}
 
 static ArrayField* alloc_array(jrd_tra* transaction, Ods::InternalArrayDesc* proto_desc)
 {
@@ -3106,102 +3221,14 @@ void blb::BLB_cancel()
 	BLB_cancel(JRD_get_thread_data());
 }
 
-void blb::BLB_write(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length)
+void blb::BLB_write(thread_db* tdbb, offset_t position, const void* buffer, ULONG length)
 {
 	if (!(blb_flags & BLB_temporary) || (blb_flags & BLB_closed))
-		ERR_post(Arg::Gds(isc_cannot_update_old_blob));
+		ERR_post(Arg::Gds(isc_cannot_update_old_blob)); // Cannot update existing blob
 
-	if (position > blb_length)
-		ERR_post(Arg::Gds(isc_blob_out_of_length_write) << Arg::Int64(position) << Arg::Int64(blb_length));
+	// Modify part inside existing data
+	if (modifyDataMoveBuffer(tdbb, position, buffer, length))
+		return; // Only modify, exit
 
-	const offset_t end = position + length;
-	if (end > blb_length)
-	{
-		const offset_t middle = blb_length - position;
-		BLB_write(tdbb, position, buffer, middle); // Replace
-		BLB_put_segment(tdbb, (const UCHAR*)buffer + middle, length - middle); // Append
-		return;
-	}
-
-	if (blb_level == 0)
-	{
-		blob_page* page = (blob_page*) getBuffer();
-		memcpy(reinterpret_cast<char*>(page->blp_page) + position, buffer, length);
-		return;
-	}
-
-	ReplaceDataHelper helper(tdbb, blb_pages, position, buffer, length);
-	blob_page* page = nullptr;
-
-	WIN window(blb_pg_space_id, -1);
-	if (blb_flags & BLB_large_scan)
-	{
-		window.win_flags = WIN_large_scan;
-		window.win_scans = 1;
-	}
-
-	auto releasePage = [&tdbb, &window](const bool mark)
-	{
-		if (mark)
-			CCH_MARK(tdbb, &window);
-
-		if (window.win_flags & WIN_large_scan)
-			CCH_RELEASE_TAIL(tdbb, &window);
-		else
-			CCH_RELEASE(tdbb, &window);
-	};
-
-	// Level 1 blobs are much easier -- page number is in vector.
-	if (blb_level == 1)
-	{
-		while (helper.needWrite())
-		{
-			if (!helper.hasPages()) // The last data is in the blb_buffer
-			{
-				page = reinterpret_cast<blob_page*>(getBuffer());
-				helper.replaceInPage(page);
-				fb_assert(helper.getWrittenLength() == length);
-				return;
-			}
-
-			// Level 1 page constains data
-			window.win_page = helper.getNextLevel1PageId();
-			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
-			helper.replaceInPage(page);
-			releasePage(true);
-		}
-	}
-	else
-	{
-		auto level2page = helper.setLevel2(blb_pointers);
-		while (helper.needWrite())
-		{
-			if (!helper.hasPages()) // The last data is in the blb_buffer
-			{
-				helper.replaceInPage(page);
-				fb_assert(helper.getWrittenLength() == length);
-				return;
-			}
-
-			// Level 1 page contains pointers
-			window.win_page = helper.getNextLevel1PageId();
-			page = reinterpret_cast<blob_page*>(CCH_FETCH(tdbb, &window, LCK_write, pag_blob));
-
-			// Level 2 pages contain data
-			const auto numberOfPagess = page->blp_length / sizeof(page->blp_page);
-			for (FB_SIZE_T i = level2page; i < numberOfPagess && helper.needWrite(); ++i)
-			{
-				auto level2Page = reinterpret_cast<blob_page*>(CCH_HANDOFF(tdbb, &window,
-					page->blp_page[i],
-					LCK_write, pag_blob));
-
-				helper.replaceInPage(level2Page);
-				CCH_MARK(tdbb, &window);
-			}
-			releasePage(false);
-
-			level2page = 0; // Offset only for the first pages
-		}
-	}
-	fb_assert(helper.getWrittenLength() == length);
+	BLB_put_segment(tdbb, buffer, length); // Append
 }

@@ -67,9 +67,35 @@ std::string readBlob(Jrd::bid id)
 	return buffer;
 }
 
-void replaceInBlob(Jrd::thread_db* tdbb, Jrd::blb*& blob, const ULONG pos, const std::string_view replacement)
+enum class ModifyFunction
 {
-	blob->BLB_write(tdbb, pos, replacement.data(), replacement.length());
+	WRITE,
+	PUT_DATA,
+	PUT_SEGMENT,
+};
+
+void replaceInBlob(Jrd::thread_db* tdbb, Jrd::blb*& blob, const ULONG pos, const std::string_view replacement,
+	const ModifyFunction modifyFunction)
+{
+	switch (modifyFunction)
+	{
+		case ModifyFunction::WRITE:
+			blob->BLB_write(tdbb, pos, replacement.data(), replacement.length());
+			break;
+		case ModifyFunction::PUT_SEGMENT:
+			if (replacement.length() < MAX_USHORT)
+			{
+				blob->BLB_lseek(0, pos);
+				blob->BLB_put_segment(tdbb, (const UCHAR*)replacement.data(), replacement.length());
+				break;
+			}
+			[[fallthrough]];
+		case ModifyFunction::PUT_DATA:
+			blob->BLB_lseek(0, pos);
+			blob->BLB_put_data(tdbb, (const UCHAR*)replacement.data(), replacement.length());
+			break;
+	}
+
 	blob->BLB_close(tdbb);
 	blob = nullptr;
 }
@@ -96,28 +122,46 @@ std::string replaceInContent(std::string defaultData, ULONG posToInplace, std::s
 
 } // anonymous namespace
 
+static constexpr std::array functions = {ModifyFunction::PUT_DATA, ModifyFunction::PUT_SEGMENT, ModifyFunction::WRITE};
+static void putFunctionInfo(const ModifyFunction func)
+{
+	switch (func)
+	{
+		case ModifyFunction::WRITE:
+			BOOST_TEST_INFO("Modify function WRITE");
+			break;
+		case ModifyFunction::PUT_SEGMENT:
+			BOOST_TEST_INFO("Modify function PUT_SEGMENT");
+			break;
+		case ModifyFunction::PUT_DATA:
+			BOOST_TEST_INFO("Modify function PUT_DATA");
+			break;
+	}
+}
+
 BOOST_FIXTURE_TEST_CASE(Level0Test, EngineHolder)
 {
 	Jrd::bid id;
 
-	{ // level 0
+	for (auto type : functions)
+	{
 		const std::string_view testData = "Hello World, BLB_get_data, level=0";
 
 		// Full rewrite
 		auto blob = makeBlob(id, testData);
 		std::string buffer;
 		buffer.resize(blob->blb_length, '*');
-		replaceInBlob(tdbb, blob, 0, buffer);
+		replaceInBlob(tdbb, blob, 0, buffer, type);
 		BOOST_TEST(readBlob(id) == buffer);
 
 		// Middle write
 		blob = makeBlob(id, testData);
-		replaceInBlob(tdbb, blob, 12, " __BLB_write_,");
+		replaceInBlob(tdbb, blob, 12, " __BLB_write_,", type);
 		BOOST_TEST(readBlob(id) == "Hello World, __BLB_write_, level=0");
 
 		// Ending is out of range - add to end
 		blob = makeBlob(id, testData);
-		replaceInBlob(tdbb, blob, 27, testData);
+		replaceInBlob(tdbb, blob, 27, testData, type);
 		BOOST_TEST(readBlob(id) == "Hello World, BLB_get_data, Hello World, BLB_get_data, level=0");
 
 		// Beginning is out of range
@@ -136,11 +180,14 @@ BOOST_FIXTURE_TEST_CASE(Level1Test, EngineHolder)
 
 	const std::string_view testData = "Hello World, BLB_get_data, level=1 | ";
 	std::string defaultData = getDefaultString(testData, 1);
+	for (auto type : functions)
 	{
+		putFunctionInfo(type);
+
 		// Full rewrite
 		auto blob = makeBlob(id, defaultData);
 
-		replaceInBlob(tdbb, blob, 0, "new data");
+		replaceInBlob(tdbb, blob, 0, "new data", type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, 0, "new data");
@@ -148,12 +195,13 @@ BOOST_FIXTURE_TEST_CASE(Level1Test, EngineHolder)
 	}
 
 	std::string replacement;
+	replacement.resize(200, '*');
 
+	for (auto type : functions)
 	{
 		// Middle to end write
-		replacement.resize(200, '*');
 		blob = makeBlob(id, defaultData);
-		replaceInBlob(tdbb, blob, blob->blb_length - 200, replacement);
+		replaceInBlob(tdbb, blob, blob->blb_length - 200, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, defaultData.length() - 200, replacement);
@@ -163,46 +211,53 @@ BOOST_FIXTURE_TEST_CASE(Level1Test, EngineHolder)
 		BOOST_TEST(result == expected);
 	}
 
+	for (auto type : functions)
 	{
+		putFunctionInfo(type);
+
 		// Middle
 		replacement.resize(200, '*');
 		blob = makeBlob(id, defaultData);
-		replaceInBlob(tdbb, blob, blob->blb_length - 4000, replacement);
+		replaceInBlob(tdbb, blob, blob->blb_length - 4000, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, defaultData.length() - 4000, replacement);
-		BOOST_TEST(result.length() == expected.length());
+		BOOST_REQUIRE(result.length() == expected.length());
 		BOOST_REQUIRE(result.substr(result.length() - 4000, 300) == expected.substr(expected.length() - 4000, 300));
 		BOOST_TEST(result == expected);
 	}
 
+	replacement.clear();
+	for (auto type : functions)
 	{
+		putFunctionInfo(type);
+
 		// Ending is out of range - add to end
 		blob = makeBlob(id, defaultData);
-		replacement.clear();
 		replacement.resize(blob->blb_length, '@');
+
 		const auto insertPos = blob->blb_length - 1000;
-		replaceInBlob(tdbb, blob, insertPos, replacement);
+		replaceInBlob(tdbb, blob, insertPos, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, insertPos, replacement);
-		BOOST_TEST(result.length() == expected.length());
+		BOOST_REQUIRE(result.length() == expected.length());
 		BOOST_REQUIRE(result.substr(0, 400) == expected.substr(0, 400));
 		BOOST_REQUIRE(result.substr(result.length() - 300) == expected.substr(expected.length() - 300));
 		BOOST_TEST(result == expected);
 	}
 
+	defaultData = getDefaultString(testData, 8);
+	replacement = getDefaultString(testData, 3, '*');
+	for (auto type : functions)
 	{
-		defaultData = getDefaultString(testData, 8);
-		replacement = getDefaultString(testData, 3, '*');
+		putFunctionInfo(type);
 
 		// Big
 		blob = makeBlob(id, defaultData);
 
 		const auto insertPos = blob->blb_length / 2;
-		blob->BLB_write(tdbb, insertPos, replacement.data(), replacement.length());
-		blob->BLB_close(tdbb);
-		blob = nullptr;
+		replaceInBlob(tdbb, blob, insertPos, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, insertPos, replacement);
@@ -233,11 +288,14 @@ BOOST_FIXTURE_TEST_CASE(Level2Test, EngineHolder)
 	std::string defaultData;
 	std::string replacement;
 
+	for (auto type : functions)
 	{
+		putFunctionInfo(type);
+
 		blob = makeBlob(id, defaultData);
 
 		const auto insertPos = blob->blb_length / 2;
-		replaceInBlob(tdbb, blob, insertPos, replacement);
+		replaceInBlob(tdbb, blob, insertPos, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, insertPos, replacement);
@@ -255,14 +313,16 @@ BOOST_FIXTURE_TEST_CASE(Level2Test, EngineHolder)
 		}
 	}
 
+	defaultData = getDefaultString(testData, 5050);
+	replacement = getDefaultString(testData, 150, '*');
+	for (auto type : functions)
 	{
-		defaultData = getDefaultString(testData, 5050);
-		replacement = getDefaultString(testData, 150, '*');
+		putFunctionInfo(type);
 
 		blob = makeBlob(id, defaultData);
 
 		const auto insertPos = 1998;
-		replaceInBlob(tdbb, blob, insertPos, replacement);
+		replaceInBlob(tdbb, blob, insertPos, replacement, type);
 
 		result = readBlob(id);
 		expected = replaceInContent(defaultData, insertPos, replacement);
