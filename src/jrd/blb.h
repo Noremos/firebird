@@ -134,10 +134,13 @@ public:
 		return destination;
 	}
 
+	// Read form specified position
+	FB_SIZE_T BLB_read(thread_db* tdbb, const offset_t position, void* buffer, const ULONG length);
+
 	// Write data at any position in a temporally (new) blob
 	// The position of the new buffer must start inside the blob range, but its length may extend beyond it
 	// Existing data will be overwritten
-	void BLB_write(thread_db* tdbb, offset_t position, const void* buffer, ULONG length);
+	void BLB_write(thread_db* tdbb, const offset_t position, const void* buffer, ULONG length);
 
 private:
 	static blb* allocate_blob(thread_db*, jrd_tra*);

@@ -3261,7 +3261,14 @@ void blb::BLB_cancel()
 	BLB_cancel(JRD_get_thread_data());
 }
 
-void blb::BLB_write(thread_db* tdbb, offset_t position, const void* buffer, ULONG length)
+FB_SIZE_T blb::BLB_read(thread_db* tdbb, const offset_t position, void* buffer, const ULONG length)
+{
+	// Mode 0 - from start
+	BLB_lseek(0, position);
+	return BLB_get_data(tdbb, reinterpret_cast<UCHAR*>(buffer), length, false);
+}
+
+void blb::BLB_write(thread_db* tdbb, const offset_t position, const void* buffer, ULONG length)
 {
 	if (!(blb_flags & BLB_temporary) || (blb_flags & BLB_closed))
 		ERR_post(Arg::Gds(isc_cannot_update_old_blob)); // Cannot update existing blob

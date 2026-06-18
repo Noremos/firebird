@@ -12,15 +12,11 @@ BOOST_AUTO_TEST_SUITE(JrdClassesSuite)
 
 BOOST_AUTO_TEST_SUITE(BlobTests)
 
-BOOST_AUTO_TEST_SUITE(BlobRandomWriteTests)
-
-namespace {
 
 static constexpr UCHAR STREAM_BLOB_BPB[] = {
 	isc_bpb_version1,
 	isc_bpb_type, 1, isc_bpb_type_stream,
 };
-
 
 std::string getDefaultString(std::string_view header = "", int pageNumber = 0, std::optional<char> dum = std::nullopt)
 {
@@ -64,8 +60,11 @@ std::string readBlob(Jrd::bid id)
 	std::string buffer;
 	buffer.resize(blob->blb_length, '\0');
 	const ULONG readLength = blob->BLB_get_data(JRD_get_thread_data(), (UCHAR*)buffer.data(), blob->blb_length, true);
+
 	return buffer;
 }
+
+BOOST_AUTO_TEST_SUITE(BlobModificationTests)
 
 enum class ModifyFunction
 {
@@ -120,8 +119,6 @@ std::string replaceInContent(std::string defaultData, ULONG posToInplace, std::s
 	return defaultData;
 }
 
-} // anonymous namespace
-
 static constexpr std::array functions = {ModifyFunction::PUT_DATA, ModifyFunction::PUT_SEGMENT, ModifyFunction::WRITE};
 static void putFunctionInfo(const ModifyFunction func)
 {
@@ -139,7 +136,7 @@ static void putFunctionInfo(const ModifyFunction func)
 	}
 }
 
-BOOST_FIXTURE_TEST_CASE(Level0Test, EngineHolder)
+BOOST_FIXTURE_TEST_CASE(Level0WriteTest, EngineHolder)
 {
 	Jrd::bid id;
 
@@ -170,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE(Level0Test, EngineHolder)
 	}
 }
 
-BOOST_FIXTURE_TEST_CASE(Level1Test, EngineHolder)
+BOOST_FIXTURE_TEST_CASE(Level1WriteTest, EngineHolder)
 {
 	Jrd::bid id;
 	Jrd::blb* blob = nullptr;
@@ -273,8 +270,7 @@ BOOST_FIXTURE_TEST_CASE(Level1Test, EngineHolder)
 	}
 }
 
-
-BOOST_FIXTURE_TEST_CASE(Level2Test, EngineHolder)
+BOOST_FIXTURE_TEST_CASE(Level2WriteTest, EngineHolder)
 {
 	// Takes some time
 
@@ -339,7 +335,60 @@ BOOST_FIXTURE_TEST_CASE(Level2Test, EngineHolder)
 	}
 }
 
-BOOST_AUTO_TEST_SUITE_END()	// BlobRandomWriteTest
+BOOST_AUTO_TEST_SUITE_END()	// BlobModificationTest
+
+BOOST_AUTO_TEST_SUITE(BlobModificationTests)
+
+
+BOOST_FIXTURE_TEST_CASE(Level0ReadTest, EngineHolder)
+{
+	Jrd::bid id;
+
+	const std::string_view testData = "Hello World, BLB_read, level=0";
+	auto blob = makeBlob(id, testData);
+	blob->BLB_close(tdbb);
+	blob = Jrd::blb::open(tdbb, tdbb->getTransaction(), &id);
+
+	std::string buffer;
+	buffer.resize(blob->blb_length, '\0');
+	blob->BLB_read(tdbb, 0, buffer.data(), buffer.length());
+	BOOST_TEST(buffer == testData);
+
+	auto read = blob->BLB_read(tdbb, 5, buffer.data(), buffer.length());
+	BOOST_TEST(read == buffer.length() - 5);
+
+	BOOST_TEST(buffer.substr(0,  read) == testData.substr(5));
+
+	blob->BLB_close(tdbb);
+}
+
+BOOST_FIXTURE_TEST_CASE(Level1ReadTest, EngineHolder)
+{
+	Jrd::bid id;
+
+	std::string result;
+	std::string expected;
+
+	const std::string_view testData = "Hello World, BLB_read, level=1 | ";
+	std::string defaultData = getDefaultString(testData, 8);
+
+	auto blob = makeBlob(id, defaultData);
+	blob->BLB_close(tdbb);
+	blob = Jrd::blb::open(tdbb, tdbb->getTransaction(), &id);
+
+	std::string buffer;
+	buffer.resize(blob->blb_length, '\0');
+	auto read = blob->BLB_read(tdbb, blob->blb_length / 2, buffer.data(), buffer.length());
+	BOOST_TEST(buffer.substr(0, read) == defaultData.substr(blob->blb_length / 2, read));
+
+	read = blob->BLB_read(tdbb, 0, buffer.data(), buffer.length());
+	BOOST_TEST(read == buffer.length());
+	BOOST_TEST(buffer == defaultData);
+
+	blob->BLB_close(tdbb);
+}
+
+BOOST_AUTO_TEST_SUITE_END()	// BlobModificationTests
 
 BOOST_AUTO_TEST_SUITE_END()	// BlobTests
 
