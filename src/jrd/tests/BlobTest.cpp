@@ -79,7 +79,7 @@ void replaceInBlob(Jrd::thread_db* tdbb, Jrd::blb*& blob, const ULONG pos, const
 	switch (modifyFunction)
 	{
 		case ModifyFunction::WRITE:
-			blob->BLB_write(tdbb, pos, replacement.data(), replacement.length());
+			blob->write(tdbb, pos, replacement.data(), replacement.length());
 			break;
 		case ModifyFunction::PUT_SEGMENT:
 			if (replacement.length() < MAX_USHORT)
@@ -99,24 +99,24 @@ void replaceInBlob(Jrd::thread_db* tdbb, Jrd::blb*& blob, const ULONG pos, const
 	blob = nullptr;
 }
 
-std::string replaceInContent(std::string defaultData, ULONG posToInplace, std::string_view contentToInplace)
+std::string replaceInContent(std::string sourceData, const ULONG posToInplace, const std::string_view contentToInplace)
 {
-	auto sourceLength = defaultData.length();
+	auto sourceLength = sourceData.length();
 
 	const auto replacementEnd = posToInplace + contentToInplace.length();
 	if (replacementEnd < sourceLength)
 	{
 		for (ULONG i = 0; i < contentToInplace.length(); ++i)
 		{
-			defaultData[posToInplace + i] = contentToInplace[i];
+			sourceData[posToInplace + i] = contentToInplace[i];
 		}
 	}
 	else
 	{
-		defaultData.resize(posToInplace);
-		defaultData += contentToInplace;
+		sourceData.resize(posToInplace);
+		sourceData += contentToInplace;
 	}
-	return defaultData;
+	return sourceData;
 }
 
 static constexpr std::array functions = {ModifyFunction::PUT_DATA, ModifyFunction::PUT_SEGMENT, ModifyFunction::WRITE};
@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE(Level0WriteTest, EngineHolder)
 
 	for (auto type : functions)
 	{
-		const std::string_view testData = "Hello World, BLB_get_data, level=0";
+		const std::string testData = "Hello World, BLB_get_data, level=0";
 
 		// Full rewrite
 		auto blob = makeBlob(id, testData);
@@ -153,17 +153,17 @@ BOOST_FIXTURE_TEST_CASE(Level0WriteTest, EngineHolder)
 
 		// Middle write
 		blob = makeBlob(id, testData);
-		replaceInBlob(tdbb, blob, 12, " __BLB_write_,", type);
-		BOOST_TEST(readBlob(id) == "Hello World, __BLB_write_, level=0");
+		replaceInBlob(tdbb, blob, 12, " __write_,", type);
+		BOOST_TEST(readBlob(id) == replaceInContent(testData, 12, " __write_,"));
 
 		// Ending is out of range - add to end
 		blob = makeBlob(id, testData);
 		replaceInBlob(tdbb, blob, 27, testData, type);
-		BOOST_TEST(readBlob(id) == "Hello World, BLB_get_data, Hello World, BLB_get_data, level=0");
+		BOOST_TEST(readBlob(id) == replaceInContent(testData, 27, testData));
 
 		// Beginning is out of range
 		blob = makeBlob(id, testData);
-		BOOST_CHECK_THROW(blob->BLB_write(tdbb, 40, (const void*)testData.data(), testData.length()), Firebird::Exception);
+		BOOST_CHECK_THROW(blob->write(tdbb, 40, (const void*)testData.data(), testData.length()), Firebird::Exception);
 	}
 }
 
@@ -344,17 +344,17 @@ BOOST_FIXTURE_TEST_CASE(Level0ReadTest, EngineHolder)
 {
 	Jrd::bid id;
 
-	const std::string_view testData = "Hello World, BLB_read, level=0";
+	const std::string_view testData = "Hello World, read, level=0";
 	auto blob = makeBlob(id, testData);
 	blob->BLB_close(tdbb);
 	blob = Jrd::blb::open(tdbb, tdbb->getTransaction(), &id);
 
 	std::string buffer;
 	buffer.resize(blob->blb_length, '\0');
-	blob->BLB_read(tdbb, 0, buffer.data(), buffer.length());
+	blob->read(tdbb, 0, buffer.data(), buffer.length());
 	BOOST_TEST(buffer == testData);
 
-	auto read = blob->BLB_read(tdbb, 5, buffer.data(), buffer.length());
+	auto read = blob->read(tdbb, 5, buffer.data(), buffer.length());
 	BOOST_TEST(read == buffer.length() - 5);
 
 	BOOST_TEST(buffer.substr(0,  read) == testData.substr(5));
@@ -369,7 +369,7 @@ BOOST_FIXTURE_TEST_CASE(Level1ReadTest, EngineHolder)
 	std::string result;
 	std::string expected;
 
-	const std::string_view testData = "Hello World, BLB_read, level=1 | ";
+	const std::string_view testData = "Hello World, read, level=1 | ";
 	std::string defaultData = getDefaultString(testData, 8);
 
 	auto blob = makeBlob(id, defaultData);
@@ -378,10 +378,10 @@ BOOST_FIXTURE_TEST_CASE(Level1ReadTest, EngineHolder)
 
 	std::string buffer;
 	buffer.resize(blob->blb_length, '\0');
-	auto read = blob->BLB_read(tdbb, blob->blb_length / 2, buffer.data(), buffer.length());
+	auto read = blob->read(tdbb, blob->blb_length / 2, buffer.data(), buffer.length());
 	BOOST_TEST(buffer.substr(0, read) == defaultData.substr(blob->blb_length / 2, read));
 
-	read = blob->BLB_read(tdbb, 0, buffer.data(), buffer.length());
+	read = blob->read(tdbb, 0, buffer.data(), buffer.length());
 	BOOST_TEST(read == buffer.length());
 	BOOST_TEST(buffer == defaultData);
 

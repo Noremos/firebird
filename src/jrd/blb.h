@@ -135,12 +135,12 @@ public:
 	}
 
 	// Read form specified position
-	FB_SIZE_T BLB_read(thread_db* tdbb, const offset_t position, void* buffer, const ULONG length);
+	FB_SIZE_T read(thread_db* tdbb, const offset_t position, void* buffer, const ULONG length);
 
 	// Write data at any position in a temporally (new) blob
 	// The position of the new buffer must start inside the blob range, but its length may extend beyond it
 	// Existing data will be overwritten
-	void BLB_write(thread_db* tdbb, const offset_t position, const void* buffer, ULONG length);
+	void write(thread_db* tdbb, const offset_t position, const void* buffer, ULONG length);
 
 private:
 	static blb* allocate_blob(thread_db*, jrd_tra*);
@@ -151,8 +151,8 @@ private:
 	void insert_page(thread_db*);
 	void destroy(const bool purge_flag);
 
-	// Modify only existing data. Throw error on side violation
-	void modifyExistingData(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length);
+	// Modify data. Throw error on valid length violation
+	void modifyData(thread_db* tdbb, offset_t position, const void* buffer, const ULONG length);
 
 	// Modify existing data
 	// Output:
@@ -160,11 +160,11 @@ private:
 	//     false: the input range is extends beyond existing data. Modify `buffer` and `length` to return only non-written data
 	template<class BufferType, class SizeType>
 	requires((std::is_same_v<BufferType, void> || std::is_same_v<BufferType, UCHAR>) && std::is_integral_v<SizeType>)
-	bool modifyDataMoveBuffer(thread_db* tdbb, const offset_t position, const BufferType*& buffer, SizeType& length)
+	bool modifyBlobChunk(thread_db* tdbb, const offset_t position, const BufferType*& buffer, SizeType& length)
 	{
 		if (position > blb_length)
 		{
-			ERR_post(Firebird::Arg::Gds(isc_blob_out_of_length_write) <<
+			ERR_post(Firebird::Arg::Gds(isc_blob_write_after_the_end) <<
 				Firebird::Arg::Int64(position) << Firebird::Arg::Int64(blb_length));
 		}
 
@@ -172,13 +172,13 @@ private:
 		if (end <= blb_length)
 		{
 			// Range is inside the current data, replace and report that no extra actions are requeued
-			modifyExistingData(tdbb, position, buffer, length);
+			modifyData(tdbb, position, buffer, length);
 			return true;
 		}
 
 		// Part inside existing data
 		const offset_t middle = blb_length - position;
-		modifyExistingData(tdbb, position, buffer, middle);
+		modifyData(tdbb, position, buffer, middle);
 
 		// Return only part to append
 		buffer = reinterpret_cast<const BufferType*>(reinterpret_cast<const UCHAR*>(buffer) +  middle); // Move pointer
