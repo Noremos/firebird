@@ -195,10 +195,18 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		bid constantBid = getBlobId(tdbb);
 
 		MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
+		if (request != nullptr)
+		{
+			// Allocate new impure data in a correct position
+			csb->csb_impure = request->impureArea.getCount();
+		}
+
 		fb_assert(csb->csb_node != nullptr);
 		csb->csb_node->pass1(tdbb, csb);
 		csb->csb_node->pass2(tdbb, csb);
 
+		// request is null when this function called inside Package::scan (without MINISCAN)
+		// request is not null when this function called in PackageReferenceNode::execute
 		if (request == nullptr)
 		{
 			// Came from Reload
@@ -219,25 +227,13 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		}
 		else
 		{
-			// A csb->csb_node will use impureArea from the incoming request
-			// but it contains other data
-			// Backup the current data and restore it later
-
-			// Reusing a small chunk is faster instead of makeing a new request
-			// And using existing space for a temporally value is better instead of adding this to request->impureArea
-			// and carrying it for whole request live
-
-			const auto nodeImpureSize = csb->csb_impure;
-			if (request->impureArea.getCount() < nodeImpureSize)
-				request->impureArea.grow(nodeImpureSize - request->impureArea.getCount());
-
-			const Array<UCHAR> backup(request->impureArea.begin(), nodeImpureSize);
-
+			if (csb->csb_impure > request->impureArea.getCount())
+			{
+				// impureArea does not automatically extend. Do it manually
+				request->impureArea.grow(csb->csb_impure);
+			}
 			fb_assert(tdbb->getRequest() == request);
 			executeCsbNode(tdbb, csb);
-
-			// Restore
-			memcpy(request->impureArea.begin(), backup.begin(), nodeImpureSize);
 		}
 	}
 	catch (const Exception& ex)
