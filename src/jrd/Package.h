@@ -88,7 +88,7 @@ public:
 
 	bid getBlobId(thread_db* tdbb);
 
-	dsc* makeValue(thread_db* tdbb);
+	dsc* makeValue(thread_db* tdbb, Request* request);
 
 private:
 	void executeCsbNode(thread_db* tdbb, CompilerScratch* csb);

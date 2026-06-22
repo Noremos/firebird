@@ -128,7 +128,7 @@ bid ConstantValue::getBlobId(thread_db* tdbb)
 	return m_blrBlobId.isEmpty() ? getConstantBid(tdbb, name) : m_blrBlobId;
 }
 
-dsc* ConstantValue::makeValue(thread_db* tdbb)
+dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 {
 	{
 		ReadLockGuard guard(m_makeValueLock, FB_FUNCTION);
@@ -144,7 +144,6 @@ dsc* ConstantValue::makeValue(thread_db* tdbb)
 
 	MemoryPool* csb_pool = attachment->att_database->createPool();
 	Statement* handmadeStmt = nullptr;
-	Request* request = nullptr;
 	try
 	{
 		ContextPoolHolder context(tdbb, csb_pool);
@@ -158,20 +157,26 @@ dsc* ConstantValue::makeValue(thread_db* tdbb)
 		MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
 		fb_assert(csb->csb_node != nullptr);
 
-		handmadeStmt = Statement::makeStatement(tdbb, csb, true);
-		request = handmadeStmt->makeRootRequest(tdbb);
+		if (request == nullptr)
+		{
+			// Came from Reload
+			handmadeStmt = Statement::makeStatement(tdbb, csb, true);
+			request = handmadeStmt->makeRootRequest(tdbb);
 
-		AutoSetRestore2<Request*, thread_db> autoSetRequest(
-			tdbb, &thread_db::getRequest, &thread_db::setRequest, request);
+			AutoSetRestore2<Request*, thread_db> autoSetRequest(
+				tdbb, &thread_db::getRequest, &thread_db::setRequest, request);
 
-		request->setUsed();
-		request->setAttachment(attachment);
-		attachment->att_requests.add(request);
+			request->setUsed();
+			request->setAttachment(attachment);
+			attachment->att_requests.add(request);
 
-		TRA_attach_request(tdbb->getTransaction(), request);
+			TRA_attach_request(tdbb->getTransaction(), request);
 
-		// Execute it here, while AutoSetRestore2 is active
-		executeCsbNode(tdbb, csb);
+			// Execute it here, while AutoSetRestore2 is active
+			executeCsbNode(tdbb, csb);
+		}
+		else
+			executeCsbNode(tdbb, csb);
 	}
 	catch (const Exception& ex)
 	{
@@ -353,7 +358,7 @@ ConstantValue& Package::addConstant(thread_db* tdbb,
 	value.setType(type);
 	value.setValue(blrBlobId);
 	if (!skipMakeValue)
-		value.makeValue(tdbb);
+		value.makeValue(tdbb, nullptr);
 
 	return value;
 }
