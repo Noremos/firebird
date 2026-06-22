@@ -53,7 +53,7 @@ inline std::string_view convertNumberToString(NumberConvertBuffer& buffer, T val
 	std::to_chars_result result;
 
 	// Do not use begin/end or front/back because they requeue some obscure extra casts to char* on Windows
-	const char* end = buffer.data() + buffer.size();
+	char* end = buffer.data() + buffer.size();
 	if constexpr (std::is_floating_point_v<T>)
 		result = std::to_chars(buffer.data(), end, value, std::chars_format::general, NUMBER_PRECISION);
 	else
