@@ -447,7 +447,7 @@ DmlNode* PackageReferenceNode::parse(thread_db* tdbb, MemoryPool& pool, Compiler
 				}
 			}
 
-			if (!node->m_package || constant == nullptr)
+			if (constant == nullptr)
 			{
 				status_exception::raise(Arg::Gds(isc_bad_constant_name) <<
 					Arg::Str(fullName.toQuotedString()));
