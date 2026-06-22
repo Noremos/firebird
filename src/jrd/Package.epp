@@ -168,7 +168,7 @@ bid ConstantValue::getBlobId(thread_db* tdbb)
 	return m_blrBlobId.isEmpty() ? getConstantBid(tdbb, name) : m_blrBlobId;
 }
 
-dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
+dsc* ConstantValue::makeValue(thread_db* tdbb)
 {
 	{
 		ReadLockGuard guard(m_makeValueLock, FB_FUNCTION);
@@ -184,6 +184,7 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 
 	MemoryPool* csb_pool = attachment->att_database->createPool();
 	Statement* handmadeStmt = nullptr;
+	Request* request = nullptr;
 	try
 	{
 		ContextPoolHolder context(tdbb, csb_pool);
@@ -195,46 +196,22 @@ dsc* ConstantValue::makeValue(thread_db* tdbb, Request* request)
 		bid constantBid = getBlobId(tdbb);
 
 		MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
-		if (request != nullptr)
-		{
-			// Allocate new impure data in a correct position
-			csb->csb_impure = request->impureArea.getCount();
-		}
 
-		fb_assert(csb->csb_node != nullptr);
-		csb->csb_node->pass1(tdbb, csb);
-		csb->csb_node->pass2(tdbb, csb);
+		// Came from Reload
+		handmadeStmt = Statement::makeStatement(tdbb, csb, true);
+		request = handmadeStmt->makeRootRequest(tdbb);
 
-		// request is null when this function called inside Package::scan (without MINISCAN)
-		// request is not null when this function called in PackageReferenceNode::execute
-		if (request == nullptr)
-		{
-			// Came from Reload
-			handmadeStmt = Statement::makeStatement(tdbb, csb, true);
-			request = handmadeStmt->makeRootRequest(tdbb);
+		AutoSetRestore2<Request*, thread_db> autoSetRequest(
+			tdbb, &thread_db::getRequest, &thread_db::setRequest, request);
 
-			AutoSetRestore2<Request*, thread_db> autoSetRequest(
-				tdbb, &thread_db::getRequest, &thread_db::setRequest, request);
+		request->setUsed();
+		request->setAttachment(attachment);
+		attachment->att_requests.add(request);
 
-			request->setUsed();
-			request->setAttachment(attachment);
-			attachment->att_requests.add(request);
+		TRA_attach_request(tdbb->getTransaction(), request);
 
-			TRA_attach_request(tdbb->getTransaction(), request);
-
-			// Execute it here, while AutoSetRestore2 is active
-			executeCsbNode(tdbb, csb);
-		}
-		else
-		{
-			if (csb->csb_impure > request->impureArea.getCount())
-			{
-				// impureArea does not automatically extend. Do it manually
-				request->impureArea.grow(csb->csb_impure);
-			}
-			fb_assert(tdbb->getRequest() == request);
-			executeCsbNode(tdbb, csb);
-		}
+		// Execute it while AutoSetRestore2 is active
+		executeCsbNode(tdbb, csb);
 	}
 	catch (const Exception& ex)
 	{
@@ -444,7 +421,7 @@ ConstantValue& Package::addConstant(thread_db* tdbb,
 	auto& value = constants.add(constName, isPrivate);
 	value.updateValue(blrBlobId);
 	if (!skipMakeValue)
-		value.makeValue(tdbb, nullptr);
+		value.makeValue(tdbb);
 
 	return value;
 }

@@ -560,7 +560,7 @@ dsc* PackageReferenceNode::execute(thread_db* tdbb, Request* request) const
 			Package* package = m_package(request->getResources());
 			package->checkReload(tdbb);
 
-			dsc* constantDsc = package->findConstant(m_fullName)->makeValue(tdbb, request);
+			dsc* constantDsc = package->findConstant(m_fullName)->makeValue(tdbb);
 			if (constantDsc == nullptr || constantDsc->isNull())
 				return nullptr;
 
