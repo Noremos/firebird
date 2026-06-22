@@ -197,7 +197,6 @@ dsc* ConstantValue::makeValue(thread_db* tdbb)
 
 		MET_parse_blob(tdbb, &name.schema, nullptr, &constantBid, &csb, nullptr, false, false);
 
-		// Came from Reload
 		handmadeStmt = Statement::makeStatement(tdbb, csb, true);
 		request = handmadeStmt->makeRootRequest(tdbb);
 
@@ -342,7 +341,7 @@ ScanResult Package::scan(thread_db* tdbb, ObjectBase::Flag flags)
 				skipMakeValue);
 
 			if (skipMakeValue)
-				this->m_callReload = true; // Value is necessary for to calculate hash
+				this->m_callReload = true;
 		}
 		END_FOR
 	}
