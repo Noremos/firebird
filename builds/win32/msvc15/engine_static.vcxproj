@@ -201,7 +201,6 @@
     <ClCompile Include="..\..\..\src\utilities\gstat\ppg.cpp" />
     <ClCompile Include="..\..\..\src\utilities\nbackup\nbackup.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\JsonRuntime.cpp" />
-    <ClCompile Include="..\..\..\src\jrd\json\JsonParser.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JsonPath.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JsonPathParser.cpp" />
     <ClCompile Include="..\..\..\src\jrd\json\path\JPathParser.cpp" />
