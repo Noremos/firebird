@@ -36,21 +36,20 @@
 #include "../common/TextType.h"
 
 
-static constexpr TTypeId JSON_TTYPE = ttype_utf8;
-static constexpr USHORT JSON_TTYPE_BYTES_BET_CHAR = 4;
-static constexpr USHORT JSON_DEFAULT_SIZE = 6000 * JSON_TTYPE_BYTES_BET_CHAR;
-
-using TextPos = FB_UINT64;
-using TextLength = FB_UINT64;
-
-static constexpr TextPos INVALID_TEXT_POS = MAX_UINT64;
-static constexpr TextLength JSON_MAX_REPORT_SIZE = 50;
-
-
 // Tokens
 namespace FBJSON
 {
 	// usings
+
+	inline constexpr TTypeId JSON_TTYPE = ttype_utf8;
+	inline constexpr USHORT JSON_TTYPE_BYTES_BET_CHAR = 4;
+	inline constexpr USHORT JSON_DEFAULT_SIZE = 6000 * JSON_TTYPE_BYTES_BET_CHAR;
+
+	using TextPos = FB_UINT64;
+	using TextLength = FB_UINT64;
+
+	inline constexpr TextPos INVALID_TEXT_POS = MAX_UINT64;
+	inline constexpr TextLength JSON_MAX_REPORT_SIZE = 50;
 
 	using SmallString = Firebird::string;
 	using JsonToken = std::string_view;
@@ -74,7 +73,7 @@ namespace FBJSON
 
 
 	// Basically the inversion
-	constexpr CompareResult operator*(CompareResult lhs, const bool invert)
+	inline constexpr CompareResult operator*(CompareResult lhs, const bool invert)
 	{
 		if (!invert)
 			return lhs;
@@ -96,20 +95,20 @@ namespace FBJSON
 	{
 		namespace TypeName
 		{
-			constexpr JsonToken EMPTY = "empty";
-			constexpr JsonToken STRING = "string";
-			constexpr JsonToken NUMBER = "number";
-			constexpr JsonToken BOOLEAN = "boolean";
-			constexpr JsonToken JNULL = "null";
-			constexpr JsonToken ARRAY = "array";
-			constexpr JsonToken OBJECT = "object";
-			constexpr JsonToken DATETIME = "datetime";
-			constexpr JsonToken UNKNOWN = "unknown";
-			constexpr JsonToken TIME_WITH_TZ = "time with time zone";
-			constexpr JsonToken TIME_WITHOUT_TZ = "time without time zone";
-			constexpr JsonToken TIMESTAMT_WITH_TZ = "timestamp with time zone";
-			constexpr JsonToken TIMESTAMT_WITHOUT_TZ = "timestamp without time zone";
-			constexpr JsonToken DATE = "date";
+			inline constexpr JsonToken EMPTY = "empty";
+			inline constexpr JsonToken STRING = "string";
+			inline constexpr JsonToken NUMBER = "number";
+			inline constexpr JsonToken BOOLEAN = "boolean";
+			inline constexpr JsonToken JNULL = "null";
+			inline constexpr JsonToken ARRAY = "array";
+			inline constexpr JsonToken OBJECT = "object";
+			inline constexpr JsonToken DATETIME = "datetime";
+			inline constexpr JsonToken UNKNOWN = "unknown";
+			inline constexpr JsonToken TIME_WITH_TZ = "time with time zone";
+			inline constexpr JsonToken TIME_WITHOUT_TZ = "time without time zone";
+			inline constexpr JsonToken TIMESTAMT_WITH_TZ = "timestamp with time zone";
+			inline constexpr JsonToken TIMESTAMT_WITHOUT_TZ = "timestamp without time zone";
+			inline constexpr JsonToken DATE = "date";
 		}
 
 		const JsonToken ANY_FIELD("*");
