@@ -5529,8 +5529,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_package_constant:
 				{
-					static const CachedRequestId consatntHandleId;
-					handle.reset(tdbb, consatntHandleId);
+					static const CachedRequestId constantHandleId;
+					handle.reset(tdbb, constantHandleId);
 
 					FOR (REQUEST_HANDLE handle)
 						CONST IN RDB$CONSTANTS
