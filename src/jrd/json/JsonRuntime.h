@@ -31,6 +31,7 @@
 #include "JsonConsts.h"
 #include "classes/JsonScalar.h"
 #include "classes/JsonTypes.h"
+#include "path/JsonPath.h"
 
 namespace FBJSON {
 
@@ -84,7 +85,6 @@ enum class JsonExprOperation : UCHAR
 };
 
 class PassingList;
-struct PathVariable;
 
 
 // * * * *

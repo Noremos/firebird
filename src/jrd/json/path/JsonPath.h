@@ -39,8 +39,6 @@ inline constexpr PathArrayIndex JPATH_ARRAY_LAST_INDEX = -1;
 struct PathNode;
 class JsonExprNode;
 class JsonPath;
-class PathParser;
-class PassingList;
 struct PathVariable;
 struct PathInjection;
 
@@ -681,10 +679,7 @@ struct PathInjection : private Firebird::PermanentStorage
 	// What to inject
 	Firebird::AutoPtr<JsonExprNode> expr;
 
-	PathInjection(MemoryPool& pool)
-		: Firebird::PermanentStorage(pool)
-	{ }
-
+	PathInjection(MemoryPool& pool);
 	PathInjection(PathInjection&&) noexcept = delete;
 	PathInjection(const PathInjection&) = delete;
 

@@ -49,37 +49,15 @@ inline constexpr int NUMBER_PRECISION = 14;
 template<class T>
 inline std::string_view convertNumberToString(NumberConvertBuffer& buffer, T value)
 {
-	// Android does not have to_chars
-#ifdef ANDROID
-	ULONG outputLength = 0;
-
-	if constexpr (std::is_floating_point_v<T>)
-	{
-		outputLength = fb_utils::snprintf(buffer.data(), buffer.size(), "%.*g", NUMBER_PRECISION, value);
-
-		// Replace the ',' with '.'
-		for (char* it = buffer.begin(); it != buffer.end(); ++it)
-		{
-			if (*it == ',')
-			{
-				*it = '.';
-				break;
-			}
-		}
-	}
-	else
-		outputLength = fb_utils::snprintf(buffer.data(), buffer.size(), "%" SQUADFORMAT, value);
-
-	return std::string_view(buffer.data(), outputLength);
-#else
-	//! Use to_chars because other function are locale-depended and can insert a ',' instead of a '.'
+	// Use to_chars because other function are locale-depended and can insert a ',' instead of a '.'
 	std::to_chars_result result;
 
-	//! Do not use begin/end or front/back because they requeue some obscure extra casts to char* on Windows
+	// Do not use begin/end or front/back because they requeue some obscure extra casts to char* on Windows
+	const char* end = buffer.data() + buffer.size();
 	if constexpr (std::is_floating_point_v<T>)
-		result = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value, std::chars_format::general, NUMBER_PRECISION);
+		result = std::to_chars(buffer.data(), end, value, std::chars_format::general, NUMBER_PRECISION);
 	else
-		result = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+		result = std::to_chars(buffer.data(), end, value);
 
 	if (result.ec != std::errc())
 	{
@@ -88,7 +66,6 @@ inline std::string_view convertNumberToString(NumberConvertBuffer& buffer, T val
 	}
 
 	return std::string_view(buffer.data(), result.ptr - buffer.data());
-#endif
 }
 
 template<class T>

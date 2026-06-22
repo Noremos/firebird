@@ -294,3 +294,8 @@ bool PathVariable::hasPath(const UCHAR flagsMask) const
 {
 	return path.hasData() && !path->isEmpty(flagsMask);
 }
+
+
+PathInjection::PathInjection(MemoryPool& pool)
+	: Firebird::PermanentStorage(pool)
+{ }

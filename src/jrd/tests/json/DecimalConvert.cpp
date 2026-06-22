@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(NegativeintTest)
 }
 BOOST_AUTO_TEST_CASE(bigintTest)
 {
-	const u_int64_t bigintNumber = 9223372037;
+	const uint64_t bigintNumber = 9223372037;
 
 	FBJSON::NumberConvertBuffer buffer;
 	BOOST_TEST(FBJSON::convertNumberToString(buffer, bigintNumber) == "9223372037");
