@@ -1696,7 +1696,7 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 		try
 		{
 			// Check for ability to access requested DB remotely
-			if (options.dpb_remote_address.hasData() && !config->getRemoteAccess())
+			if (options.dpb_auth_block.hasData() && !config->getRemoteAccess())
 			{
 				ERR_post(Arg::Gds(isc_no_priv) << Arg::Str("remote") <<
 												  Arg::Str("database") <<
@@ -2931,7 +2931,7 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 		try
 		{
 			// Check for ability to access requested DB remotely
-			if (options.dpb_remote_address.hasData() && !config->getRemoteAccess())
+			if (options.dpb_auth_block.hasData() && !config->getRemoteAccess())
 			{
 				ERR_post(Arg::Gds(isc_no_priv) << Arg::Str("remote") <<
 												  Arg::Str("database") <<
