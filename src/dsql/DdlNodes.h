@@ -897,7 +897,7 @@ public:
 	QualifiedName name;
 	QualifiedName forCharSet;
 	QualifiedName fromName;
-	Firebird::string fromExternal;
+	MetaName fromExternal;
 	Firebird::UCharBuffer specificAttributes;
 	bool createIfNotExistsOnly = false;
 
