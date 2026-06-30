@@ -4589,7 +4589,6 @@ ISC_STATUS rem_port::get_slice(P_SLC * stuff, PACKET* sendL)
 	if (stuff->p_slc_length)
 	{
 		slice = temp_buffer.getBuffer(stuff->p_slc_length);
-		memset(slice, 0, stuff->p_slc_length);
 #ifdef DEBUG_REMOTE_MEMORY
 		printf("get_slice(server)         allocate buffer  %x\n", slice);
 #endif
