@@ -2061,8 +2061,8 @@ void blb::modifyData(thread_db* tdbb, offset_t position, const void* buffer, con
 {
 	// All BLOB data is stored in the following format: <pages> <record>
 	//
-	// <record> contains unflushed data and is easy to modify.
-	// <pages> must be fetched, marked, modified, and released.
+	// <record> (blb_buffer) contains unflushed data and is easy to modify.
+	// <pages> (blb_pages) must be fetched, marked, modified, and released.
 	//
 	// Depending on the BLOB level, the algorithm works as follows:
 	//
@@ -2071,7 +2071,7 @@ void blb::modifyData(thread_db* tdbb, offset_t position, const void* buffer, con
 	//
 	// Level 1: Flushed data is located on pages (blb_pages), unflushed data is in blb_buffer.
 	//           To modify the data:
-	//           1. Find the first blob data page that needs modification, read, mark and release it.
+	//           1. Find the first blob data page that needs modification, read, mark, modify and release it.
 	//           2. If the remaining data to modify exceeds the current page size, proceed to the next data page.
 	//           3. If there are no more data pages but there is still data to modify, update the <record>.
 	//
@@ -2082,10 +2082,10 @@ void blb::modifyData(thread_db* tdbb, offset_t position, const void* buffer, con
 	//           To locate and modify the required page:
 	//           1. Calculate the pointer page offset:
 	//                  NUMBER_OF_USED_PAGES = position / <page size>
-	//                  PINTER_PAGE_ID = NUMBER_OF_USED_PAGES / <number of IDs per pointer page> .
+	//                  POINTER_PAGE_ID = NUMBER_OF_USED_PAGES / <number of IDs per pointer page> .
 	//           2. Determine the target data page:
 	//                  DATA_PAGE_ID = NUMBER_OF_USED_PAGES % <number of IDs per pointer page>.
-	//           3. Compute the byte offset within the data page:
+	//           3. Compute the offset (in bytes) within the data page:
 	//                  BYTE_OFFSET = position % <page size>.
 	//           4. Modify the first relevant data page, then move to the next one.
 	//           5. If no more data pages are available, advance to the next pointer page,
