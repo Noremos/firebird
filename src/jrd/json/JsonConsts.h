@@ -129,7 +129,7 @@ namespace FBJSON
 			inline constexpr JsonToken DATE = "date";
 		}
 
-		const JsonToken ANY_FIELD("*");
+		inline constexpr JsonToken ANY_FIELD("*");
 	}
 }
 
