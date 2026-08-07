@@ -9,23 +9,23 @@
 namespace TestsUtils
 {
 
-	namespace fs = std::filesystem;
+namespace fs = std::filesystem;
 
-	struct TempPathFixture
+struct TempPathFixture
+{
+	fs::path tempPathFX;
+
+	TempPathFixture()
 	{
-		fs::path tempPathFX;
+		tempPathFX = fs::temp_directory_path() / (generateRandomString(10) + "_common_test.tmp");
+	}
 
-		TempPathFixture()
-		{
-			tempPathFX = fs::temp_directory_path() / (generateRandomString(10) + "_common_test.tmp");
-		}
-
-		~TempPathFixture()
-		{
-			if (fs::exists(tempPathFX))
-				fs::remove(tempPathFX);
-		}
-	};
+	~TempPathFixture()
+	{
+		if (fs::exists(tempPathFX))
+			fs::remove(tempPathFX);
+	}
+};
 
 }
 

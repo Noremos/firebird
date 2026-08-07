@@ -334,6 +334,8 @@ namespace fb_utils
 		int reason;
 	};
 
+	bool isLoopbackAddress(const std::string_view address);
+
 	template<class T>
 	requires(!std::is_pointer_v<T>)
 	class SafePointer
