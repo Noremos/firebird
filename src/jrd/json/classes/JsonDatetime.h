@@ -36,7 +36,7 @@
 #include <utility>
 
 namespace Firebird {
-	// Use this for serialization because they have helpful put/get fuctions
+	// Use this for serialization because they have helpful put/get functions
 	class BlrReader;
 	class BlrWriter;
 }
@@ -70,7 +70,7 @@ public:
 
 	void set(SmallString&& source, const std::string_view format)
 	{
-		m_ts = convertToTimeStamp(source, format, m_flags);
+		m_ts = convertToTimeStamp(source.ToStringView(), format, m_flags);
 		m_stringRepresentation = std::move(source);
 	}
 
@@ -84,7 +84,7 @@ public:
 
 	void updateFormat(const std::string_view format, Firebird::Callbacks* callback = nullptr)
 	{
-		m_ts = convertToTimeStamp(m_stringRepresentation, format, m_flags, callback);
+		m_ts = convertToTimeStamp(m_stringRepresentation.ToStringView(), format, m_flags, callback);
 	}
 
 	void updatePrecision(const USHORT precision);
@@ -96,7 +96,7 @@ public:
 
 	std::string_view asString() const
 	{
-		return m_stringRepresentation;
+		return m_stringRepresentation.ToStringView();
 	}
 
 	std::string_view getTypeName() const;

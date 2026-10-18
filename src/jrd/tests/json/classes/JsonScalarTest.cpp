@@ -83,23 +83,23 @@ BOOST_AUTO_TEST_CASE(JsonScalarValues)
 		JsonScalar scalar(pool);
 		scalar.set(testValue);
 		BOOST_CHECK(scalar.getType() == FBJSON::ValueType::STRING);
-		BOOST_TEST(std::string_view(*scalar.getValue().string) == std::string_view(testValue));
+		BOOST_TEST(scalar.getValue().string->ToStringView() == std::string_view(testValue));
 		BOOST_CHECK(scalar.isString());
 		BOOST_CHECK(scalar.isScalar());
 	}
 
 	{
-		std::string_view testValue = "string_view string";
+		const std::string_view testValue = "string_view string";
 
 		JsonScalar scalar(pool);
 		scalar.set(testValue);
 		BOOST_CHECK(scalar.getType() == FBJSON::ValueType::STRING);
-		BOOST_TEST(std::string_view(*scalar.getValue().string) == testValue);
+		BOOST_TEST(scalar.getValue().string->ToStringView() == testValue);
 		BOOST_CHECK(scalar.isString());
 		BOOST_CHECK(scalar.isScalar());
 
 		// Reset the same value
-		scalar.set(*scalar.getValue().string);
+		scalar.set(scalar.getValue().string->ToStringView());
 	}
 
 	// DATETIME CHECK
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(StrMethod)
 	scalar.set("123");
 	BOOST_TEST(scalar.str() == scalar.getValue().string);
 
-	BOOST_TEST(std::string_view(*scalar.str()) == "123");
+	BOOST_TEST(scalar.str()->ToStringView() == "123");
 }
 
 BOOST_AUTO_TEST_CASE(GetStringViewMethod)
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(GetStringViewMethod)
 	// BOOST_CHECK_THROW(scalar.getStringView(), json_skippable_exception);
 
 	scalar.set("123");
-	BOOST_TEST(scalar.getStringView() == std::string_view(*scalar.getValue().string));
+	BOOST_TEST(scalar.getStringView() == scalar.getValue().string->ToStringView());
 	BOOST_TEST(scalar.getStringView() == "123");
 }
 

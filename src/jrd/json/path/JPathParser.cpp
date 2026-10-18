@@ -150,11 +150,6 @@ PathParser::PathParser(MemoryPool& pool, const std::string_view jsonPath) :
 	lex.end = end;
 	lex.line_start_bk = lex.line_start;
 	lex.prev_keyword = -1;
-
-#ifdef DSQL_DEBUG
-	if (DSQL_debug & 32)
-		dsql_trace("Source DSQL string:\n%.*s", (int) length, string);
-#endif
 }
 
 
@@ -470,7 +465,7 @@ int PathParser::yylexAux()
 	}
 	else if (tok_class & CHR_LETTER)
 	{
-		// An quoteless filed name or a token or a passing variable
+		// A quoteless field name or a token or a passing variable
 
 		// First get only token chars
 		const char* start = lex.ptr - 1;

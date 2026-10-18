@@ -254,8 +254,8 @@ bool PathNode::equalsNoComplex(const JsonLevelNode* const jsonLevel)
 			if (enabledPrev->matchUnwrapPattern())
 			{
 				// $.field
-				// [{"filed":42}]
-				// Expected object but encoutred an array
+				// [{"field":42}]
+				// Expected object but encountered an array
 
 				// Modify path
 				// $.field   =>   $[*].field

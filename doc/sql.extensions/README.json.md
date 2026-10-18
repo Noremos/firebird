@@ -4,9 +4,9 @@ Functional to parse, generate, query and store JSON
 
 ## JSON Path
 
-The JSON Path is uses to query data from JSON.
+The JSON Path is used to query data from JSON.
 For example, the path `$[*].name` with JSON `[{"name":"John", "score":10}, {"name":"Sam", "score":50}]` will produce the sequence `["John","name"]`.
-To filter elements, a filer can be used: `$[*] ? (@.score > 15)`. Child filter is also supported:  `$[*] ? (@.score > 15).name`.
+To filter elements, a filter can be used: `$[*] ? (@.score > 15)`. Child filter is also supported:  `$[*] ? (@.score > 15).name`.
 
 The JSON Path has 2 modes: lax (default) and strict. The first one allows to flex path and JSON content matching.
 Missing fields and incorrect array ranges are ignored. The strict one produces an error. The full rules:

@@ -140,58 +140,58 @@ BOOST_AUTO_TEST_CASE(BigStringParse)
 	SmallString targetUnescaped, targetEscaped, outUnescaped, outEscaped;
 
 	parse(source, 256, "\\n", "\n", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetEscaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetEscaped.data());
 
 	parse(source, 255, "\\n", "\n", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetEscaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetEscaped.data());
 
 	parse(source, 254, "\\n", "\n", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetEscaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetEscaped.data());
 
 	parse(source, 253, "\\n", "\n", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetEscaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetEscaped.data());
 
 
 	// Simple unicode is always converted to ascii
 	parse(source, 250, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 251, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 252, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 253, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 254, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 255, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 256, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 257, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 
 	parse(source, 258, "\\u0020", " ", targetUnescaped, targetEscaped, outUnescaped, outEscaped);
-	BOOST_TEST(std::string_view(outUnescaped) == targetUnescaped.data());
-	BOOST_TEST(std::string_view(outEscaped) == targetUnescaped.data());
+	BOOST_TEST(outUnescaped.ToStringView() == targetUnescaped.data());
+	BOOST_TEST(outEscaped.ToStringView() == targetUnescaped.data());
 }
 
 
@@ -200,23 +200,23 @@ BOOST_AUTO_TEST_CASE(TestUnsafeStringParse)
 	SmallString output;
 
 	StringParser::parseStringUnsafe({"Hello \\\" world"}, output);
-	BOOST_TEST(output.data() == "Hello \\\" world");
+	BOOST_TEST(output.ToStringView() == "Hello \\\" world");
 
 	StringParser::parseStringUnsafe({"Hello \\n world world"}, output);
-	BOOST_TEST(output.data() == "Hello \\n world world");
+	BOOST_TEST(output.ToStringView() == "Hello \\n world world");
 
 	static_assert(char(0x0020) == ' ', "Wrong test");
 	StringParser::parseStringUnsafe({"Hello \\u0020 world world"}, output);
-	BOOST_TEST(output.data() == "Hello   world world");
+	BOOST_TEST(output.ToStringView() == "Hello   world world");
 
 	StringParser::parseStringUnsafe({"Hello \\u0020 world world"}, output);
-	BOOST_TEST(output.data() == "Hello   world world");
+	BOOST_TEST(output.ToStringView() == "Hello   world world");
 
 	StringParser::parseStringUnsafe({"Hello \\u0020"}, output);
-	BOOST_TEST(output.data() == "Hello  ");
+	BOOST_TEST(output.ToStringView() == "Hello  ");
 
 	StringParser::parseStringUnsafe({"Hello \\ud83d\\ude80 world world"}, output);
-	BOOST_TEST(output.data() == "Hello \\ud83d\\ude80 world world");
+	BOOST_TEST(output.ToStringView() == "Hello \\ud83d\\ude80 world world");
 }
 
 BOOST_AUTO_TEST_CASE(TestUnsafeStringOverflowBug)

@@ -33,7 +33,7 @@
 #ifdef HAVE_FLOAT_H
 #include <float.h>
 #else
-static inline constexpr USHORT DBL_MAX_10_EXP = 308
+static inline constexpr USHORT DBL_MAX_10_EXP = 308;
 #endif
 
 
@@ -142,7 +142,7 @@ void FBJSON::JsonScalarParser<TView>::parseQuotedString(TView input, TextPos& cu
 	const TextPos end = input.end();
 	constexpr static USHORT chunkSize = 256;
 
-	// To check the most common case, using just a simple uint8_t mast is about 10% faster then using an enum
+	// To check the most common case, using just a simple uint8_t mask is about 10% faster than using an enum
 	static constexpr auto isSpecial = getSpecialCharacterTable();
 	// Interestingly, accessing this std::array is about 20% faster than accessing a C-style ControlType[256] array!
 	static constexpr auto controlsChars = getControlsTable();

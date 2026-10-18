@@ -23,7 +23,7 @@
  *  All Rights Reserved.
  *  Contributor(s): ______________________________________.
  */
- 
+
 #include "JsonRuntime.h"
 
 #include "JsonConsts.h"
@@ -51,7 +51,7 @@ constexpr UCHAR moveOffsetByOperation(JsonExprNode::OffsetCounter& m_offsets, co
 }
 // ****
 
-constexpr int isUnaryOperation(const JsonExprOperation op)
+constexpr bool isUnaryOperation(const JsonExprOperation op)
 {
 	return JsonExprOperation::REGEX_FLAGS < op && op < JsonExprOperation::MULTIPLICATION;
 }

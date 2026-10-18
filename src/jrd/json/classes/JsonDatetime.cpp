@@ -138,7 +138,7 @@ void JsonDatetime::set(Jrd::thread_db* tdbb, const dsc& valueDsc)
 
 	// m_ts = MOV_get_timestamp_tz(&valueDsc);
 	// Can't use MOV_get_timestamp_tz because the CVT_string_to_datetime function adds TimeZoneUtil::TIME_TZ_BASE_DATE
-	// and other instance stuff. It is more reliably to just use the same function instead of tring to mimic its output
+	// and other instance stuff. It is more reliable to just use the same function instead of trying to mimic its output
 
 	Firebird::EXPECT_DATETIME format = DATETIME_SUBTYPE::expect_timestamp_tz;
 	switch (valueDsc.dsc_dtype)
@@ -164,7 +164,7 @@ void JsonDatetime::set(Jrd::thread_db* tdbb, const dsc& valueDsc)
 			fb_assert(false);
 	}
 
-	m_ts = convertToTimeStamp(m_stringRepresentation, format, m_flags);
+	m_ts = convertToTimeStamp(m_stringRepresentation.ToStringView(), format, m_flags);
 }
 
 void JsonDatetime::updatePrecision(const USHORT precision)
@@ -193,9 +193,9 @@ std::string_view JsonDatetime::getTypeName() const
 	case DATETIME_SUBTYPE::expect_sql_time:
 		return Tokens::TypeName::TIME_WITHOUT_TZ;
 	case DATETIME_SUBTYPE::expect_timestamp_tz:
-		return Tokens::TypeName::TIMESTAMT_WITH_TZ;
+		return Tokens::TypeName::TIMESTAMP_WITH_TZ;
 	case DATETIME_SUBTYPE::expect_timestamp:
-		return Tokens::TypeName::TIMESTAMT_WITHOUT_TZ;
+		return Tokens::TypeName::TIMESTAMP_WITHOUT_TZ;
 	case DATETIME_SUBTYPE::expect_sql_date:
 		return Tokens::TypeName::DATE;
 	default:

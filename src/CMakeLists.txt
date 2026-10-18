@@ -284,7 +284,7 @@ add_custom_command(
 )
 add_custom_target(parse_jpath
     DEPENDS jpath_tab.h jpath_tab.c
-    SOURCES ${parse_src} jpath_tab.h jpath_tab.c
+    SOURCES ${jpath_parse_src} jpath_tab.h jpath_tab.c
 )
 project_group(parse_jpath "Boot/Custom build steps")
 set_source_files_properties(dsql/JsonPathParser.cpp include/gen/jparse.h PROPERTIES GENERATED TRUE)
@@ -482,6 +482,9 @@ file(GLOB engine_src
     "jrd/recsrc/*.cpp"
     "jrd/replication/*.cpp"
     "jrd/trace/*.cpp"
+    "jrd/json/*.cpp"
+    "jrd/json/classes/*.cpp"
+    "jrd/json/path/*.cpp"
     "jrd/os/${OS_DIR}/*.cpp"
 )
 set(engine_src ${engine_src}
@@ -492,6 +495,7 @@ set(engine_src ${engine_src}
     ${burp_engine_src}
     # parse
     ${GENERATED_DIR}/dsql/parse.cpp
+    ${GENERATED_DIR}/dsql/JsonPathParser.cpp
 )
 add_src_apple(engine_src
     jrd/os/posix/unix.cpp
@@ -517,8 +521,8 @@ add_epp_suffix(engine_generated_src master)
 
 file(GLOB_RECURSE engine_include "dsql/*.h" "jrd/*.h" include/gen/iberror.h)
 
-add_library                 (engine_common ${engine_src} ${engine_include} ${parse_src})
-add_dependencies_cc         (engine_common parse UpdateCloopInterfaces)
+add_library                 (engine_common ${engine_src} ${engine_include} ${parse_src} ${jpath_parse_src})
+add_dependencies_cc         (engine_common parse parse_jpath UpdateCloopInterfaces)
 
 if (NOT CMAKE_CROSSCOMPILING)
 

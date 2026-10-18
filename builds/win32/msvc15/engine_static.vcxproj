@@ -416,12 +416,12 @@
     <ClInclude Include="..\..\..\src\jrd\vio_proto.h" />
     <ClInclude Include="..\..\..\src\jrd\VirtualTable.h" />
     <ClInclude Include="..\..\..\src\jrd\WorkerAttachment.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\JsonRuntime.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\path\JsonPath.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\path\JPathParser.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonTypes.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonScalar.h" />
-    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\JsonRuntime.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\path\JsonPath.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\path\JPathParser.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonTypes.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonScalar.h" />
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonDatetime.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\dsql\DdlNodes.epp" />

@@ -35,7 +35,7 @@
 #include <utility>
 
 namespace Firebird {
-	// Use this for serialization because they have helpful put/get fuctions
+	// Use this for serialization because they have helpful put/get functions
 	class BlrReader;
 	class BlrWriter;
 }
@@ -58,7 +58,6 @@ enum class ValueType : UCHAR
 	JNULL,
 	BOOL,
 	INT,
-	//JFLOAT,
 	DOUBLE,
 	STRING,
 	DATETIME, // keep it as the last scalar type

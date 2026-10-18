@@ -186,7 +186,7 @@ json_variable
 // <$ with path> | $passing | <number scalar> | <strict scalar>
 %type <exprNode> path_primary
 path_primary
-	: number_scalar // It is easier to place it here and check instead of adding separate rule 
+	: number_scalar // It is easier to place it here and check instead of adding separate rule
 		{ $$ = $1; }
 	| QUOTED_STRING
 		{ $$ = mkNode<JsonExprNode::SCALAR_NODE>()->set(*$1); }
@@ -217,6 +217,7 @@ path_accessor
 		}
 	| '(' json_path_arithmetic ')'
 		{
+			$2->addFlag(JsonExprNode::FLAG_SOLID);
 			$$ = $2;
 		}
 	;
@@ -244,7 +245,10 @@ json_path_expr
 		{
 			if ($2->applyUnaryOp($1))
 			{
-				$$ = $2; // Just a scalar
+				//  // Just a scalar, but should return CALCULATION_NODE
+				auto* node = mkNode<JsonExprNode::CALCULATION_NODE>();
+				node->addChild($2);
+				$$ = node;
 			}
 			else
 			{
@@ -320,8 +324,8 @@ variable_body_opt($context)
 %type path_body_opt(<jpathContext>)
 path_body_opt($context)
 	: /*nothing*/
-	| path_filer($context)
-	| path_filer($context) path_body_accessors($context)
+	| path_filter($context)
+	| path_filter($context) path_body_accessors($context)
 	| path_body_accessors($context)
 	;
 
@@ -339,11 +343,11 @@ accessor_with_opt_filter($context)
 %type path_filter_opt(<jpathContext>)
 path_filter_opt($context)
 	: /* Nothing */
-	| path_filer($context)
+	| path_filter($context)
 	;
 
-%type path_filer(<jpathContext>)
-path_filer($context)
+%type path_filter(<jpathContext>)
+path_filter($context)
 	: filter_expr
 		{
 			if (m_isLaxMode)
@@ -470,7 +474,7 @@ single_index($context, $passType)
 		{ $$ = -1; }
 	| LAST '-' INTEGER16
 		{ $$ = -1 - $3; }
-	| LAST '+' INTEGER16 // Allow this obvious out of range value in case of modification (appending element) 
+	| LAST '+' INTEGER16 // Allow this obvious out of range value in case of modification (appending element)
 		{ $$ = -1 + $3; }
 	| json_path_arithmetic_finished // Get number or an expression
 		{
@@ -654,7 +658,11 @@ unary_predicate
 predicate
 	: comparison_predicate			{ $$ = $1; }
 	| filter_function				{ $$ = $1; }
-	| '(' boolean_expression ')'	{ $$ = $2; }
+	| '(' boolean_expression ')'
+		{
+			$2->addFlag(JsonExprNode::FLAG_SOLID);
+			$$ = $2;
+		}
 	;
 
 %type <exprNode> comparison_predicate
@@ -717,6 +725,7 @@ filter_function
 			auto* root = mkNode<JsonExprNode::CALCULATION_NODE>();
 			root->addChild($2);
 			root->addOperation(JsonExprOperation::IS_UNKNOWN);
+			root->addFlag(JsonExprNode::FLAG_SOLID);
 			$$ = root->finish();
 		}
 	;

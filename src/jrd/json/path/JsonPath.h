@@ -510,7 +510,7 @@ public: // Checkers
 
 	inline bool isNextEmpty() const noexcept
 	{
-		// Two diabled in a row is impossible but check it anyway
+		// Two disabled in a row is impossible but check it anyway
 		return next == nullptr || (next->isDisabled() && next->isNextEmpty());
 	}
 
@@ -601,7 +601,7 @@ public:
 	UCHAR flags = 0;
 	Firebird::AutoPtr<JsonExprNode> filterNode;
 
-	// Filed
+	// Field
 	SmallString field;
 
 	// Range

@@ -40,7 +40,6 @@ struct ContextVariables;
 // operations order by its priority
 enum class JsonExprOperation : UCHAR
 {
-	// VALUE,
 	NONE = 0,
 
 
@@ -154,7 +153,7 @@ public:
 public:// Children routines
 	JsonExprNode* addChild(const Type childType, const Flags flags = FLAG_NONE);
 
-	// The incoming node cloud be modifed and deleted (the function returns false in this case)
+	// The incoming node could be modified and deleted (the function returns false in this case)
 	bool addChild(JsonExprNode* node);
 
 	// Only for CALCULATION_NODE
@@ -239,7 +238,7 @@ public: // Set content methods
 	{
 		fb_assert(m_type == JsonExprNode::SCALAR_NODE);
 
-		m_data.scalarBlock->value.set(str);
+		m_data.scalarBlock->value.set(str.ToStringView());
 		m_type = JsonExprNode::SCALAR_NODE;
 		return this;
 	}
@@ -476,7 +475,6 @@ private:
 		{ }
 
 		Firebird::AutoPtr<PathVariable> variable; //$. or @. or $pass
-		//JsonVariant* cachedVariable = nullptr;
 	};
 
 	struct CalculationBlock : public ChildrenNodes

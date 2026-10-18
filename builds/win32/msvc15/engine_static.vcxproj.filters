@@ -1241,7 +1241,7 @@
     <None Include="..\..\..\src\dsql\parse.y">
       <Filter>DSQL</Filter>
     </None>
-    <ClCompile Include="..\..\..\src\jrd\json\JsonPath.cpp">
+    <ClCompile Include="..\..\..\src\jrd\json\path\JsonPath.cpp">
       <Filter>JSON</Filter>
     </ClCompile>
     <None Include="..\..\..\src\jrd\json\path\JsonPathParser.y">
@@ -1259,5 +1259,29 @@
     <ClCompile Include="..\..\..\src\jrd\json\classes\JsonDatetime.cpp">
       <Filter>JSON</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\jrd\json\JsonRuntime.cpp">
+      <Filter>JSON</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\jrd\json\classes\JsonScalar.cpp">
+      <Filter>JSON</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\..\src\jrd\json\JsonRuntime.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\jrd\json\path\JsonPath.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\jrd\json\path\JPathParser.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonTypes.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonScalar.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\jrd\json\classes\JsonDatetime.h">
+      <Filter>JSON</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

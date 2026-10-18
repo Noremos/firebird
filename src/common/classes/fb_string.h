@@ -929,8 +929,6 @@ namespace Firebird
 			return (length() != n) ? false : (Comparator::compare(c_str(), s.data(), n) == 0);
 		}
 
-		operator std::string_view() const { return std::string_view(stringBuffer, stringLength); }
-
 		bool getWord(StringType& from, const char* sep)
 		{
 			from.alltrim(sep);

@@ -93,14 +93,14 @@ BOOST_FIXTURE_TEST_CASE(SetFromStringTests, EngineHolder)
 	BOOST_TEST(compareDatetime(test.getTS(),
 		CvtTestUtils::createTimeStampTZ(2018, 1, 1, 1, 23, 45, 120)));
 
-	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMT_WITH_TZ);
+	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMP_WITH_TZ);
 
 
 	test.set("2018-01-01 01:23:45"sv, "", &cb);
 	BOOST_TEST(compareDatetime(test.getTS(),
 		CvtTestUtils::createTimeStampTZ(2018, 1, 1, 1, 23, 45, 0)));
 
-	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMT_WITHOUT_TZ);
+	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMP_WITHOUT_TZ);
 }
 
 
@@ -135,21 +135,21 @@ BOOST_FIXTURE_TEST_CASE(SetFromStringWithFormatTests, EngineHolder)
 	BOOST_CHECK(compareDatetime(test.getTS(),
 		CvtTestUtils::createTimeStampTZ(2018, 2, 4, 1, 23, 0, 120)));
 
-	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMT_WITH_TZ);
+	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMP_WITH_TZ);
 
 
 	test.set("2018 04 02 01:23"sv, "YYYY DD MM HH24:MI"sv, &cb);
 	BOOST_CHECK(compareDatetime(test.getTS(),
 		CvtTestUtils::createTimeStampTZ(2018, 2, 4, 1, 23, 0, 0)));
 
-	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMT_WITHOUT_TZ);
+	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMP_WITHOUT_TZ);
 
 
 	test.set("14 5"sv, "DD TZH"sv, &cb);
 	BOOST_CHECK(compareDatetime(test.getTS(),
 		CvtTestUtils::createTimeStampTZ(00, 0, 14, 0, 0, 0, 300)));
 
-	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMT_WITH_TZ);
+	BOOST_TEST(test.getTypeName() == Tokens::TypeName::TIMESTAMP_WITH_TZ);
 }
 
 
@@ -236,7 +236,7 @@ BOOST_FIXTURE_TEST_CASE(DatetimeMethodsTests, EngineHolder)
 
 	// Move from datetime
 	toString = date.extractString();
-	BOOST_TEST((std::string_view)toString == sourceStr);
+	BOOST_TEST(toString.ToStringView() == sourceStr);
 
 	// Should be empty after the move
 	toString = date.extractString();
@@ -256,10 +256,10 @@ BOOST_FIXTURE_TEST_CASE(ZeroTimeTests, EngineHolder)
 	BOOST_TEST(datetime.getTypeName() == Tokens::TypeName::TIME_WITH_TZ);
 
 	datetime.set("13.01.2023 00:00"sv, "");
-	BOOST_TEST(datetime.getTypeName() == Tokens::TypeName::TIMESTAMT_WITHOUT_TZ);
+	BOOST_TEST(datetime.getTypeName() == Tokens::TypeName::TIMESTAMP_WITHOUT_TZ);
 
 	datetime.set("13.01.2023 00:00 +2:00"sv, "");
-	BOOST_TEST(datetime.getTypeName() == Tokens::TypeName::TIMESTAMT_WITH_TZ);
+	BOOST_TEST(datetime.getTypeName() == Tokens::TypeName::TIMESTAMP_WITH_TZ);
 }
 
 BOOST_FIXTURE_TEST_CASE(UtcTests, EngineHolder)

@@ -124,8 +124,8 @@ namespace FBJSON
 			inline constexpr JsonToken UNKNOWN = "unknown";
 			inline constexpr JsonToken TIME_WITH_TZ = "time with time zone";
 			inline constexpr JsonToken TIME_WITHOUT_TZ = "time without time zone";
-			inline constexpr JsonToken TIMESTAMT_WITH_TZ = "timestamp with time zone";
-			inline constexpr JsonToken TIMESTAMT_WITHOUT_TZ = "timestamp without time zone";
+			inline constexpr JsonToken TIMESTAMP_WITH_TZ = "timestamp with time zone";
+			inline constexpr JsonToken TIMESTAMP_WITHOUT_TZ = "timestamp without time zone";
 			inline constexpr JsonToken DATE = "date";
 		}
 
@@ -266,7 +266,7 @@ struct JsonStatusMsgWrapper
 #define isc_jstrict_common "strict mode: "
 #define isc_jstrict_out_of_range "Range [@1 to @2] is out of array bounds (0..@3)"
 #define isc_jstrict_invalid_range "Range [@1 to @2] is invalid"
-#define isc_jstrict_filed_name_mismatched "Object filed \"@1\" has not been found"
+#define isc_jstrict_field_name_mismatched "Object field \"@1\" has not been found"
 #define isc_jstrict_path_mismatched "Json Path does not match JSON structure"
 #define isc_jstrict_non_array_size "Cannot calculate size for a non-array token"
 #define isc_jfilter_common "JSON Path Filter: "
